@@ -55,11 +55,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        // Récupérer la session depuis le stockage
-        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession()
+        // Récupérer la session depuis le stockage (seulement si Supabase est configuré)
+        let initialSession = null
+        let sessionError = null
         
-        if (sessionError) {
-          // Si erreur, nettoyer et continuer
+        if (isSupabaseConfigured) {
+          try {
+            const result = await supabase.auth.getSession()
+            initialSession = result.data?.session || null
+            sessionError = result.error || null
+          } catch (error) {
+            // Ignorer les erreurs si Supabase n'est pas configuré
+            sessionError = error as any
+            console.warn('Supabase not configured, skipping session check')
+          }
+        }
+        
+        if (sessionError || !isSupabaseConfigured) {
+          // Si erreur ou non configuré, nettoyer et continuer
           if (isMounted) {
             setSession(null)
             setUser(null)
@@ -80,7 +93,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (timeoutId) clearTimeout(timeoutId)
           }
 
-          // Ensuite, vérifier et enrichir en arrière-plan (sans bloquer)
+          // Ensuite, vérifier et enrichir en arrière-plan (seulement si configuré)
+          if (!isSupabaseConfigured) {
+            if (isMounted) {
+              setLoading(false)
+            }
+            return
+          }
+          
           try {
             const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
             
@@ -200,32 +220,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function checkSession() {
     try {
-      // Vérifier qu'on est côté client et que Supabase est configuré
-      if (typeof window === 'undefined' || !isSupabaseConfigured) {
+      // Vérifier qu'on est côté client
+      if (typeof window === 'undefined') {
+        setLoading(false)
+        return
+      }
+      
+      // Si Supabase n'est pas configuré, arrêter ici
+      if (!isSupabaseConfigured) {
+        setSession(null)
+        setUser(null)
         setLoading(false)
         return
       }
 
       // Récupérer la session depuis localStorage
-      const { data: { session }, error } = await supabase.auth.getSession()
+      let session = null
+      let error = null
       
-      if (error) {
-        console.error('Error getting session:', error)
+      try {
+        const result = await supabase.auth.getSession()
+        session = result.data?.session || null
+        error = result.error || null
+      } catch (err) {
+        error = err
+        console.warn('Error getting session:', err)
+      }
+      
+      if (error || !session) {
         setSession(null)
         setUser(null)
         setLoading(false)
         return
       }
       
-      if (!session) {
-        setSession(null)
-        setUser(null)
-        setLoading(false)
-        return
-      }
+      // Vérifier que le token est toujours valide (seulement si configuré)
+      let user = null
+      let userError = null
       
-      // Vérifier que le token est toujours valide
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (isSupabaseConfigured) {
+        try {
+          const result = await supabase.auth.getUser()
+          user = result.data?.user || null
+          userError = result.error || null
+        } catch (err) {
+          userError = err
+        }
+      }
       
       if (userError || !user) {
         // Token invalide, nettoyer la session
