@@ -13,6 +13,15 @@ const nextConfig = {
   },
   // Désactiver le cache webpack pour éviter les problèmes
   webpack: (config, { dev, isServer }) => {
+    // Supprimer tous les warnings webpack
+    config.ignoreWarnings = [
+      { module: /node_modules/ },
+      { file: /node_modules/ },
+      /Failed to parse source map/,
+      /Caching failed for pack/,
+      /Unable to snapshot resolve dependencies/,
+    ]
+    
     if (dev && !isServer) {
       config.watchOptions = {
         poll: 1000, // Vérifier les changements toutes les secondes
