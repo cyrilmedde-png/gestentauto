@@ -16,21 +16,27 @@ function getSupabaseClient(): SupabaseClient {
 
   // Vérifier que les variables d'environnement sont définies
   if (!supabaseUrl || !supabaseAnonKey) {
-    // Au moment du build SSG (process.env.NODE_ENV === 'production' et pas de window),
-    // créer un client mock pour permettre le build sans erreur
-    // Les variables seront disponibles au runtime sur Vercel
-    if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
-      // Côté serveur/build : créer un client avec des valeurs placeholder
-      // Ce client ne sera jamais utilisé au runtime, seulement pour permettre le build
-      supabaseClient = createClient(
-        'https://placeholder.supabase.co',
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTI4MDAsImV4cCI6MTk2MDc2ODgwMH0.placeholder',
-        { auth: { persistSession: false, autoRefreshToken: false } }
-      ) as SupabaseClient
-      return supabaseClient
+    // Si les variables ne sont pas disponibles (build ou runtime sans config),
+    // créer un client placeholder pour éviter les erreurs
+    // Note: Ce client ne fonctionnera pas, mais permettra au code de se charger
+    // L'utilisateur devra configurer les variables dans Vercel Dashboard
+    supabaseClient = createClient(
+      'https://placeholder.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTI4MDAsImV4cCI6MTk2MDc2ODgwMH0.placeholder',
+      { 
+        auth: { 
+          persistSession: typeof window !== 'undefined',
+          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        } 
+      }
+    ) as SupabaseClient
+    // Log un avertissement en console (pas d'erreur qui bloque)
+    if (typeof window !== 'undefined') {
+      console.warn('⚠️ Supabase environment variables are not configured. Please configure them in Vercel Dashboard.')
     }
-    // Au runtime (client-side ou serveur avec variables), lancer une erreur si manquant
-    throw new Error('Missing Supabase environment variables. Please check your .env file.')
+    return supabaseClient
   }
 
   // Créer le client avec la configuration de persistance
