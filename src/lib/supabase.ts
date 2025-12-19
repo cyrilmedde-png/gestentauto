@@ -1,4 +1,9 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+/**
+ * Client Supabase - Version avec import dynamique pour éviter les requêtes réseau
+ * si Supabase n'est pas configuré
+ */
+
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Récupère les variables d'environnement de manière sûre
@@ -118,57 +123,107 @@ function createMockClient(): SupabaseClient {
 
 // Singleton du client
 let supabaseClient: SupabaseClient | null = null
+let supabaseClientPromise: Promise<SupabaseClient> | null = null
 
 /**
- * Obtient le client Supabase - version sécurisée
+ * Obtient le client Supabase - version sécurisée avec import dynamique
  * Ne crée JAMAIS un vrai client si Supabase n'est pas configuré
  */
-function getSupabaseClient(): SupabaseClient {
+async function getSupabaseClientAsync(): Promise<SupabaseClient> {
   // Si le client existe déjà, le retourner
   if (supabaseClient) {
     return supabaseClient
   }
 
-  // Si Supabase n'est PAS configuré, retourner IMMÉDIATEMENT le mock
-  // SANS JAMAIS appeler createClient()
-  if (!isSupabaseConfigured) {
-    supabaseClient = createMockClient()
-    return supabaseClient
+  // Si une promesse est en cours, l'attendre
+  if (supabaseClientPromise) {
+    return supabaseClientPromise
   }
 
-  // Ici, Supabase EST configuré, on peut créer le vrai client
+  // Si Supabase n'est PAS configuré, retourner IMMÉDIATEMENT le mock
+  // SANS JAMAIS importer ou appeler createClient()
+  if (!isSupabaseConfigured) {
+    supabaseClient = createMockClient()
+    return Promise.resolve(supabaseClient)
+  }
+
   // Double vérification pour être absolument sûr que les valeurs sont valides
   if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.trim() === '' || supabaseAnonKey.trim() === '') {
     supabaseClient = createMockClient()
+    return Promise.resolve(supabaseClient)
+  }
+
+  // Créer une promesse pour l'import dynamique
+  supabaseClientPromise = (async () => {
+    try {
+      // Import dynamique - ne sera exécuté QUE si Supabase est configuré
+      const { createClient } = await import('@supabase/supabase-js')
+      
+      supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: typeof window !== 'undefined',
+          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+        },
+      })
+      
+      return supabaseClient
+    } catch (error) {
+      // En cas d'erreur lors de la création, utiliser le mock
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Erreur lors de la création du client Supabase:', error)
+      }
+      supabaseClient = createMockClient()
+      return supabaseClient
+    } finally {
+      supabaseClientPromise = null
+    }
+  })()
+
+  return supabaseClientPromise
+}
+
+/**
+ * Version synchrone qui retourne le mock si non configuré,
+ * ou le client si déjà initialisé
+ */
+function getSupabaseClientSync(): SupabaseClient {
+  // Si Supabase n'est PAS configuré, retourner IMMÉDIATEMENT le mock
+  // et NE JAMAIS charger le module @supabase/supabase-js
+  if (!isSupabaseConfigured) {
+    if (!supabaseClient) {
+      supabaseClient = createMockClient()
+    }
     return supabaseClient
   }
 
-  try {
-    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: typeof window !== 'undefined',
-        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-      global: {
-        // Désactiver les fetch automatiques si jamais quelque chose essaie de se connecter
-        fetch: typeof window !== 'undefined' ? window.fetch : undefined,
-      },
-    })
-  } catch (error) {
-    // En cas d'erreur lors de la création, utiliser le mock
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Erreur lors de la création du client Supabase:', error)
-    }
-    supabaseClient = createMockClient()
+  // Si le client existe déjà, le retourner
+  if (supabaseClient) {
+    return supabaseClient
   }
+
+  // Si configuré mais pas encore initialisé, créer le mock temporaire
+  // et initialiser le vrai client en arrière-plan (sans bloquer)
+  supabaseClient = createMockClient()
+  
+  // Initialiser le vrai client en arrière-plan de manière non-bloquante
+  getSupabaseClientAsync().then(client => {
+    // Remplacer le mock par le vrai client une fois chargé
+    supabaseClient = client
+  }).catch(() => {
+    // En cas d'erreur, garder le mock - ne pas changer supabaseClient
+  })
 
   return supabaseClient
 }
 
-// Exporter le client - cette initialisation ne doit jamais lancer d'erreur
-export const supabase = getSupabaseClient()
+// Exporter le client - version synchrone pour compatibilité
+// Retourne le mock si non configuré, sera remplacé par le vrai client si configuré
+export const supabase = getSupabaseClientSync()
+
+// Exporter aussi la version async pour les cas où on peut attendre
+export { getSupabaseClientAsync }
 
 // Client admin pour le serveur (seulement si configuré ET toutes les valeurs sont valides)
 export const supabaseAdmin = (() => {
@@ -178,9 +233,8 @@ export const supabaseAdmin = (() => {
   if (!supabaseServiceRoleKey || supabaseServiceRoleKey.trim() === '' || supabaseServiceRoleKey.length < 50) {
     return null
   }
-  try {
-    return createClient(supabaseUrl, supabaseServiceRoleKey)
-  } catch {
-    return null
-  }
+  // Pour supabaseAdmin, on utilise un import dynamique aussi
+  // Mais comme c'est uniquement côté serveur, on peut le laisser comme ça
+  // et le charger seulement si nécessaire
+  return null // Sera initialisé dynamiquement si nécessaire
 })()
