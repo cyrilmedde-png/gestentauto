@@ -36,9 +36,6 @@ function getSupabaseClient(): SupabaseClient {
           autoRefreshToken: false,
           detectSessionInUrl: false,
         },
-        global: {
-          fetch: () => Promise.reject(new Error('Supabase not configured'))
-        }
       }
     ) as SupabaseClient
     
