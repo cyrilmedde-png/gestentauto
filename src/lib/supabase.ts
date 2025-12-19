@@ -1,12 +1,11 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-// Récupérer les variables d'environnement directement
-// Les variables NEXT_PUBLIC_* sont disponibles côté client après le build
+// Variables d'environnement
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
-// Vérifier si Supabase est configuré (URL valide et clé assez longue)
+// Vérifier si Supabase est configuré
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
   supabaseAnonKey &&
@@ -17,6 +16,78 @@ export const isSupabaseConfigured = Boolean(
   !supabaseUrl.includes('not-configured')
 )
 
+// Mock client complet qui ne fait JAMAIS de requêtes réseau
+function createMockClient(): SupabaseClient {
+  const errorMessage = 'Supabase non configuré. Configurez les variables d\'environnement sur Vercel.'
+  
+  return {
+    auth: {
+      getSession: async () => ({
+        data: { session: null },
+        error: { message: errorMessage } as any,
+      }),
+      getUser: async () => ({
+        data: { user: null },
+        error: { message: errorMessage } as any,
+      }),
+      signInWithPassword: async () => ({
+        data: null,
+        error: { message: errorMessage } as any,
+      }),
+      signUp: async () => ({
+        data: null,
+        error: { message: errorMessage } as any,
+      }),
+      signOut: async () => ({ error: null }),
+      onAuthStateChange: () => ({
+        data: { subscription: { unsubscribe: () => {} } },
+      }),
+    },
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => ({
+            data: null,
+            error: { message: errorMessage } as any,
+          }),
+          single: async () => ({
+            data: null,
+            error: { message: errorMessage } as any,
+          }),
+        }),
+        maybeSingle: async () => ({
+          data: null,
+          error: { message: errorMessage } as any,
+        }),
+        single: async () => ({
+          data: null,
+          error: { message: errorMessage } as any,
+        }),
+      }),
+      insert: () => ({
+        select: () => ({
+          single: async () => ({
+            data: null,
+            error: { message: errorMessage } as any,
+          }),
+        }),
+      }),
+      delete: () => ({
+        eq: async () => ({
+          data: null,
+          error: { message: errorMessage } as any,
+        }),
+      }),
+      update: () => ({
+        eq: async () => ({
+          data: null,
+          error: { message: errorMessage } as any,
+        }),
+      }),
+    }),
+  } as unknown as SupabaseClient
+}
+
 // Singleton du client
 let supabaseClient: SupabaseClient | null = null
 
@@ -26,34 +97,7 @@ function getSupabaseClient(): SupabaseClient {
   }
 
   if (!isSupabaseConfigured) {
-    // Créer un mock qui ne fait JAMAIS de requêtes réseau
-    // Toutes les méthodes retournent une erreur claire
-    const mockClient = {
-      auth: {
-        getSession: async () => ({
-          data: { session: null },
-          error: { message: 'Supabase non configuré. Configurez les variables d\'environnement sur Vercel.' } as any,
-        }),
-        getUser: async () => ({
-          data: { user: null },
-          error: { message: 'Supabase non configuré. Configurez les variables d\'environnement sur Vercel.' } as any,
-        }),
-        signInWithPassword: async () => ({
-          data: null,
-          error: { message: 'Supabase non configuré. Configurez les variables d\'environnement sur Vercel.' } as any,
-        }),
-        signUp: async () => ({
-          data: null,
-          error: { message: 'Supabase non configuré. Configurez les variables d\'environnement sur Vercel.' } as any,
-        }),
-        signOut: async () => ({ error: null }),
-        onAuthStateChange: () => ({
-          data: { subscription: { unsubscribe: () => {} } },
-        }),
-      },
-    } as unknown as SupabaseClient
-
-    supabaseClient = mockClient
+    supabaseClient = createMockClient()
     return supabaseClient
   }
 

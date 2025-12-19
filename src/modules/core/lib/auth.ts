@@ -114,6 +114,9 @@ export async function signUp(email: string, password: string, companyName: strin
  * Déconnexion
  */
 export async function signOut() {
+  if (!isSupabaseConfigured) {
+    return // Ne rien faire si non configuré
+  }
   const { error } = await supabase.auth.signOut()
   if (error) throw error
 }
@@ -122,6 +125,10 @@ export async function signOut() {
  * Récupérer l'utilisateur actuel
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
+  if (!isSupabaseConfigured) {
+    return null
+  }
+  
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     
@@ -164,6 +171,10 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
  * Récupérer les données utilisateur depuis notre table
  */
 async function getUserData(userId: string): Promise<AuthUser | null> {
+  if (!isSupabaseConfigured) {
+    return null
+  }
+  
   try {
     const { data, error } = await supabase
       .from('users')
@@ -215,6 +226,9 @@ async function getUserData(userId: string): Promise<AuthUser | null> {
  * Vérifier si l'utilisateur est authentifié
  */
 export async function isAuthenticated(): Promise<boolean> {
+  if (!isSupabaseConfigured) {
+    return false
+  }
   const { data: { session } } = await supabase.auth.getSession()
   return !!session
 }
@@ -223,6 +237,9 @@ export async function isAuthenticated(): Promise<boolean> {
  * Obtenir la session actuelle
  */
 export async function getSession() {
+  if (!isSupabaseConfigured) {
+    return null
+  }
   const { data: { session } } = await supabase.auth.getSession()
   return session
 }
