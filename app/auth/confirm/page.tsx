@@ -6,7 +6,7 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { AnimatedNetwork } from '@/components/background/AnimatedNetwork'
 
 function ConfirmEmailContent() {
@@ -17,6 +17,13 @@ function ConfirmEmailContent() {
 
   useEffect(() => {
     async function verifyEmail() {
+      // Si Supabase n'est pas configuré, afficher une erreur immédiatement
+      if (!isSupabaseConfigured) {
+        setStatus('error')
+        setMessage('Supabase n\'est pas configuré. Veuillez configurer les variables d\'environnement sur Vercel.')
+        return
+      }
+
       const token = searchParams.get('token')
       const type = searchParams.get('type')
 

@@ -18,19 +18,39 @@ const supabaseUrl = getEnvVar('NEXT_PUBLIC_SUPABASE_URL')
 const supabaseAnonKey = getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 const supabaseServiceRoleKey = getEnvVar('SUPABASE_SERVICE_ROLE_KEY')
 
+/**
+ * Valide que l'URL Supabase est vraiment valide
+ */
+function isValidSupabaseUrl(url: string): boolean {
+  if (!url || url.trim() === '') return false
+  try {
+    const urlObj = new URL(url)
+    return (
+      urlObj.protocol === 'https:' &&
+      urlObj.hostname.includes('.supabase.co') &&
+      urlObj.hostname.length > 15 &&
+      !urlObj.hostname.includes('placeholder') &&
+      !urlObj.hostname.includes('votre-projet') &&
+      !urlObj.hostname.includes('example')
+    )
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Valide que la clé Supabase est vraiment valide
+ */
+function isValidSupabaseKey(key: string): boolean {
+  if (!key || key.trim() === '') return false
+  // Les clés Supabase sont généralement très longues (base64)
+  return key.length > 100 && !key.includes('placeholder') && !key.includes('votre')
+}
+
 // Vérifier si Supabase est configuré avec des valeurs VALIDES
 export const isSupabaseConfigured = Boolean(
-  supabaseUrl &&
-  supabaseAnonKey &&
-  supabaseUrl.trim() !== '' &&
-  supabaseAnonKey.trim() !== '' &&
-  supabaseUrl.length > 20 &&
-  supabaseAnonKey.length > 50 &&
-  supabaseUrl.startsWith('https://') &&
-  !supabaseUrl.includes('placeholder') &&
-  !supabaseUrl.includes('not-configured') &&
-  !supabaseUrl.includes('votre-projet') &&
-  supabaseUrl.includes('.supabase.co')
+  isValidSupabaseUrl(supabaseUrl) &&
+  isValidSupabaseKey(supabaseAnonKey)
 )
 
 /**
@@ -117,6 +137,12 @@ function getSupabaseClient(): SupabaseClient {
   }
 
   // Ici, Supabase EST configuré, on peut créer le vrai client
+  // Double vérification pour être absolument sûr que les valeurs sont valides
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.trim() === '' || supabaseAnonKey.trim() === '') {
+    supabaseClient = createMockClient()
+    return supabaseClient
+  }
+
   try {
     supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
@@ -125,10 +151,16 @@ function getSupabaseClient(): SupabaseClient {
         autoRefreshToken: true,
         detectSessionInUrl: true,
       },
+      global: {
+        // Désactiver les fetch automatiques si jamais quelque chose essaie de se connecter
+        fetch: typeof window !== 'undefined' ? window.fetch : undefined,
+      },
     })
   } catch (error) {
     // En cas d'erreur lors de la création, utiliser le mock
-    console.error('Erreur lors de la création du client Supabase:', error)
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Erreur lors de la création du client Supabase:', error)
+    }
     supabaseClient = createMockClient()
   }
 
@@ -138,8 +170,17 @@ function getSupabaseClient(): SupabaseClient {
 // Exporter le client - cette initialisation ne doit jamais lancer d'erreur
 export const supabase = getSupabaseClient()
 
-// Client admin pour le serveur (seulement si configuré)
-export const supabaseAdmin =
-  isSupabaseConfigured && supabaseServiceRoleKey && supabaseServiceRoleKey.trim() !== '' && supabaseServiceRoleKey.length > 50
-    ? createClient(supabaseUrl, supabaseServiceRoleKey)
-    : null
+// Client admin pour le serveur (seulement si configuré ET toutes les valeurs sont valides)
+export const supabaseAdmin = (() => {
+  if (!isSupabaseConfigured) {
+    return null
+  }
+  if (!supabaseServiceRoleKey || supabaseServiceRoleKey.trim() === '' || supabaseServiceRoleKey.length < 50) {
+    return null
+  }
+  try {
+    return createClient(supabaseUrl, supabaseServiceRoleKey)
+  } catch {
+    return null
+  }
+})()
