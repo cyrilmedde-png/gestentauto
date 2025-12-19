@@ -5,6 +5,9 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
+// Vérifier si Supabase est configuré
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey && supabaseUrl !== '' && supabaseAnonKey !== '')
+
 // Créer un singleton du client Supabase
 let supabaseClient: SupabaseClient | null = null
 
@@ -14,9 +17,8 @@ function getSupabaseClient(): SupabaseClient {
     return supabaseClient
   }
 
-  // Si les variables ne sont pas définies, créer un client avec des valeurs vides
-  // Cela permettra au code de se charger sans erreur, mais Supabase ne fonctionnera pas
-  if (!supabaseUrl || !supabaseAnonKey) {
+  // Si les variables ne sont pas définies, créer un client placeholder
+  if (!isSupabaseConfigured) {
     // Créer un client placeholder pour éviter les erreurs
     // Ce client ne fonctionnera pas mais permettra au code de se charger
     supabaseClient = createClient(
@@ -24,18 +26,12 @@ function getSupabaseClient(): SupabaseClient {
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTI4MDAsImV4cCI6MTk2MDc2ODgwMH0.placeholder',
       { 
         auth: { 
-          persistSession: typeof window !== 'undefined',
-          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+          persistSession: false,
           autoRefreshToken: false,
           detectSessionInUrl: false,
         } 
       }
     ) as SupabaseClient
-    
-    // Avertissement uniquement côté client pour ne pas polluer les logs serveur
-    if (typeof window !== 'undefined') {
-      console.warn('⚠️ Supabase environment variables are not configured. Please configure them in Vercel Dashboard.')
-    }
     
     return supabaseClient
   }
@@ -53,10 +49,10 @@ function getSupabaseClient(): SupabaseClient {
   return supabaseClient
 }
 
-// Exporter le client singleton
+// Exporter le client singleton (lazy initialization)
 export const supabase = getSupabaseClient()
 
 // Client pour les opérations serveur (avec service role key)
-export const supabaseAdmin = supabaseServiceRoleKey && supabaseUrl
+export const supabaseAdmin = isSupabaseConfigured && supabaseServiceRoleKey
   ? createClient(supabaseUrl, supabaseServiceRoleKey)
   : null

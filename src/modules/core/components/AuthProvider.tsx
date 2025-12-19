@@ -7,7 +7,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { AuthUser, getCurrentUser } from '../lib/auth'
 
 interface AuthContextType {
@@ -30,6 +30,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let timeoutId: NodeJS.Timeout | null = null
     let subscription: { unsubscribe: () => void } | null = null
 
+    // Si Supabase n'est pas configuré, arrêter immédiatement
+    if (!isSupabaseConfigured) {
+      if (isMounted) {
+        setLoading(false)
+        setUser(null)
+        setSession(null)
+      }
+      return () => {
+        isMounted = false
+        if (timeoutId) clearTimeout(timeoutId)
+        if (subscription) subscription.unsubscribe()
+      }
+    }
+
     // Vérifier immédiatement la session depuis localStorage
     const initializeAuth = async () => {
       try {
@@ -41,27 +55,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        // Récupérer la session depuis le stockage de manière synchrone d'abord
-        // Supabase stocke la session dans localStorage, on peut la récupérer directement
-        let initialSession = null
-        let sessionError = null
-        try {
-          const result = await supabase.auth.getSession()
-          initialSession = result.data?.session || null
-          sessionError = result.error || null
-        } catch (error) {
-          // Si Supabase n'est pas configuré, ignorer l'erreur
-          sessionError = error as any
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('Supabase not configured, skipping session check')
-          }
-        }
+        // Récupérer la session depuis le stockage
+        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
-          console.error('Error getting initial session:', sessionError)
           // Si erreur, nettoyer et continuer
           if (isMounted) {
-            await supabase.auth.signOut()
             setSession(null)
             setUser(null)
             setLoading(false)
@@ -69,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        if (initialSession && initialSession.user) {
+        if (initialSession?.user) {
           // On a une session, la définir immédiatement pour débloquer l'UI
           if (isMounted) {
             setSession(initialSession)
@@ -140,11 +139,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Initialiser l'authentification
     initializeAuth()
 
-    // Écouter les changements d'authentification
-    try {
-      const {
-        data: { subscription: authSubscription },
-      } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Écouter les changements d'authentification (seulement si Supabase est configuré)
+    if (isSupabaseConfigured) {
+      try {
+        const {
+          data: { subscription: authSubscription },
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (!isMounted) return
 
         setSession(session)
@@ -178,11 +178,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })
       
-      subscription = authSubscription
-    } catch (error) {
-      console.error('Error setting up auth listener:', error)
-      if (isMounted) {
-        setLoading(false)
+        subscription = authSubscription
+      } catch (error) {
+        console.error('Error setting up auth listener:', error)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
@@ -199,8 +200,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function checkSession() {
     try {
-      // Vérifier qu'on est côté client
-      if (typeof window === 'undefined') {
+      // Vérifier qu'on est côté client et que Supabase est configuré
+      if (typeof window === 'undefined' || !isSupabaseConfigured) {
         setLoading(false)
         return
       }
@@ -263,7 +264,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.auth.signOut()
+      } catch (error) {
+        console.error('Error signing out:', error)
+      }
+    }
     setUser(null)
     setSession(null)
   }
