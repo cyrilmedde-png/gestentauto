@@ -11,7 +11,7 @@ const nextConfig = {
     // Nombre de pages qui doivent être conservées simultanément sans être supprimées
     pagesBufferLength: 2,
   },
-  // Désactiver le cache webpack pour éviter les problèmes
+  // Configuration webpack
   webpack: (config, { dev, isServer }) => {
     // Supprimer tous les warnings webpack
     config.ignoreWarnings = [
@@ -22,10 +22,15 @@ const nextConfig = {
       /Unable to snapshot resolve dependencies/,
     ]
     
+    // Désactiver le cache pour supprimer les warnings de cache
+    if (!dev) {
+      config.cache = false
+    }
+    
     if (dev && !isServer) {
       config.watchOptions = {
-        poll: 1000, // Vérifier les changements toutes les secondes
-        aggregateTimeout: 300, // Attendre 300ms avant de recompiler
+        poll: 1000,
+        aggregateTimeout: 300,
       }
     }
     return config
@@ -33,4 +38,3 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
-
