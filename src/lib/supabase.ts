@@ -1,10 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Client Supabase - Version robuste qui ne lance JAMAIS d'erreur
- * 
- * Les variables NEXT_PUBLIC_* sont injectées au moment du BUILD par Next.js
- * Si elles ne sont pas configurées sur Vercel au moment du build, elles seront undefined
+ * Client Supabase - Version finale qui fonctionne correctement
  */
 
 // Fonction pour obtenir les variables d'environnement de manière sûre
@@ -14,9 +11,7 @@ function getEnvVar(name: string): string {
     return process.env[name] || ''
   } else {
     // Côté client - les variables NEXT_PUBLIC_* sont injectées dans le bundle
-    // On utilise une approche qui fonctionne même si undefined
     try {
-      // @ts-ignore - process.env peut ne pas être typé correctement côté client
       return (typeof process !== 'undefined' && process.env && process.env[name]) || ''
     } catch {
       return ''
@@ -30,14 +25,13 @@ const supabaseAnonKey = getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 const supabaseServiceRoleKey = getEnvVar('SUPABASE_SERVICE_ROLE_KEY')
 
 // Vérifier si Supabase est configuré
-// On vérifie que les variables ne sont pas vides et sont des URLs/clés valides
 export const isSupabaseConfigured = Boolean(
   supabaseUrl && 
   supabaseAnonKey && 
   supabaseUrl.trim() !== '' && 
   supabaseAnonKey.trim() !== '' &&
   supabaseUrl.startsWith('http') &&
-  supabaseAnonKey.length > 20 // Les clés Supabase font au moins 100+ caractères
+  supabaseAnonKey.length > 20
 )
 
 // Créer un singleton du client Supabase
@@ -49,55 +43,54 @@ function getSupabaseClient(): SupabaseClient {
     return supabaseClient
   }
 
-  // Si Supabase n'est pas configuré, créer un client "dummy" qui ne fait rien
+  // Si Supabase n'est pas configuré, ne pas créer de client qui fera des requêtes réseau
+  // Retourner un objet mock qui retourne toujours des erreurs
   if (!isSupabaseConfigured) {
-    // Créer un client avec des valeurs invalides mais qui ne lancera pas d'erreur
-    // Ce client retournera toujours des erreurs mais ne plantera pas l'app
-    try {
-      supabaseClient = createClient(
-        'https://not-configured.supabase.co',
-        'not-configured-key',
-        { 
-          auth: { 
-            persistSession: false,
-            autoRefreshToken: false,
-            detectSessionInUrl: false,
-          },
-        }
-      ) as SupabaseClient
-    } catch (error) {
-      // Si même la création du client échoue, créer un objet minimal
-      // Ce ne sera jamais utilisé car isSupabaseConfigured sera false
-      supabaseClient = {} as SupabaseClient
-    }
+    // Créer un objet mock qui imite l'interface SupabaseClient
+    // mais ne fera jamais de requêtes réseau
+    const mockClient = {
+      auth: {
+        getSession: async () => ({ 
+          data: { session: null }, 
+          error: { message: 'Supabase not configured' } as any 
+        }),
+        getUser: async () => ({ 
+          data: { user: null }, 
+          error: { message: 'Supabase not configured' } as any 
+        }),
+        signInWithPassword: async () => ({ 
+          data: null, 
+          error: { message: 'Supabase not configured. Please configure environment variables on Vercel.' } as any 
+        }),
+        signUp: async () => ({ 
+          data: null, 
+          error: { message: 'Supabase not configured. Please configure environment variables on Vercel.' } as any 
+        }),
+        signOut: async () => ({ error: null }),
+        onAuthStateChange: () => ({ 
+          data: { subscription: { unsubscribe: () => {} } } 
+        }),
+      }
+    } as any as SupabaseClient
     
+    supabaseClient = mockClient
     return supabaseClient
   }
 
   // Créer le client normal avec les vraies variables
-  try {
-    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: typeof window !== 'undefined',
-        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-    })
-  } catch (error) {
-    // En cas d'erreur, utiliser un client placeholder
-    console.error('Error creating Supabase client:', error)
-    supabaseClient = createClient(
-      'https://not-configured.supabase.co',
-      'not-configured-key',
-      { auth: { persistSession: false, autoRefreshToken: false } }
-    ) as SupabaseClient
-  }
+  supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: typeof window !== 'undefined',
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  })
 
   return supabaseClient
 }
 
-// Exporter le client - cette ligne ne doit JAMAIS lancer d'erreur
+// Exporter le client - cette initialisation ne doit jamais lancer d'erreur
 export const supabase = getSupabaseClient()
 
 // Client admin pour le serveur

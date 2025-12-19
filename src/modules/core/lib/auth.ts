@@ -3,7 +3,7 @@
  * Gestion de l'authentification via Supabase Auth
  */
 
-import { supabase } from '@/lib/supabase'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { addTimestamps, generateId } from '@/lib/supabase-helpers'
 import { User } from '@supabase/supabase-js'
 
@@ -20,6 +20,10 @@ export interface AuthUser {
  * Connexion utilisateur
  */
 export async function signIn(email: string, password: string) {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase n\'est pas configuré. Veuillez configurer les variables d\'environnement sur Vercel.')
+  }
+
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -41,6 +45,10 @@ export async function signIn(email: string, password: string) {
  * Inscription utilisateur
  */
 export async function signUp(email: string, password: string, companyName: string) {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase n\'est pas configuré. Veuillez configurer les variables d\'environnement sur Vercel.')
+  }
+
   // 1. Créer l'utilisateur dans Supabase Auth
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
