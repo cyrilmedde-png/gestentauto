@@ -17,6 +17,11 @@ function getSupabaseClient(): SupabaseClient {
     return supabaseClient
   }
 
+  // Vérifier que les variables d'environnement sont définies
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables. Please check your .env file.')
+  }
+
   // Créer le client avec la configuration de persistance
   // Ne pas spécifier storageKey pour utiliser la clé par défaut de Supabase
   supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -36,7 +41,7 @@ export const supabase = getSupabaseClient()
 
 // Client pour les opérations serveur (avec service role key)
 // Utilisé uniquement côté serveur
-export const supabaseAdmin = supabaseServiceRoleKey
+export const supabaseAdmin = supabaseServiceRoleKey && supabaseUrl
   ? createClient(supabaseUrl, supabaseServiceRoleKey)
   : null
 

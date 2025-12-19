@@ -401,11 +401,13 @@ export function isModuleEnabled(moduleId: ModuleId): boolean {
 }
 
 export function getModuleTables(moduleId: ModuleId): string[] {
-  return APP_REGISTRY.modules[moduleId]?.tables ?? [];
+  const tables = APP_REGISTRY.modules[moduleId]?.tables;
+  return tables ? [...tables] : [];
 }
 
 export function getModuleRoutes(moduleId: ModuleId): string[] {
-  return APP_REGISTRY.modules[moduleId]?.routes ?? [];
+  const routes = APP_REGISTRY.modules[moduleId]?.routes;
+  return routes ? [...routes] : [];
 }
 
 export function validateTableExists(tableName: string): boolean {

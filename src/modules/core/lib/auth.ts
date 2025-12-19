@@ -171,8 +171,8 @@ async function getUserData(userId: string): Promise<AuthUser | null> {
         error.code === 'PGRST116' || 
         error.message?.includes('JSON object') ||
         error.message?.includes('Cannot coerce') ||
-        error.status === 406 ||
-        error.statusCode === 406
+        (error as any).status === 406 ||
+        (error as any).statusCode === 406
       ) {
         // Pas de résultat, ce n'est pas une erreur critique
         return null
