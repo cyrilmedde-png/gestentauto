@@ -148,25 +148,22 @@ function getSupabaseClient(): SupabaseClient {
     return supabaseClient
   }
 
-  // Si configuré, charger le vrai client de manière dynamique
-  // Mais NE PAS le faire ici pour éviter les requêtes au chargement du module
-  // Le vrai client sera chargé seulement quand nécessaire
+  // Si configuré, créer le mock temporairement
   supabaseClient = createMockClient()
   
-  // Charger le vrai client en arrière-plan, mais seulement si vraiment nécessaire
-  if (typeof window !== 'undefined') {
+  // IMPORTANT : Vérifier isSupabaseConfigured AVANT l'import dynamique
+  // Charger le vrai client en arrière-plan SEULEMENT si configuré
+  if (typeof window !== 'undefined' && isSupabaseConfigured && supabaseUrl && supabaseAnonKey) {
     import('@supabase/supabase-js').then(({ createClient }) => {
       try {
-        if (isSupabaseConfigured && supabaseUrl && supabaseAnonKey) {
-          supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-            auth: {
-              persistSession: true,
-              storage: window.localStorage,
-              autoRefreshToken: true,
-              detectSessionInUrl: true,
-            },
-          })
-        }
+        supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: {
+            persistSession: true,
+            storage: window.localStorage,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+          },
+        })
       } catch (error) {
         // En cas d'erreur, garder le mock
         console.error('Erreur création client Supabase:', error)
