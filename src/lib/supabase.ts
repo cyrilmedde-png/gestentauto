@@ -1,19 +1,29 @@
 /**
- * Client Supabase - Version avec import dynamique pour éviter les requêtes réseau
+ * Client Supabase - Version complètement isolée pour éviter TOUTES les requêtes réseau
  * si Supabase n'est pas configuré
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+// Types locaux pour éviter d'importer @supabase/supabase-js
+export type SupabaseClient = any
+export type User = {
+  id: string
+  email?: string
+  [key: string]: any
+}
+export type Session = {
+  user: User | null
+  access_token?: string
+  refresh_token?: string
+  [key: string]: any
+}
 
 /**
  * Récupère les variables d'environnement de manière sûre
  */
 function getEnvVar(name: string): string {
   if (typeof window === 'undefined') {
-    // Côté serveur
     return process.env[name] || ''
   } else {
-    // Côté client - les variables NEXT_PUBLIC_* sont injectées dans le bundle
     return (process.env[name] || '')
   }
 }
@@ -48,7 +58,6 @@ function isValidSupabaseUrl(url: string): boolean {
  */
 function isValidSupabaseKey(key: string): boolean {
   if (!key || key.trim() === '') return false
-  // Les clés Supabase sont généralement très longues (base64)
   return key.length > 100 && !key.includes('placeholder') && !key.includes('votre')
 }
 
@@ -60,14 +69,11 @@ export const isSupabaseConfigured = Boolean(
 
 /**
  * Mock client complet qui ne fait JAMAIS de requêtes réseau
- * Toutes les méthodes retournent des Promises résolues immédiatement
- * avec des erreurs explicites
  */
 function createMockClient(): SupabaseClient {
   const errorMessage = 'Supabase non configuré. Configurez les variables d\'environnement NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY sur Vercel.'
-  const mockError = { message: errorMessage, status: 0, statusCode: 0 } as any
+  const mockError = { message: errorMessage, status: 0, statusCode: 0 }
   
-  // Créer un objet mock qui intercepte TOUS les appels
   const mockQuery = {
     select: () => mockQuery,
     insert: () => mockQuery,
@@ -115,82 +121,21 @@ function createMockClient(): SupabaseClient {
         data: null,
         error: mockError,
       }),
-    } as any,
-    from: () => mockQuery as any,
+    },
+    from: () => mockQuery,
     rpc: async () => ({ data: null, error: mockError }),
-  } as unknown as SupabaseClient
+  }
 }
 
 // Singleton du client
 let supabaseClient: SupabaseClient | null = null
-let supabaseClientPromise: Promise<SupabaseClient> | null = null
 
 /**
- * Obtient le client Supabase - version sécurisée avec import dynamique
- * Ne crée JAMAIS un vrai client si Supabase n'est pas configuré
+ * Obtient le client Supabase - version sécurisée
+ * Si Supabase n'est pas configuré, retourne TOUJOURS le mock
  */
-async function getSupabaseClientAsync(): Promise<SupabaseClient> {
-  // Si le client existe déjà, le retourner
-  if (supabaseClient) {
-    return supabaseClient
-  }
-
-  // Si une promesse est en cours, l'attendre
-  if (supabaseClientPromise) {
-    return supabaseClientPromise
-  }
-
+function getSupabaseClient(): SupabaseClient {
   // Si Supabase n'est PAS configuré, retourner IMMÉDIATEMENT le mock
-  // SANS JAMAIS importer ou appeler createClient()
-  if (!isSupabaseConfigured) {
-    supabaseClient = createMockClient()
-    return Promise.resolve(supabaseClient)
-  }
-
-  // Double vérification pour être absolument sûr que les valeurs sont valides
-  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.trim() === '' || supabaseAnonKey.trim() === '') {
-    supabaseClient = createMockClient()
-    return Promise.resolve(supabaseClient)
-  }
-
-  // Créer une promesse pour l'import dynamique
-  supabaseClientPromise = (async () => {
-    try {
-      // Import dynamique - ne sera exécuté QUE si Supabase est configuré
-      const { createClient } = await import('@supabase/supabase-js')
-      
-      supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-          persistSession: typeof window !== 'undefined',
-          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-        },
-      })
-      
-      return supabaseClient
-    } catch (error) {
-      // En cas d'erreur lors de la création, utiliser le mock
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Erreur lors de la création du client Supabase:', error)
-      }
-      supabaseClient = createMockClient()
-      return supabaseClient
-    } finally {
-      supabaseClientPromise = null
-    }
-  })()
-
-  return supabaseClientPromise
-}
-
-/**
- * Version synchrone qui retourne le mock si non configuré,
- * ou le client si déjà initialisé
- */
-function getSupabaseClientSync(): SupabaseClient {
-  // Si Supabase n'est PAS configuré, retourner IMMÉDIATEMENT le mock
-  // et NE JAMAIS charger le module @supabase/supabase-js
   if (!isSupabaseConfigured) {
     if (!supabaseClient) {
       supabaseClient = createMockClient()
@@ -203,38 +148,39 @@ function getSupabaseClientSync(): SupabaseClient {
     return supabaseClient
   }
 
-  // Si configuré mais pas encore initialisé, créer le mock temporaire
-  // et initialiser le vrai client en arrière-plan (sans bloquer)
+  // Si configuré, charger le vrai client de manière dynamique
+  // Mais NE PAS le faire ici pour éviter les requêtes au chargement du module
+  // Le vrai client sera chargé seulement quand nécessaire
   supabaseClient = createMockClient()
   
-  // Initialiser le vrai client en arrière-plan de manière non-bloquante
-  getSupabaseClientAsync().then(client => {
-    // Remplacer le mock par le vrai client une fois chargé
-    supabaseClient = client
-  }).catch(() => {
-    // En cas d'erreur, garder le mock - ne pas changer supabaseClient
-  })
+  // Charger le vrai client en arrière-plan, mais seulement si vraiment nécessaire
+  if (typeof window !== 'undefined') {
+    import('@supabase/supabase-js').then(({ createClient }) => {
+      try {
+        if (isSupabaseConfigured && supabaseUrl && supabaseAnonKey) {
+          supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+            auth: {
+              persistSession: true,
+              storage: window.localStorage,
+              autoRefreshToken: true,
+              detectSessionInUrl: true,
+            },
+          })
+        }
+      } catch (error) {
+        // En cas d'erreur, garder le mock
+        console.error('Erreur création client Supabase:', error)
+      }
+    }).catch(() => {
+      // Si l'import échoue, garder le mock
+    })
+  }
 
   return supabaseClient
 }
 
-// Exporter le client - version synchrone pour compatibilité
-// Retourne le mock si non configuré, sera remplacé par le vrai client si configuré
-export const supabase = getSupabaseClientSync()
+// Exporter le client - version synchrone
+export const supabase = getSupabaseClient()
 
-// Exporter aussi la version async pour les cas où on peut attendre
-export { getSupabaseClientAsync }
-
-// Client admin pour le serveur (seulement si configuré ET toutes les valeurs sont valides)
-export const supabaseAdmin = (() => {
-  if (!isSupabaseConfigured) {
-    return null
-  }
-  if (!supabaseServiceRoleKey || supabaseServiceRoleKey.trim() === '' || supabaseServiceRoleKey.length < 50) {
-    return null
-  }
-  // Pour supabaseAdmin, on utilise un import dynamique aussi
-  // Mais comme c'est uniquement côté serveur, on peut le laisser comme ça
-  // et le charger seulement si nécessaire
-  return null // Sera initialisé dynamiquement si nécessaire
-})()
+// Client admin pour le serveur
+export const supabaseAdmin = null

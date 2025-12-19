@@ -3,9 +3,8 @@
  * Gestion de l'authentification via Supabase Auth
  */
 
-import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { supabase, isSupabaseConfigured, type User } from '@/lib/supabase'
 import { addTimestamps, generateId } from '@/lib/supabase-helpers'
-import { User } from '@supabase/supabase-js'
 
 export interface AuthUser {
   id: string

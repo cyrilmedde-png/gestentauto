@@ -6,8 +6,7 @@
  */
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { User, Session } from '@supabase/supabase-js'
-import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { supabase, isSupabaseConfigured, type User, type Session } from '@/lib/supabase'
 import { AuthUser, getCurrentUser } from '../lib/auth'
 
 interface AuthContextType {
