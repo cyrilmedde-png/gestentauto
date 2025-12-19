@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState } from 'react'
 
 interface HeaderContextType {
   isHeaderVisible: boolean
@@ -9,7 +9,7 @@ interface HeaderContextType {
 
 const HeaderContext = createContext<HeaderContextType | undefined>(undefined)
 
-export function HeaderProvider({ children }: { children: ReactNode }) {
+export function HeaderProvider({ children }: { children: React.ReactNode }) {
   const [isHeaderVisible, setIsHeaderVisible] = useState(false)
 
   return (

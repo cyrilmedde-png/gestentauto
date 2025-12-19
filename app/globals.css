@@ -3,72 +3,11 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 0 0% 3%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 270 91% 65%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 65%;
-    --accent: 270 91% 65%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 270 91% 65%;
-    --radius: 0.75rem;
+  * {
+    @apply border-border;
   }
-}
-
-@layer base {
   body {
-    @apply bg-background text-foreground;
+    @apply bg-[#080808] text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
-
-/* Pattern de fond avec points interconnectés - REMPLACÉ par AnimatedNetwork */
-@layer utilities {
-  .glass-effect {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  
-  .gradient-primary {
-    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  }
-  
-  .text-gradient {
-    background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-}
-
-/* Animation d'entrée de la sidebar */
-@keyframes slide-in-left {
-  from {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@layer utilities {
-  .slide-in-left {
-    animation: slide-in-left 0.5s ease-out;
-  }
-}
-
