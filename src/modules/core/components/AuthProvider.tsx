@@ -28,20 +28,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true
     let timeoutId: NodeJS.Timeout | null = null
-    
-    // Vérifier si Supabase est configuré
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      // Si Supabase n'est pas configuré, arrêter le chargement sans erreur
-      if (isMounted) {
-        setLoading(false)
-        setUser(null)
-        setSession(null)
-      }
-      return
-    }
     let subscription: { unsubscribe: () => void } | null = null
 
     // Vérifier immédiatement la session depuis localStorage
