@@ -28,6 +28,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true
     let timeoutId: NodeJS.Timeout | null = null
+    
+    // Vérifier si Supabase est configuré
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      // Si Supabase n'est pas configuré, arrêter le chargement sans erreur
+      if (isMounted) {
+        setLoading(false)
+        setUser(null)
+        setSession(null)
+      }
+      return
+    }
     let subscription: { unsubscribe: () => void } | null = null
 
     // Vérifier immédiatement la session depuis localStorage
@@ -43,7 +57,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Récupérer la session depuis le stockage de manière synchrone d'abord
         // Supabase stocke la session dans localStorage, on peut la récupérer directement
-        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession()
+        let initialSession = null
+        let sessionError = null
+        try {
+          const result = await supabase.auth.getSession()
+          initialSession = result.data?.session || null
+          sessionError = result.error || null
+        } catch (error) {
+          // Si Supabase n'est pas configuré, ignorer l'erreur
+          sessionError = error as any
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Supabase not configured, skipping session check')
+          }
+        }
         
         if (sessionError) {
           console.error('Error getting initial session:', sessionError)
