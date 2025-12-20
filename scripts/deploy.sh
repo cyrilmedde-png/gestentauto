@@ -16,9 +16,15 @@ cd /var/www/talosprime || {
 echo "📦 Récupération des dernières modifications depuis GitHub..."
 
 # Sauvegarder les modifications locales (si elles existent)
-if ! git diff --quiet || ! git diff --cached --quiet; then
+set +e  # Ne pas arrêter en cas d'erreur pour cette vérification
+git diff --quiet && git diff --cached --quiet
+HAS_CHANGES=$?
+set -e  # Réactiver l'arrêt en cas d'erreur
+
+if [ $HAS_CHANGES -ne 0 ]; then
     echo "⚠️  Modifications locales détectées, sauvegarde temporaire..."
     git stash push -m "Auto-stash before deploy $(date +%Y-%m-%d_%H-%M-%S)"
+    echo "✅ Modifications locales sauvegardées dans stash"
 fi
 
 # Récupérer les dernières modifications
