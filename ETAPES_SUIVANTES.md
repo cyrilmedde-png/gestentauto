@@ -12,36 +12,25 @@ Vos versions :
 
 ## 🔧 Étape 1 : Configurer les variables d'environnement
 
-Sur le serveur, créez le fichier de configuration :
+**⚠️ IMPORTANT :** Les variables `NEXT_PUBLIC_*` doivent être présentes **au moment du BUILD**. Si vous avez déjà fait un build, vous devez REBUILD après avoir créé le fichier `.env.production`.
+
+👉 **Voir le guide détaillé :** `docs/CONFIGURER_ENV_SERVEUR.md`
+
+**Résumé rapide :**
 
 ```bash
+# 1. Créer le fichier .env.production
 nano /var/www/talosprime/.env.production
+
+# 2. Collez vos variables (voir CONFIGURER_ENV_SERVEUR.md pour le template complet)
+# Sauvegarder : Ctrl+X, Y, Entrée
+
+# 3. REBUILD (obligatoire !)
+pm2 stop talosprime
+rm -rf .next
+npm run build
+pm2 start npm --name "talosprime" -- start
 ```
-
-**Collez ces lignes** (remplacez les `...` par vos vraies clés) :
-
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=votre_anon_key
-SUPABASE_SERVICE_ROLE_KEY=votre_service_role_key
-
-# Resend (Email)
-RESEND_API_KEY=re_votre_cle_resend
-RESEND_FROM_EMAIL=noreply@talosprime.fr
-RESEND_FROM_NAME=TalosPrime
-
-# Twilio (SMS)
-TWILIO_ACCOUNT_SID=ACvotre_account_sid
-TWILIO_AUTH_TOKEN=votre_auth_token
-TWILIO_PHONE_NUMBER=+33612345678
-
-# Application
-NODE_ENV=production
-PORT=3000
-```
-
-**Pour sauvegarder :** `Ctrl+X`, puis `Y`, puis `Entrée`
 
 ---
 

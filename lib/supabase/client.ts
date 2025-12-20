@@ -5,11 +5,27 @@ function createSupabaseClient() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set in environment variables')
+    console.error('NEXT_PUBLIC_SUPABASE_URL is not set in environment variables')
+    // Retourner un client mock pour éviter de bloquer l'application
+    return createClient('https://placeholder.supabase.co', 'placeholder-key', {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    })
   }
 
   if (!supabaseAnonKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is not set in environment variables')
+    console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY is not set in environment variables')
+    // Retourner un client mock pour éviter de bloquer l'application
+    return createClient(supabaseUrl, 'placeholder-key', {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    })
   }
 
   return createClient(supabaseUrl, supabaseAnonKey, {

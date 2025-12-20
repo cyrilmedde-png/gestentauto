@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { getCurrentUser, type AuthUser } from '@/lib/auth'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
@@ -19,36 +19,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    // Récupérer l'utilisateur initial
-    loadUser()
-
-    // Écouter les changements d'authentification
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          await loadUser()
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null)
-          setSupabaseUser(null)
-        }
-      }
-    )
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
-
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     try {
       setLoading(true)
-      const { data: { user: authUser } } = await supabase.auth.getUser()
+      
+      // Vérifier si Supabase est configuré
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      if (!supabaseUrl) {
+        console.warn('Supabase not configured, skipping user load')
+        setUser(null)
+        setSupabaseUser(null)
+        setLoading(false)
+        return
+      }
+
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError) {
+        console.error('Error getting user from Supabase:', authError)
+        setUser(null)
+        setSupabaseUser(null)
+        setLoading(false)
+        return
+      }
+
       setSupabaseUser(authUser)
 
       if (authUser) {
-        const fullUser = await getCurrentUser()
-        setUser(fullUser)
+        try {
+          const fullUser = await getCurrentUser()
+          setUser(fullUser)
+        } catch (userError) {
+          console.error('Error loading full user data:', userError)
+          setUser(null)
+        }
       } else {
         setUser(null)
       }
@@ -59,7 +63,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    // Vérifier si Supabase est configuré avant de faire quoi que ce soit
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    if (!supabaseUrl) {
+      console.warn('Supabase not configured, AuthProvider will not work')
+      setLoading(false)
+      return
+    }
+
+    // Récupérer l'utilisateur initial
+    loadUser()
+
+    // Écouter les changements d'authentification
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            await loadUser()
+          } else if (event === 'SIGNED_OUT') {
+            setUser(null)
+            setSupabaseUser(null)
+          }
+        }
+      )
+
+      return () => {
+        subscription.unsubscribe()
+      }
+    } catch (error) {
+      console.error('Error setting up auth state change listener:', error)
+      setLoading(false)
+    }
+  }, [loadUser])
 
   const handleSignOut = async () => {
     try {
