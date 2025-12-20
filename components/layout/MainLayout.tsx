@@ -29,7 +29,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
           linear-gradient(to right, #080808 0%, transparent 25%, transparent 75%, #080808 100%),
           url('/background.png')
         `,
-        backgroundSize: '70% auto, 70% auto',
+        backgroundSize: '60% auto, 60% auto',
         backgroundPosition: 'center, center',
         backgroundRepeat: 'no-repeat, no-repeat',
         backgroundAttachment: 'fixed, fixed',
