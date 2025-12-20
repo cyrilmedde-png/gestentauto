@@ -15,28 +15,35 @@ cd /var/www/talosprime || {
 
 echo "📦 Récupération des dernières modifications depuis GitHub..."
 
-# Sauvegarder les modifications locales (si elles existent)
+# Forcer la résolution des conflits en réinitialisant les fichiers locaux
+# Cette méthode est plus sûre pour un environnement de production
 set +e  # Ne pas arrêter en cas d'erreur pour cette vérification
 git diff --quiet && git diff --cached --quiet
 HAS_CHANGES=$?
 set -e  # Réactiver l'arrêt en cas d'erreur
 
 if [ $HAS_CHANGES -ne 0 ]; then
-    echo "⚠️  Modifications locales détectées, sauvegarde temporaire..."
-    git stash push -m "Auto-stash before deploy $(date +%Y-%m-%d_%H-%M-%S)"
-    echo "✅ Modifications locales sauvegardées dans stash"
+    echo "⚠️  Modifications locales détectées, sauvegarde et réinitialisation..."
+    git stash push -m "Auto-stash before deploy $(date +%Y-%m-%d_%H-%M-%S)" || true
+    echo "🔄 Réinitialisation des fichiers locaux..."
+    git reset --hard HEAD
+    echo "✅ Fichiers locaux réinitialisés"
 fi
 
 # Récupérer les dernières modifications
+echo "📥 Téléchargement des modifications..."
 git fetch origin main || {
     echo "❌ Erreur lors du git fetch"
     exit 1
 }
 
-git pull origin main || {
-    echo "❌ Erreur lors du git pull"
+echo "🔄 Application des modifications..."
+git reset --hard origin/main || {
+    echo "❌ Erreur lors du git reset"
     exit 1
 }
+
+echo "✅ Dernières modifications récupérées avec succès"
 
 echo "🔨 Construction de l'application..."
 npm run build || {
