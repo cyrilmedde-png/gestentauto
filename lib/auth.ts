@@ -36,13 +36,9 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     
     if (authError || !authUser) {
       // Ne pas logger AuthSessionMissingError, c'est normal quand l'utilisateur n'est pas connecté
-      if (authError && authError.name !== 'AuthSessionMissingError' && authError.message !== 'Auth session missing!') {
-        console.log('getCurrentUser: Auth error:', authError)
-      }
+      // Les autres erreurs sont silencieuses en production
       return null
     }
-
-    console.log('getCurrentUser: User found in Auth, ID:', authUser.id)
 
     // Récupérer les données utilisateur depuis la table users
     const { data: userData, error: userError } = await supabase
@@ -71,16 +67,13 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       .single()
 
     if (userError) {
-      console.error('getCurrentUser: Error fetching user data:', userError)
+      // Erreur silencieuse en production, l'utilisateur n'existe simplement pas dans la table
       return null
     }
 
     if (!userData) {
-      console.log('getCurrentUser: User data not found')
       return null
     }
-
-    console.log('getCurrentUser: User data found:', userData)
 
     return {
       id: userData.id,
@@ -96,7 +89,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
           : undefined)) as AuthUser['company'] | undefined,
     }
   } catch (error) {
-    console.error('getCurrentUser: Unexpected error:', error)
+    // Erreur silencieuse en production
     return null
   }
 }
