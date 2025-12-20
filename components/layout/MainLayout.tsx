@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { AnimatedNetwork } from '@/components/background/AnimatedNetwork'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { HeaderProvider, useHeader } from './HeaderContext'
@@ -23,7 +22,6 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background relative">
-      <AnimatedNetwork />
       <Sidebar />
       <Header />
       <main 
