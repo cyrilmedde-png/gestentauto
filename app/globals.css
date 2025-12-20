@@ -10,10 +10,12 @@
     @apply text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     background-color: #080808;
-    background-image: url('/logo_app.png');
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    background-image: 
+      linear-gradient(to right, #080808 0%, transparent 15%, transparent 85%, #080808 100%),
+      url('/logo_app.png');
+    background-size: contain, contain;
+    background-position: center, center;
+    background-repeat: no-repeat, no-repeat;
+    background-attachment: fixed, fixed;
   }
 }

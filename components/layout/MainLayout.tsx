@@ -24,12 +24,15 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     <div 
       className="min-h-screen relative"
       style={{
-        backgroundImage: "url('/logo_app.png')",
-        backgroundSize: 'contain',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed',
         backgroundColor: '#080808',
+        backgroundImage: `
+          linear-gradient(to right, #080808 0%, transparent 15%, transparent 85%, #080808 100%),
+          url('/logo_app.png')
+        `,
+        backgroundSize: 'contain, contain',
+        backgroundPosition: 'center, center',
+        backgroundRepeat: 'no-repeat, no-repeat',
+        backgroundAttachment: 'fixed, fixed',
       }}
     >
       <Sidebar />
