@@ -11,7 +11,7 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     background-color: #080808;
     background-image: url('/logo_app.png');
-    background-size: contain;
+    background-size: auto;
     background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed;
