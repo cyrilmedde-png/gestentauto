@@ -26,10 +26,10 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
       style={{
         backgroundColor: '#080808',
         backgroundImage: `
-          linear-gradient(to right, #080808 0%, transparent 25%, transparent 75%, #080808 100%),
+          linear-gradient(to right, #080808 0%, transparent 35%, transparent 65%, #080808 100%),
           url('/background.png')
         `,
-        backgroundSize: '100% auto, 100% auto',
+        backgroundSize: '70% auto, 70% auto',
         backgroundPosition: 'center, center',
         backgroundRepeat: 'no-repeat, no-repeat',
         backgroundAttachment: 'fixed, fixed',

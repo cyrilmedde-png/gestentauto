@@ -11,9 +11,9 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     background-color: #080808;
     background-image: 
-      linear-gradient(to right, #080808 0%, transparent 25%, transparent 75%, #080808 100%),
+      linear-gradient(to right, #080808 0%, transparent 35%, transparent 65%, #080808 100%),
       url('/background.png');
-    background-size: 100% auto, 100% auto;
+    background-size: 70% auto, 70% auto;
     background-position: center, center;
     background-repeat: no-repeat, no-repeat;
     background-attachment: fixed, fixed;
