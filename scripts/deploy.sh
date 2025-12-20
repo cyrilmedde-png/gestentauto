@@ -14,6 +14,19 @@ cd /var/www/talosprime || {
 }
 
 echo "📦 Récupération des dernières modifications depuis GitHub..."
+
+# Sauvegarder les modifications locales (si elles existent)
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "⚠️  Modifications locales détectées, sauvegarde temporaire..."
+    git stash push -m "Auto-stash before deploy $(date +%Y-%m-%d_%H-%M-%S)"
+fi
+
+# Récupérer les dernières modifications
+git fetch origin main || {
+    echo "❌ Erreur lors du git fetch"
+    exit 1
+}
+
 git pull origin main || {
     echo "❌ Erreur lors du git pull"
     exit 1
