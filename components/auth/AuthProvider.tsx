@@ -43,7 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
       
       if (authError) {
-        console.error('Error getting user from Supabase:', authError)
+        // AuthSessionMissingError est normal quand l'utilisateur n'est pas connecté
+        // Ne pas logger cette erreur pour éviter de polluer la console
+        if (authError.name !== 'AuthSessionMissingError' && authError.message !== 'Auth session missing!') {
+          console.error('Error getting user from Supabase:', authError)
+        }
         setUser(null)
         setSupabaseUser(null)
         setLoading(false)

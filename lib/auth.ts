@@ -35,7 +35,10 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !authUser) {
-      console.log('getCurrentUser: No user in Auth')
+      // Ne pas logger AuthSessionMissingError, c'est normal quand l'utilisateur n'est pas connecté
+      if (authError && authError.name !== 'AuthSessionMissingError' && authError.message !== 'Auth session missing!') {
+        console.log('getCurrentUser: Auth error:', authError)
+      }
       return null
     }
 
