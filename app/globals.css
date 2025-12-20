@@ -10,9 +10,7 @@
     @apply text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     background-color: #080808;
-    background-image: 
-      linear-gradient(rgba(8, 8, 8, 0.85), rgba(8, 8, 8, 0.85)),
-      url('/logo_app.png');
+    background-image: url('/logo_app.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
