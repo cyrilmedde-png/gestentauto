@@ -2,10 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Home, FileText, Users, Settings, Menu } from 'lucide-react'
+import { Home, FileText, Users, Settings, Menu, UserPlus } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { useRouter } from 'next/navigation'
 
 export function Sidebar() {
+  const { signOut } = useAuth()
+  const router = useRouter()
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
@@ -31,6 +35,7 @@ export function Sidebar() {
 
   const navItems = [
     { icon: Home, label: 'Dashboard', href: '/dashboard' },
+    { icon: UserPlus, label: 'Leads', href: '/platform/leads' },
     { icon: FileText, label: 'Factures', href: '/billing' },
     { icon: Users, label: 'Clients', href: '/clients' },
     { icon: Settings, label: 'Paramètres', href: '/settings' },
@@ -79,10 +84,16 @@ export function Sidebar() {
       >
         <div className="h-full bg-background/50 backdrop-blur-sm">
           <div className="p-4">
-            {/* Logo/Title */}
+            {/* Logo/Title avec déconnexion */}
             <div className="flex items-center justify-center mb-8">
               {(isExpanded || isMobileOpen) ? (
-                <button className="text-foreground font-semibold text-lg hover:opacity-80 transition-opacity">
+                <button 
+                  onClick={async () => {
+                    await signOut()
+                    router.push('/auth/login')
+                  }}
+                  className="text-foreground font-semibold text-lg hover:opacity-80 transition-opacity text-center w-full"
+                >
                   Gestion
                 </button>
               ) : (

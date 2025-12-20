@@ -1,8 +1,12 @@
+'use client'
+
 import { MainLayout } from '@/components/layout/MainLayout'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
 export default function DashboardPage() {
   return (
-    <MainLayout>
+    <ProtectedRoute>
+      <MainLayout>
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
@@ -81,5 +85,6 @@ export default function DashboardPage() {
         </div>
       </div>
     </MainLayout>
+    </ProtectedRoute>
   )
 }

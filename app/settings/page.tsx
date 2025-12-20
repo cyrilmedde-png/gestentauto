@@ -1,0 +1,590 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { MainLayout } from '@/components/layout/MainLayout'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { Building2, Users, Save, Edit, Mail, Phone, MapPin, FileText, Globe } from 'lucide-react'
+
+interface PlatformConfig {
+  id?: string
+  name: string
+  siret?: string
+  vat_number?: string
+  address?: string
+  city?: string
+  postal_code?: string
+  country: string
+  phone?: string
+  email?: string
+}
+
+interface Client {
+  id: string
+  name: string
+  email?: string
+  created_at: string
+  subscription_status?: string
+}
+
+export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState<'platform' | 'clients'>('platform')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [platformConfig, setPlatformConfig] = useState<PlatformConfig>({
+    name: '',
+    country: 'FR'
+  })
+  const [clients, setClients] = useState<Client[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadPlatformConfig()
+    loadClients()
+  }, [])
+
+  const loadPlatformConfig = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/settings/platform')
+      if (!response.ok) throw new Error('Erreur lors du chargement')
+      
+      const data = await response.json()
+      if (data.platform) {
+        setPlatformConfig(data.platform)
+      }
+    } catch (err) {
+      console.error('Erreur:', err)
+      setError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadClients = async () => {
+    try {
+      const response = await fetch('/api/settings/clients')
+      if (!response.ok) throw new Error('Erreur lors du chargement')
+      
+      const data = await response.json()
+      setClients(data.clients || [])
+    } catch (err) {
+      console.error('Erreur:', err)
+    }
+  }
+
+  const handleSavePlatform = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const response = await fetch('/api/settings/platform', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(platformConfig)
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Erreur lors de la sauvegarde')
+      }
+
+      setSuccess('Configuration de la plateforme sauvegardée avec succès')
+      setIsEditing(false)
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <ProtectedRoute>
+      <MainLayout>
+        <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
+              Paramètres
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Configuration de la plateforme et gestion des clients
+            </p>
+          </div>
+
+          {/* Onglets */}
+          <div className="flex gap-2 mb-6 border-b border-border/50">
+            <button
+              onClick={() => setActiveTab('platform')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'platform'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                <span>Plateforme</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('clients')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'clients'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                <span>Clients</span>
+              </div>
+            </button>
+          </div>
+
+          {/* Messages */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="mb-4 p-4 bg-green-500/10 border border-green-500/50 rounded-lg text-green-400">
+              {success}
+            </div>
+          )}
+
+          {/* Contenu */}
+          {activeTab === 'platform' && (
+            <>
+              {isEditing ? (
+                <PlatformConfigForm
+                  config={platformConfig}
+                  setConfig={setPlatformConfig}
+                  onSave={handleSavePlatform}
+                  onCancel={() => {
+                    setIsEditing(false)
+                    loadPlatformConfig()
+                  }}
+                  loading={loading}
+                  saving={saving}
+                />
+              ) : (
+                <PlatformConfigCard
+                  config={platformConfig}
+                  onEdit={() => setIsEditing(true)}
+                  loading={loading}
+                />
+              )}
+            </>
+          )}
+
+          {activeTab === 'clients' && (
+            <ClientsList clients={clients} onRefresh={loadClients} />
+          )}
+        </div>
+      </MainLayout>
+    </ProtectedRoute>
+  )
+}
+
+// Composant carte de configuration plateforme (mode lecture)
+function PlatformConfigCard({
+  config,
+  onEdit,
+  loading
+}: {
+  config: PlatformConfig
+  onEdit: () => void
+  loading: boolean
+}) {
+  if (loading) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        Chargement...
+      </div>
+    )
+  }
+
+  if (!config.name) {
+    return (
+      <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6">
+        <div className="text-center py-12">
+          <Building2 className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
+          <p className="text-muted-foreground mb-4">Aucune configuration de plateforme</p>
+          <button
+            onClick={onEdit}
+            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+          >
+            Configurer la plateforme
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6">
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground mb-2">
+            Informations de la plateforme
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Configuration de la plateforme système
+          </p>
+        </div>
+        <button
+          onClick={onEdit}
+          className="flex items-center gap-2 px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground hover:bg-background/70 transition-colors"
+        >
+          <Edit className="w-4 h-4" />
+          <span>Modifier</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Nom */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="w-4 h-4 text-muted-foreground" />
+            <label className="text-sm font-medium text-muted-foreground">Nom</label>
+          </div>
+          <p className="text-foreground font-medium">{config.name}</p>
+        </div>
+
+        {/* Email */}
+        {config.email && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Mail className="w-4 h-4 text-muted-foreground" />
+              <label className="text-sm font-medium text-muted-foreground">Email</label>
+            </div>
+            <p className="text-foreground">{config.email}</p>
+          </div>
+        )}
+
+        {/* Téléphone */}
+        {config.phone && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Phone className="w-4 h-4 text-muted-foreground" />
+              <label className="text-sm font-medium text-muted-foreground">Téléphone</label>
+            </div>
+            <p className="text-foreground">{config.phone}</p>
+          </div>
+        )}
+
+        {/* Adresse */}
+        {(config.address || config.city || config.postal_code) && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <MapPin className="w-4 h-4 text-muted-foreground" />
+              <label className="text-sm font-medium text-muted-foreground">Adresse</label>
+            </div>
+            <p className="text-foreground">
+              {[config.address, config.postal_code, config.city].filter(Boolean).join(', ')}
+            </p>
+          </div>
+        )}
+
+        {/* Pays */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Globe className="w-4 h-4 text-muted-foreground" />
+            <label className="text-sm font-medium text-muted-foreground">Pays</label>
+          </div>
+          <p className="text-foreground">{config.country}</p>
+        </div>
+
+        {/* SIRET */}
+        {config.siret && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="w-4 h-4 text-muted-foreground" />
+              <label className="text-sm font-medium text-muted-foreground">SIRET</label>
+            </div>
+            <p className="text-foreground">{config.siret}</p>
+          </div>
+        )}
+
+        {/* Numéro de TVA */}
+        {config.vat_number && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="w-4 h-4 text-muted-foreground" />
+              <label className="text-sm font-medium text-muted-foreground">Numéro de TVA</label>
+            </div>
+            <p className="text-foreground">{config.vat_number}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Composant formulaire de configuration plateforme
+function PlatformConfigForm({
+  config,
+  setConfig,
+  onSave,
+  onCancel,
+  loading,
+  saving
+}: {
+  config: PlatformConfig
+  setConfig: (config: PlatformConfig) => void
+  onSave: (e: React.FormEvent) => void
+  onCancel: () => void
+  loading: boolean
+  saving: boolean
+}) {
+  if (loading) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        Chargement...
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={onSave} className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6">
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground mb-4">
+            Informations de la plateforme
+          </h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            La plateforme est configurée comme le premier client primordial pour le fonctionnement du système.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Nom de la plateforme <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={config.name}
+              onChange={(e) => setConfig({ ...config, name: e.target.value })}
+              className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Ma Plateforme SaaS"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              value={config.email || ''}
+              onChange={(e) => setConfig({ ...config, email: e.target.value })}
+              className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="contact@plateforme.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              SIRET
+            </label>
+            <input
+              type="text"
+              value={config.siret || ''}
+              onChange={(e) => setConfig({ ...config, siret: e.target.value })}
+              className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="12345678901234"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Numéro de TVA
+            </label>
+            <input
+              type="text"
+              value={config.vat_number || ''}
+              onChange={(e) => setConfig({ ...config, vat_number: e.target.value })}
+              className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="FR12345678901"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Adresse
+            </label>
+            <input
+              type="text"
+              value={config.address || ''}
+              onChange={(e) => setConfig({ ...config, address: e.target.value })}
+              className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="123 Rue Example"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Code postal
+              </label>
+              <input
+                type="text"
+                value={config.postal_code || ''}
+                onChange={(e) => setConfig({ ...config, postal_code: e.target.value })}
+                className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                placeholder="75001"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Ville
+              </label>
+              <input
+                type="text"
+                value={config.city || ''}
+                onChange={(e) => setConfig({ ...config, city: e.target.value })}
+                className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                placeholder="Paris"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Pays
+            </label>
+            <select
+              value={config.country}
+              onChange={(e) => setConfig({ ...config, country: e.target.value })}
+              className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="FR">France</option>
+              <option value="BE">Belgique</option>
+              <option value="CH">Suisse</option>
+              <option value="CA">Canada</option>
+              <option value="US">États-Unis</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Téléphone
+            </label>
+            <input
+              type="tel"
+              value={config.phone || ''}
+              onChange={(e) => setConfig({ ...config, phone: e.target.value })}
+              className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="+33 1 23 45 67 89"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="px-6 py-2 bg-background border border-border/50 text-foreground rounded-lg hover:bg-background/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+          </button>
+        </div>
+      </div>
+    </form>
+  )
+}
+
+// Composant liste des clients
+function ClientsList({
+  clients,
+  onRefresh
+}: {
+  clients: Client[]
+  onRefresh: () => void
+}) {
+  return (
+    <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold text-foreground">
+          Clients abonnés
+        </h2>
+        <button
+          onClick={onRefresh}
+          className="px-4 py-2 text-sm bg-background border border-border/50 rounded-lg text-foreground hover:bg-background/70 transition-colors"
+        >
+          Actualiser
+        </button>
+      </div>
+
+      {clients.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>Aucun client abonné pour le moment</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border/50">
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                  Nom
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                  Email
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                  Statut
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                  Date d'inscription
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {clients.map((client) => (
+                <tr key={client.id} className="border-b border-border/30 hover:bg-background/30">
+                  <td className="py-3 px-4 text-sm text-foreground">
+                    {client.name}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-muted-foreground">
+                    {client.email || '-'}
+                  </td>
+                  <td className="py-3 px-4 text-sm">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      client.subscription_status === 'active'
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {client.subscription_status || 'Non défini'}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-sm text-muted-foreground">
+                    {new Date(client.created_at).toLocaleDateString('fr-FR')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
