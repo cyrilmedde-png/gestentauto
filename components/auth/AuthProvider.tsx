@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { getCurrentUser, type AuthUser } from '@/lib/auth'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
@@ -18,8 +18,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const isLoadingUserRef = useRef(false)
 
   const loadUser = useCallback(async () => {
+    // Éviter les appels multiples simultanés
+    if (isLoadingUserRef.current) {
+      return
+    }
+    
+    isLoadingUserRef.current = true
     try {
       setLoading(true)
       
@@ -62,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSupabaseUser(null)
     } finally {
       setLoading(false)
+      isLoadingUserRef.current = false
     }
   }, [])
 
@@ -81,7 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          // Ignorer TOKEN_REFRESHED pour éviter les boucles, on ne recharge que sur SIGNED_IN
+          if (event === 'SIGNED_IN') {
             await loadUser()
           } else if (event === 'SIGNED_OUT') {
             setUser(null)

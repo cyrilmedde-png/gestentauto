@@ -1,34 +1,44 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-function createSupabaseClient() {
+// Singleton pour éviter de créer plusieurs instances
+let supabaseInstance: SupabaseClient | null = null
+
+function createSupabaseClient(): SupabaseClient {
+  // Si l'instance existe déjà, la retourner
+  if (supabaseInstance) {
+    return supabaseInstance
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl) {
     console.error('NEXT_PUBLIC_SUPABASE_URL is not set in environment variables')
     // Retourner un client mock pour éviter de bloquer l'application
-    return createClient('https://placeholder.supabase.co', 'placeholder-key', {
+    supabaseInstance = createClient('https://placeholder.supabase.co', 'placeholder-key', {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false,
       },
     })
+    return supabaseInstance
   }
 
   if (!supabaseAnonKey) {
     console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY is not set in environment variables')
     // Retourner un client mock pour éviter de bloquer l'application
-    return createClient(supabaseUrl, 'placeholder-key', {
+    supabaseInstance = createClient(supabaseUrl, 'placeholder-key', {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false,
       },
     })
+    return supabaseInstance
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -36,6 +46,8 @@ function createSupabaseClient() {
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     },
   })
+  
+  return supabaseInstance
 }
 
 // Client Supabase côté client (créé uniquement côté client pour éviter les erreurs au build)
