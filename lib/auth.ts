@@ -1,13 +1,20 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+/**
+ * Crée un client Supabase pour les fonctions d'authentification
+ * Les variables d'environnement sont vérifiées à l'intérieur de la fonction
+ * pour éviter les erreurs lors du build statique
+ */
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabase environment variables are not set')
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase environment variables are not set')
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey)
 }
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export interface AuthUser {
   id: string
@@ -35,6 +42,7 @@ export interface AuthUser {
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
+    const supabase = getSupabaseClient()
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !authUser) {
@@ -114,6 +122,7 @@ export async function isAuthenticated(): Promise<boolean> {
  */
 export async function isPlatformUser(): Promise<boolean> {
   try {
+    const supabase = getSupabaseClient()
     const { data, error } = await supabase.rpc('is_platform_user')
     
     if (error) {
@@ -132,6 +141,7 @@ export async function isPlatformUser(): Promise<boolean> {
  * Déconnecte l'utilisateur
  */
 export async function signOut(): Promise<void> {
+  const supabase = getSupabaseClient()
   const { error } = await supabase.auth.signOut()
   if (error) {
     throw error
