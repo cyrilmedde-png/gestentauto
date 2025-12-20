@@ -21,7 +21,17 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <div className="min-h-screen relative">
+    <div 
+      className="min-h-screen relative"
+      style={{
+        backgroundImage: "url('/logo_app.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed',
+        backgroundColor: '#080808',
+      }}
+    >
       <Sidebar />
       <Header />
       <main 
