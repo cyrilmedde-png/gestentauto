@@ -21,7 +21,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen relative">
       <Sidebar />
       <Header />
       <main 
