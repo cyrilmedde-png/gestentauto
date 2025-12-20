@@ -27,7 +27,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         backgroundColor: '#080808',
         backgroundImage: `
           linear-gradient(to right, #080808 0%, transparent 25%, transparent 75%, #080808 100%),
-          url('/logo_app.png')
+          url('/background.png')
         `,
         backgroundSize: '100% auto, 100% auto',
         backgroundPosition: 'center, center',
