@@ -25,7 +25,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
       className="min-h-screen relative"
       style={{
         backgroundImage: "url('/logo_app.png')",
-        backgroundSize: 'cover',
+        backgroundSize: '70%',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
         backgroundAttachment: 'fixed',
