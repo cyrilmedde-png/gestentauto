@@ -13,7 +13,7 @@
     background-image: 
       linear-gradient(to right, #080808 0%, transparent 25%, transparent 75%, #080808 100%),
       url('/logo_app.png');
-    background-size: contain, contain;
+    background-size: 100% auto, 100% auto;
     background-position: center, center;
     background-repeat: no-repeat, no-repeat;
     background-attachment: fixed, fixed;
