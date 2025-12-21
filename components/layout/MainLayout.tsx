@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { HeaderProvider, useHeader } from './HeaderContext'
 import { SidebarProvider, useSidebar } from './SidebarContext'
+import { AnimatedDNA } from '@/components/background/AnimatedDNA'
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
   const { isHeaderVisible } = useHeader()
@@ -35,6 +36,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         backgroundAttachment: 'fixed, fixed',
       }}
     >
+      <AnimatedDNA />
       <Sidebar />
       <Header />
       <main 
