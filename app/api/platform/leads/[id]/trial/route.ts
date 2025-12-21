@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createPlatformClient } from '@/lib/supabase/platform'
 import { getPlatformCompanyId } from '@/lib/platform/supabase'
 import { randomBytes } from 'crypto'
+import { sendEmail } from '@/lib/services/email'
 
 /**
  * POST /api/platform/leads/[id]/trial/start
@@ -231,6 +232,143 @@ export async function POST(
         key: 'trial_mode',
         value: true,
       })
+
+    // 9. Envoyer l'email de bienvenue avec les identifiants (ne pas bloquer si ça échoue)
+    try {
+      const leadName = lead.first_name && lead.last_name 
+        ? `${lead.first_name} ${lead.last_name}` 
+        : lead.first_name || lead.company_name || undefined
+
+      const loginUrl = process.env.NEXT_PUBLIC_APP_URL 
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/login?email=${encodeURIComponent(lead.email)}`
+        : `/auth/login?email=${encodeURIComponent(lead.email)}`
+
+      await sendEmail({
+        to: lead.email,
+        subject: 'Votre essai gratuit TalosPrime démarre maintenant !',
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  line-height: 1.6;
+                  color: #333;
+                  max-width: 600px;
+                  margin: 0 auto;
+                  padding: 20px;
+                }
+                .header {
+                  background-color: #080808;
+                  color: #fff;
+                  padding: 20px;
+                  text-align: center;
+                  border-radius: 8px 8px 0 0;
+                }
+                .content {
+                  background-color: #f9f9f9;
+                  padding: 30px;
+                  border-radius: 0 0 8px 8px;
+                }
+                .credentials {
+                  background-color: #fff;
+                  padding: 20px;
+                  margin: 20px 0;
+                  border-left: 4px solid #26283d;
+                  border-radius: 4px;
+                }
+                .credentials strong {
+                  color: #26283d;
+                }
+                .button {
+                  display: inline-block;
+                  background-color: #26283d;
+                  color: #fff;
+                  padding: 12px 24px;
+                  text-decoration: none;
+                  border-radius: 4px;
+                  margin-top: 20px;
+                }
+                .warning {
+                  background-color: #fff3cd;
+                  border: 1px solid #ffc107;
+                  padding: 15px;
+                  margin: 20px 0;
+                  border-radius: 4px;
+                }
+                ${modulesToActivate.length > 0 ? `
+                  .modules {
+                    background-color: #fff;
+                    padding: 15px;
+                    margin: 20px 0;
+                    border-left: 4px solid #26283d;
+                  }
+                ` : ''}
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <h1>🎉 Votre essai gratuit démarre !</h1>
+              </div>
+              <div class="content">
+                <p>Bonjour ${leadName || 'cher utilisateur'},</p>
+                <p>Excellent ! Votre essai gratuit de ${questionnaire.trial_config?.duration_days || 7} jours sur TalosPrime est maintenant actif.</p>
+                
+                <div class="credentials">
+                  <h3>Vos identifiants de connexion :</h3>
+                  <p><strong>Email :</strong> ${lead.email}</p>
+                  <p><strong>Mot de passe temporaire :</strong> ${tempPassword}</p>
+                  <p class="warning"><strong>⚠️ Important :</strong> Nous vous recommandons fortement de changer ce mot de passe lors de votre première connexion.</p>
+                  <p><a href="${loginUrl}" class="button">Se connecter maintenant</a></p>
+                </div>
+
+                ${modulesToActivate.length > 0 ? `
+                  <div class="modules">
+                    <h3>Modules activés pour votre essai :</h3>
+                    <ul>
+                      ${modulesToActivate.map((module: string) => `<li>${module}</li>`).join('')}
+                    </ul>
+                  </div>
+                ` : ''}
+
+                <p>Votre essai se termine le ${endDate.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.</p>
+                
+                <p>Si vous avez des questions ou besoin d'aide, n'hésitez pas à nous contacter. Nous sommes là pour vous accompagner !</p>
+                
+                <p>Bienvenue dans l'aventure TalosPrime,<br>L'équipe TalosPrime</p>
+              </div>
+            </body>
+          </html>
+        `,
+        text: `
+Bonjour ${leadName || 'cher utilisateur'},
+
+Votre essai gratuit de ${questionnaire.trial_config?.duration_days || 7} jours sur TalosPrime est maintenant actif !
+
+VOS IDENTIFIANTS DE CONNEXION :
+Email : ${lead.email}
+Mot de passe temporaire : ${tempPassword}
+
+⚠️ IMPORTANT : Nous vous recommandons fortement de changer ce mot de passe lors de votre première connexion.
+
+Lien de connexion : ${loginUrl}
+
+${modulesToActivate.length > 0 ? `\nMODULES ACTIVÉS :\n${modulesToActivate.map((m: string) => `- ${m}`).join('\n')}\n` : ''}
+
+Votre essai se termine le ${endDate.toLocaleDateString('fr-FR')}.
+
+Si vous avez des questions, n'hésitez pas à nous contacter.
+
+Bienvenue dans l'aventure TalosPrime,
+L'équipe TalosPrime
+        `.trim(),
+      })
+    } catch (emailError) {
+      console.error('Error sending trial start email:', emailError)
+      // On continue quand même, l'email n'est pas critique
+    }
 
     return NextResponse.json({
       trial: trial || null,

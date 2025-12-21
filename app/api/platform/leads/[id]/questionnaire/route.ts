@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createPlatformClient } from '@/lib/supabase/platform'
 import { generateRecommendations } from '@/lib/platform/recommendations'
 import type { LeadUpdate } from '@/lib/types/onboarding'
+import { sendEmail } from '@/lib/services/email'
 
 /**
  * POST /api/platform/leads/[id]/questionnaire
@@ -15,10 +16,10 @@ export async function POST(
     const supabase = createPlatformClient()
     const { id } = await params
 
-    // Vérifier que le lead existe
+    // Vérifier que le lead existe et récupérer ses infos
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('id, status')
+      .select('id, status, email, first_name, last_name, company_name')
       .eq('id', id)
       .single()
 
@@ -81,6 +82,90 @@ export async function POST(
     if (updateError) {
       console.error('Error updating lead:', updateError)
       // On continue quand même car le questionnaire est sauvegardé
+    }
+
+    // Envoyer un email de confirmation de complétion du questionnaire (ne pas bloquer si ça échoue)
+    try {
+      const leadName = lead.first_name && lead.last_name 
+        ? `${lead.first_name} ${lead.last_name}` 
+        : lead.first_name || lead.company_name || undefined
+
+      const nextStepText = recommendations.next_step === 'trial' 
+        ? 'Vous pouvez maintenant démarrer votre essai gratuit de 7 jours !'
+        : 'Notre équipe va vous contacter pour planifier un entretien.'
+
+      await sendEmail({
+        to: lead.email,
+        subject: 'Questionnaire complété - TalosPrime',
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  line-height: 1.6;
+                  color: #333;
+                  max-width: 600px;
+                  margin: 0 auto;
+                  padding: 20px;
+                }
+                .header {
+                  background-color: #080808;
+                  color: #fff;
+                  padding: 20px;
+                  text-align: center;
+                  border-radius: 8px 8px 0 0;
+                }
+                .content {
+                  background-color: #f9f9f9;
+                  padding: 30px;
+                  border-radius: 0 0 8px 8px;
+                }
+                .modules {
+                  background-color: #fff;
+                  padding: 15px;
+                  margin: 20px 0;
+                  border-left: 4px solid #26283d;
+                }
+                .button {
+                  display: inline-block;
+                  background-color: #26283d;
+                  color: #fff;
+                  padding: 12px 24px;
+                  text-decoration: none;
+                  border-radius: 4px;
+                  margin-top: 20px;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <h1>Questionnaire complété</h1>
+              </div>
+              <div class="content">
+                <p>Bonjour ${leadName || 'cher prospect'},</p>
+                <p>Merci d'avoir complété notre questionnaire ! Nous avons bien reçu vos réponses.</p>
+                ${recommendations.modules && recommendations.modules.length > 0 ? `
+                  <div class="modules">
+                    <h3>Modules recommandés pour vous :</h3>
+                    <ul>
+                      ${recommendations.modules.map((module: string) => `<li>${module}</li>`).join('')}
+                    </ul>
+                  </div>
+                ` : ''}
+                <p><strong>Prochaine étape :</strong> ${nextStepText}</p>
+                <p>Si vous avez des questions, n'hésitez pas à nous contacter.</p>
+                <p>Cordialement,<br>L'équipe TalosPrime</p>
+              </div>
+            </body>
+          </html>
+        `,
+      })
+    } catch (emailError) {
+      console.error('Error sending questionnaire completion email:', emailError)
+      // On continue quand même, l'email n'est pas critique
     }
 
     return NextResponse.json({

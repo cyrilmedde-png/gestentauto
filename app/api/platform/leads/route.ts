@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPlatformClient } from '@/lib/supabase/platform'
 import { getPlatformCompanyId } from '@/lib/platform/supabase'
+import { sendOnboardingConfirmationEmail } from '@/lib/services/email'
 
 /**
  * GET /api/platform/leads
@@ -114,6 +115,19 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       throw insertError
+    }
+
+    // Envoyer l'email de confirmation de pré-inscription (ne pas bloquer si ça échoue)
+    try {
+      await sendOnboardingConfirmationEmail(
+        lead.email,
+        lead.first_name && lead.last_name 
+          ? `${lead.first_name} ${lead.last_name}` 
+          : lead.first_name || lead.company_name || undefined
+      )
+    } catch (emailError) {
+      console.error('Error sending onboarding confirmation email:', emailError)
+      // On continue quand même, l'email n'est pas critique
     }
 
     return NextResponse.json({ lead }, { status: 201 })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPlatformClient } from '@/lib/supabase/platform'
 import type { InterviewUpdate } from '@/lib/types/onboarding'
+import { sendInterviewConfirmationEmail } from '@/lib/services/email'
 
 /**
  * POST /api/platform/leads/[id]/interview/schedule
@@ -14,10 +15,10 @@ export async function POST(
     const supabase = createPlatformClient()
     const { id } = await params
 
-    // Vérifier que le lead existe
+    // Vérifier que le lead existe et récupérer ses infos
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('id, status, onboarding_step')
+      .select('id, status, onboarding_step, email, first_name, last_name, company_name')
       .eq('id', id)
       .single()
 
@@ -69,6 +70,23 @@ export async function POST(
     if (updateError) {
       console.error('Error updating lead:', updateError)
       // On continue quand même
+    }
+
+    // Envoyer l'email de confirmation d'entretien (ne pas bloquer si ça échoue)
+    try {
+      const leadName = lead.first_name && lead.last_name 
+        ? `${lead.first_name} ${lead.last_name}` 
+        : lead.first_name || lead.company_name || undefined
+
+      await sendInterviewConfirmationEmail(
+        lead.email,
+        leadName,
+        interview.scheduled_at ? new Date(interview.scheduled_at) : undefined,
+        interview.meeting_link || undefined
+      )
+    } catch (emailError) {
+      console.error('Error sending interview confirmation email:', emailError)
+      // On continue quand même, l'email n'est pas critique
     }
 
     return NextResponse.json({ interview }, { status: 201 })
