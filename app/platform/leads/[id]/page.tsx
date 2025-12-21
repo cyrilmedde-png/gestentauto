@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { LeadFormModal } from '@/components/leads/LeadFormModal'
+import { QuestionnaireForm } from '@/components/leads/QuestionnaireForm'
 import Link from 'next/link'
 import { Edit, Trash2 } from 'lucide-react'
 
@@ -73,6 +74,7 @@ export default function LeadDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isQuestionnaireModalOpen, setIsQuestionnaireModalOpen] = useState(false)
 
   useEffect(() => {
     loadLeadDetails()
@@ -287,9 +289,19 @@ export default function LeadDetailPage() {
 
             {/* Questionnaire */}
             <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">
-                Questionnaire
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Questionnaire
+                </h2>
+                {questionnaire && (
+                  <button
+                    onClick={() => setIsQuestionnaireModalOpen(true)}
+                    className="px-3 py-1.5 text-sm bg-background border border-border rounded-lg hover:bg-card transition-colors text-foreground"
+                  >
+                    Modifier
+                  </button>
+                )}
+              </div>
               {questionnaire ? (
                 <div className="space-y-3">
                   <div>
@@ -330,8 +342,16 @@ export default function LeadDetailPage() {
                   )}
                 </div>
               ) : (
-                <div className="text-muted-foreground text-sm">
-                  Questionnaire non complété
+                <div className="flex items-center justify-between">
+                  <div className="text-muted-foreground text-sm">
+                    Questionnaire non complété
+                  </div>
+                  <button
+                    onClick={() => setIsQuestionnaireModalOpen(true)}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                  >
+                    Compléter le questionnaire
+                  </button>
                 </div>
               )}
             </div>
@@ -437,6 +457,13 @@ export default function LeadDetailPage() {
           onClose={() => setIsEditModalOpen(false)}
           onSave={handleModalSave}
           lead={lead}
+        />
+        <QuestionnaireForm
+          isOpen={isQuestionnaireModalOpen}
+          onClose={() => setIsQuestionnaireModalOpen(false)}
+          onSave={loadLeadDetails}
+          leadId={leadId}
+          questionnaire={questionnaire}
         />
       </MainLayout>
     </ProtectedRoute>
