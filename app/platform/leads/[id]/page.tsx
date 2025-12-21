@@ -6,6 +6,7 @@ import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { LeadFormModal } from '@/components/leads/LeadFormModal'
 import { QuestionnaireForm } from '@/components/leads/QuestionnaireForm'
+import { InterviewForm } from '@/components/leads/InterviewForm'
 import Link from 'next/link'
 import { Edit, Trash2 } from 'lucide-react'
 
@@ -75,6 +76,7 @@ export default function LeadDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isQuestionnaireModalOpen, setIsQuestionnaireModalOpen] = useState(false)
+  const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false)
 
   useEffect(() => {
     loadLeadDetails()
@@ -358,11 +360,19 @@ export default function LeadDetailPage() {
           </div>
 
           {/* Entretien */}
-          {interview && (
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-6 mb-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">
+          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">
                 Entretien
               </h2>
+              <button
+                onClick={() => setIsInterviewModalOpen(true)}
+                className="px-3 py-1.5 text-sm bg-background border border-border rounded-lg hover:bg-card transition-colors text-foreground"
+              >
+                {interview ? 'Modifier' : 'Planifier'}
+              </button>
+            </div>
+            {interview ? (
               <div className="space-y-3">
                 <div>
                   <span className="text-sm text-muted-foreground">Statut:</span>
@@ -396,8 +406,12 @@ export default function LeadDetailPage() {
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="text-muted-foreground text-sm">
+                Aucun entretien planifié
+              </div>
+            )}
+          </div>
 
           {/* Essai */}
           {trial && (
@@ -464,6 +478,13 @@ export default function LeadDetailPage() {
           onSave={loadLeadDetails}
           leadId={leadId}
           questionnaire={questionnaire}
+        />
+        <InterviewForm
+          isOpen={isInterviewModalOpen}
+          onClose={() => setIsInterviewModalOpen(false)}
+          onSave={loadLeadDetails}
+          leadId={leadId}
+          interview={interview}
         />
       </MainLayout>
     </ProtectedRoute>
