@@ -19,7 +19,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           {/* Card 1 */}
-          <div className="bg-card/20 backdrop-blur-sm border border-border/30 rounded-lg p-4 sm:p-6">
+          <div className="border border-border/50 rounded-lg p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">
                 Chiffre d'affaires
@@ -30,7 +30,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Card 2 */}
-          <div className="bg-card/20 backdrop-blur-sm border border-border/30 rounded-lg p-4 sm:p-6">
+          <div className="border border-border/50 rounded-lg p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">
                 Clients
@@ -41,7 +41,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Card 3 */}
-          <div className="bg-card/20 backdrop-blur-sm border border-border/30 rounded-lg p-4 sm:p-6">
+          <div className="border border-border/50 rounded-lg p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">
                 Factures
@@ -52,7 +52,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Card 4 */}
-          <div className="bg-card/20 backdrop-blur-sm border border-border/30 rounded-lg p-4 sm:p-6">
+          <div className="border border-border/50 rounded-lg p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">
                 Tâches
@@ -65,7 +65,7 @@ export default function DashboardPage() {
 
         {/* Graphiques et tableaux */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          <div className="bg-card/20 backdrop-blur-sm border border-border/30 rounded-lg p-4 sm:p-6">
+          <div className="border border-border/50 rounded-lg p-4 sm:p-6">
             <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
               Activité récente
             </h2>
@@ -74,7 +74,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-card/20 backdrop-blur-sm border border-border/30 rounded-lg p-4 sm:p-6">
+          <div className="border border-border/50 rounded-lg p-4 sm:p-6">
             <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
               Statistiques
             </h2>
