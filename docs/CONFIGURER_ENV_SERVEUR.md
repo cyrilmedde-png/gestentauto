@@ -18,28 +18,46 @@ cd /var/www/talosprime
 nano .env.production
 ```
 
-**Collez ce contenu** (remplacez les `...` par vos vraies valeurs) :
+**Collez ce contenu** (remplacez les valeurs par vos vraies clés) :
 
 ```env
-# Supabase (OBLIGATOIRE)
+# ========================================
+# SUPABASE (OBLIGATOIRE)
+# ========================================
 NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=votre_anon_key_ici
 SUPABASE_SERVICE_ROLE_KEY=votre_service_role_key_ici
 
-# Resend (Email)
-RESEND_API_KEY=re_votre_cle_resend
+# ========================================
+# RESEND (Email) - OBLIGATOIRE
+# ========================================
+RESEND_API_KEY=re_votre_cle_api_resend
 RESEND_FROM_EMAIL=noreply@talosprime.fr
 RESEND_FROM_NAME=TalosPrime
 
-# Twilio (SMS)
+# ========================================
+# TWILIO (SMS) - OPTIONNEL
+# ========================================
 TWILIO_ACCOUNT_SID=ACvotre_account_sid
 TWILIO_AUTH_TOKEN=votre_auth_token
 TWILIO_PHONE_NUMBER=+33612345678
 
-# Application
+# ========================================
+# STRIPE (Paiement) - OPTIONNEL (pour l'instant)
+# ========================================
+STRIPE_SECRET_KEY=sk_test_votre_cle_secrete
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_votre_cle_publique
+STRIPE_WEBHOOK_SECRET=whsec_votre_webhook_secret
+
+# ========================================
+# APPLICATION
+# ========================================
 NODE_ENV=production
 PORT=3000
+NEXT_PUBLIC_APP_URL=https://talosprime.fr
 ```
+
+💡 **Astuce** : Un template complet est disponible dans le fichier `.env.production.template` à la racine du projet.
 
 **Pour sauvegarder :** 
 - Appuyez sur `Ctrl+X`
