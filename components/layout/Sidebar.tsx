@@ -47,7 +47,7 @@ export function Sidebar() {
       {isMobile && (
         <button
           onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="fixed top-4 left-4 z-30 p-2 bg-background/50 backdrop-blur-sm rounded-lg text-foreground hover:bg-background/70 transition-colors"
+          className="fixed top-4 left-4 z-30 p-3 bg-background/50 backdrop-blur-sm rounded-lg text-foreground hover:bg-background/70 active:bg-background/80 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
           aria-label="Toggle menu"
         >
           <Menu className="w-6 h-6" />
@@ -65,10 +65,10 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={`
-          fixed left-0 top-0 h-full z-20 transition-all duration-300
+          fixed left-0 top-0 h-full transition-all duration-300
           ${isMobile 
-            ? (isMobileOpen ? 'w-64 translate-x-0' : '-translate-x-full')
-            : 'w-20 hover:w-64 translate-x-0'
+            ? (isMobileOpen ? 'w-64 translate-x-0 z-50' : '-translate-x-full z-20')
+            : 'w-20 hover:w-64 translate-x-0 z-20'
           }
         `}
         onMouseEnter={() => {
@@ -82,7 +82,7 @@ export function Sidebar() {
           }
         }}
       >
-        <div className="h-full bg-background/50 backdrop-blur-sm">
+        <div className="h-full bg-background/50 backdrop-blur-sm border-r border-border/50">
           <div className="p-4">
             {/* Logo/Title avec déconnexion */}
             <div className="flex items-center justify-center mb-8">
@@ -110,7 +110,12 @@ export function Sidebar() {
                     key={item.href}
                     href={item.href}
                     onClick={handleLinkClick}
-                    className="flex items-center gap-4 px-4 py-2 rounded-lg text-foreground/70 hover:bg-white/5 hover:text-foreground transition-all group"
+                    className={`
+                      flex items-center gap-4 px-4 rounded-lg text-foreground/70 
+                      hover:bg-white/5 hover:text-foreground active:bg-white/10
+                      transition-all group
+                      ${isMobile ? 'py-4 min-h-[48px]' : 'py-2'}
+                    `}
                   >
                     <Icon className="w-5 h-5 flex-shrink-0" />
                     {(isExpanded || isMobileOpen) && (

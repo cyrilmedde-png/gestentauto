@@ -148,7 +148,7 @@ export default function LeadsPage() {
             </div>
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-3 rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors min-h-[44px] touch-manipulation"
             >
               <Plus className="w-4 h-4" />
               <span>Créer un lead</span>
@@ -224,7 +224,7 @@ export default function LeadsPage() {
             <div className="flex items-end">
               <button
                 onClick={loadLeads}
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                className="bg-primary text-primary-foreground px-4 py-3 rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors min-h-[44px] touch-manipulation"
               >
                 Actualiser
               </button>
@@ -306,22 +306,22 @@ export default function LeadsPage() {
                           {formatDate(lead.created_at)}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                             <button
                               onClick={() => handleEdit(lead)}
-                              className="text-yellow-400 hover:text-yellow-300 text-sm font-medium"
+                              className="text-yellow-400 hover:text-yellow-300 active:text-yellow-200 text-sm font-medium px-2 py-1.5 min-h-[36px] touch-manipulation"
                             >
                               Modifier
                             </button>
                             <button
                               onClick={() => handleDelete(lead.id)}
-                              className="text-red-400 hover:text-red-300 text-sm font-medium"
+                              className="text-red-400 hover:text-red-300 active:text-red-200 text-sm font-medium px-2 py-1.5 min-h-[36px] touch-manipulation"
                             >
                               Supprimer
                             </button>
                             <Link
                               href={`/platform/leads/${lead.id}`}
-                              className="text-primary hover:text-primary/80 text-sm font-medium"
+                              className="text-primary hover:text-primary/80 active:text-primary/60 text-sm font-medium px-2 py-1.5 min-h-[36px] touch-manipulation inline-block"
                             >
                               Détails →
                             </Link>
