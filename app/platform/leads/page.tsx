@@ -248,91 +248,151 @@ export default function LeadsPage() {
               Aucun lead trouvé
             </div>
           ) : (
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-card/80 border-b border-border/50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                        Email
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                        Nom
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                        Entreprise
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                        Statut
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                        Étape
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                        Date
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {leads.map((lead) => (
-                      <tr key={lead.id} className="hover:bg-card/50 transition-colors">
-                        <td className="px-4 py-3 text-sm text-foreground">
+            <>
+              {/* Version Mobile (cartes) */}
+              <div className="lg:hidden space-y-4">
+                {leads.map((lead) => (
+                  <div
+                    key={lead.id}
+                    className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4"
+                  >
+                    {/* Nom */}
+                    <div className="mb-3">
+                      <div className="text-base font-semibold text-foreground">
+                        {lead.first_name || lead.last_name
+                          ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
+                          : lead.email}
+                      </div>
+                      {lead.first_name || lead.last_name ? (
+                        <div className="text-sm text-muted-foreground mt-1">
                           {lead.email}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-foreground">
-                          {lead.first_name || lead.last_name
-                            ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
-                            : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-foreground">
-                          {lead.company_name || '-'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              statusColors[lead.status] || 'bg-gray-500/20 text-gray-400'
-                            }`}
-                          >
-                            {statusLabels[lead.status] || lead.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {stepLabels[lead.onboarding_step] || lead.onboarding_step}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {formatDate(lead.created_at)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                            <button
-                              onClick={() => handleEdit(lead)}
-                              className="text-yellow-400 hover:text-yellow-300 active:text-yellow-200 text-sm font-medium px-2 py-1.5 min-h-[36px] touch-manipulation"
-                            >
-                              Modifier
-                            </button>
-                            <button
-                              onClick={() => handleDelete(lead.id)}
-                              className="text-red-400 hover:text-red-300 active:text-red-200 text-sm font-medium px-2 py-1.5 min-h-[36px] touch-manipulation"
-                            >
-                              Supprimer
-                            </button>
-                            <Link
-                              href={`/platform/leads/${lead.id}`}
-                              className="text-primary hover:text-primary/80 active:text-primary/60 text-sm font-medium px-2 py-1.5 min-h-[36px] touch-manipulation inline-block"
-                            >
-                              Détails →
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* Statut */}
+                    <div className="mb-3">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                          statusColors[lead.status] || 'bg-gray-500/20 text-gray-400'
+                        }`}
+                      >
+                        {statusLabels[lead.status] || lead.status}
+                      </span>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-2 pt-3 border-t border-border/30">
+                      <button
+                        onClick={() => handleEdit(lead)}
+                        className="flex-1 text-yellow-400 hover:text-yellow-300 active:text-yellow-200 text-sm font-medium px-3 py-2.5 min-h-[44px] touch-manipulation bg-yellow-400/10 hover:bg-yellow-400/20 rounded-lg transition-colors"
+                      >
+                        Modifier
+                      </button>
+                      <button
+                        onClick={() => handleDelete(lead.id)}
+                        className="flex-1 text-red-400 hover:text-red-300 active:text-red-200 text-sm font-medium px-3 py-2.5 min-h-[44px] touch-manipulation bg-red-400/10 hover:bg-red-400/20 rounded-lg transition-colors"
+                      >
+                        Supprimer
+                      </button>
+                      <Link
+                        href={`/platform/leads/${lead.id}`}
+                        className="flex-1 text-primary hover:text-primary/80 active:text-primary/60 text-sm font-medium px-3 py-2.5 min-h-[44px] touch-manipulation bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors text-center"
+                      >
+                        Détails →
+                      </Link>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+
+              {/* Version Desktop (tableau) */}
+              <div className="hidden lg:block bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-card/80 border-b border-border/50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                          Email
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                          Nom
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                          Entreprise
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                          Statut
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                          Étape
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                          Date
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {leads.map((lead) => (
+                        <tr key={lead.id} className="hover:bg-card/50 transition-colors">
+                          <td className="px-4 py-3 text-sm text-foreground">
+                            {lead.email}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-foreground">
+                            {lead.first_name || lead.last_name
+                              ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
+                              : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-foreground">
+                            {lead.company_name || '-'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                statusColors[lead.status] || 'bg-gray-500/20 text-gray-400'
+                              }`}
+                            >
+                              {statusLabels[lead.status] || lead.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">
+                            {stepLabels[lead.onboarding_step] || lead.onboarding_step}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">
+                            {formatDate(lead.created_at)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                              <button
+                                onClick={() => handleEdit(lead)}
+                                className="text-yellow-400 hover:text-yellow-300 active:text-yellow-200 text-sm font-medium px-2 py-1.5 min-h-[36px] touch-manipulation"
+                              >
+                                Modifier
+                              </button>
+                              <button
+                                onClick={() => handleDelete(lead.id)}
+                                className="text-red-400 hover:text-red-300 active:text-red-200 text-sm font-medium px-2 py-1.5 min-h-[36px] touch-manipulation"
+                              >
+                                Supprimer
+                              </button>
+                              <Link
+                                href={`/platform/leads/${lead.id}`}
+                                className="text-primary hover:text-primary/80 active:text-primary/60 text-sm font-medium px-2 py-1.5 min-h-[36px] touch-manipulation inline-block"
+                              >
+                                Détails →
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </div>
 
