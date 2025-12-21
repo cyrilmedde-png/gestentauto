@@ -50,10 +50,10 @@ export function AnimatedDNA() {
       const segmentHeight = 100
       const turns = 2.5
       
-      // Couleurs robotisées (violet/bleu pour s'harmoniser avec le fond)
-      const color1 = `rgba(147, 51, 234, ${opacity * 0.8})` // Violet
+      // Couleurs robotisées (orange/bronze et bleu pour s'harmoniser avec le fond)
+      const color1 = `rgba(234, 88, 12, ${opacity * 0.8})` // Orange
       const color2 = `rgba(59, 130, 246, ${opacity * 0.7})` // Bleu
-      const colorConnection = `rgba(168, 85, 247, ${opacity * 0.5})` // Violet clair pour connexions
+      const colorConnection = `rgba(217, 119, 6, ${opacity * 0.5})` // Bronze/Orange foncé pour connexions
 
       // Dessiner l'hélice d'ADN robotisé
       for (let i = 0; i <= segmentHeight; i++) {
@@ -149,7 +149,7 @@ export function AnimatedDNA() {
       const endAngle = (segmentHeight / segmentHeight) * Math.PI * 2 * turns + offset
       
       // Brin gauche - ligne de structure
-      ctx.strokeStyle = `rgba(147, 51, 234, ${opacity * 0.2})`
+      ctx.strokeStyle = `rgba(234, 88, 12, ${opacity * 0.2})`
       ctx.lineWidth = 1
       ctx.setLineDash([2, 4])
       ctx.beginPath()
