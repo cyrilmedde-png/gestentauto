@@ -4,8 +4,8 @@ import { useEffect, useRef } from 'react'
 
 interface DNASegment {
   id: number
-  x: number
   y: number
+  offset: number
   opacity: number
 }
 
@@ -28,91 +28,163 @@ export function AnimatedDNA() {
     window.addEventListener('resize', resize)
 
     const segments: DNASegment[] = []
-    const segmentCount = 20
+    const segmentCount = 15
     const segmentSpacing = window.innerHeight / segmentCount
-    const speed = 1
+    const speed = 0.8
 
     // Créer les segments initiaux
     for (let i = 0; i < segmentCount; i++) {
       segments.push({
         id: i,
-        x: 0,
         y: i * segmentSpacing,
-        opacity: 1 - (i / segmentCount) * 0.5,
+        offset: (i % 2) * Math.PI, // Décalage alterné pour créer l'hélice
+        opacity: 1 - (i / segmentCount) * 0.6,
       })
     }
 
-    const drawDNASegment = (x: number, y: number, opacity: number, side: 'left' | 'right') => {
+    const drawDNASegment = (y: number, offset: number, opacity: number, side: 'left' | 'right') => {
       ctx.save()
-      ctx.globalAlpha = opacity * 0.6
       
-      const baseY = y
-      const segmentHeight = 80
+      const centerX = side === 'left' ? 60 : window.innerWidth - 60
+      const radius = 20
+      const segmentHeight = 100
+      const turns = 2.5
       
-      // Couleurs pour l'effet robotisé
-      const gradient = ctx.createLinearGradient(x, baseY, x, baseY + segmentHeight)
-      gradient.addColorStop(0, 'rgba(139, 92, 246, 0.8)') // Violet
-      gradient.addColorStop(0.5, 'rgba(59, 130, 246, 0.9)') // Bleu
-      gradient.addColorStop(1, 'rgba(139, 92, 246, 0.8)') // Violet
-      
-      ctx.strokeStyle = gradient
-      ctx.fillStyle = gradient
-      ctx.lineWidth = 2
+      // Couleurs robotisées (violet/bleu pour s'harmoniser avec le fond)
+      const color1 = `rgba(147, 51, 234, ${opacity * 0.8})` // Violet
+      const color2 = `rgba(59, 130, 246, ${opacity * 0.7})` // Bleu
+      const colorConnection = `rgba(168, 85, 247, ${opacity * 0.5})` // Violet clair pour connexions
 
       // Dessiner l'hélice d'ADN robotisé
-      const centerX = side === 'left' ? 50 : window.innerWidth - 50
-      const radius = 15
-      const turns = 3
-
-      for (let i = 0; i < segmentHeight; i += 2) {
+      for (let i = 0; i <= segmentHeight; i++) {
         const progress = i / segmentHeight
-        const angle = progress * Math.PI * 2 * turns
-        const offsetX = Math.cos(angle) * radius
-        const currentY = baseY + i
+        const angle = (progress * Math.PI * 2 * turns) + offset
+        const x1 = centerX - radius + Math.cos(angle) * radius
+        const x2 = centerX + radius + Math.cos(angle + Math.PI) * radius
+        const currentY = y + i
 
-        // Pointillés pour effet robotisé
-        if (i % 4 === 0) {
+        // Brin gauche (avec effet segmenté robotisé)
+        if (i % 3 === 0) {
+          ctx.fillStyle = color1
           ctx.beginPath()
-          ctx.arc(centerX + offsetX, currentY, 2, 0, Math.PI * 2)
+          ctx.arc(x1, currentY, 2.5, 0, Math.PI * 2)
           ctx.fill()
+          
+          // Effet de glow robotisé
+          ctx.shadowBlur = 8
+          ctx.shadowColor = color1
+          ctx.fill()
+          ctx.shadowBlur = 0
         }
 
-        // Ligne de connexion (points de données)
-        if (i % 8 === 0 && i > 0) {
+        // Brin droit
+        if (i % 3 === 0) {
+          ctx.fillStyle = color2
           ctx.beginPath()
-          ctx.moveTo(centerX - radius, currentY)
-          ctx.lineTo(centerX + radius, currentY)
+          ctx.arc(x2, currentY, 2.5, 0, Math.PI * 2)
+          ctx.fill()
+          
+          // Effet de glow robotisé
+          ctx.shadowBlur = 8
+          ctx.shadowColor = color2
+          ctx.fill()
+          ctx.shadowBlur = 0
+        }
+
+        // Lignes de connexion horizontales (toutes les 8 unités)
+        if (i % 8 === 0 && i > 0) {
+          ctx.strokeStyle = colorConnection
+          ctx.lineWidth = 1.5
+          ctx.setLineDash([4, 3]) // Ligne pointillée robotisée
+          
+          ctx.beginPath()
+          ctx.moveTo(x1, currentY)
+          ctx.lineTo(x2, currentY)
           ctx.stroke()
+          ctx.setLineDash([])
+        }
+
+        // Points de connexion robotisés (nœuds)
+        if (i % 16 === 0) {
+          // Point de connexion gauche
+          ctx.fillStyle = color1
+          ctx.beginPath()
+          ctx.arc(x1, currentY, 4, 0, Math.PI * 2)
+          ctx.fill()
+          
+          // Cercle extérieur pour effet robotisé
+          ctx.strokeStyle = color1
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.arc(x1, currentY, 6, 0, Math.PI * 2)
+          ctx.stroke()
+
+          // Point de connexion droit
+          ctx.fillStyle = color2
+          ctx.beginPath()
+          ctx.arc(x2, currentY, 4, 0, Math.PI * 2)
+          ctx.fill()
+          
+          // Cercle extérieur pour effet robotisé
+          ctx.strokeStyle = color2
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.arc(x2, currentY, 6, 0, Math.PI * 2)
+          ctx.stroke()
+
+          // Ligne de connexion entre les nœuds (plus épaisse)
+          ctx.strokeStyle = colorConnection
+          ctx.lineWidth = 2
+          ctx.setLineDash([6, 4])
+          ctx.beginPath()
+          ctx.moveTo(x1, currentY)
+          ctx.lineTo(x2, currentY)
+          ctx.stroke()
+          ctx.setLineDash([])
         }
       }
 
-      // Lignes verticales principales (structure)
-      ctx.globalAlpha = opacity * 0.3
+      // Lignes verticales principales (structure robotisée)
+      const startAngle = offset
+      const endAngle = (segmentHeight / segmentHeight) * Math.PI * 2 * turns + offset
+      
+      // Brin gauche - ligne de structure
+      ctx.strokeStyle = `rgba(147, 51, 234, ${opacity * 0.2})`
+      ctx.lineWidth = 1
+      ctx.setLineDash([2, 4])
       ctx.beginPath()
-      ctx.moveTo(centerX - radius, baseY)
-      ctx.lineTo(centerX - radius, baseY + segmentHeight)
-      ctx.moveTo(centerX + radius, baseY)
-      ctx.lineTo(centerX + radius, baseY + segmentHeight)
-      ctx.stroke()
-
-      // Points de connexion robotisés (nœuds)
-      for (let i = 0; i <= turns; i++) {
-        const y = baseY + (i / turns) * segmentHeight
-        const angle = (i / turns) * Math.PI * 2 * turns
-        const offsetX = Math.cos(angle) * radius
-
-        ctx.fillStyle = 'rgba(139, 92, 246, 0.9)'
-        ctx.beginPath()
-        ctx.arc(centerX + offsetX, y, 3, 0, Math.PI * 2)
-        ctx.fill()
-
-        // Ligne de connexion entre les deux brins
-        ctx.strokeStyle = `rgba(59, 130, 246, ${opacity * 0.4})`
-        ctx.beginPath()
-        ctx.moveTo(centerX - radius, y)
-        ctx.lineTo(centerX + radius, y)
-        ctx.stroke()
+      for (let i = 0; i <= segmentHeight; i += 2) {
+        const progress = i / segmentHeight
+        const angle = (progress * Math.PI * 2 * turns) + offset
+        const x = centerX - radius + Math.cos(angle) * radius
+        const currentY = y + i
+        if (i === 0) {
+          ctx.moveTo(x, currentY)
+        } else {
+          ctx.lineTo(x, currentY)
+        }
       }
+      ctx.stroke()
+      ctx.setLineDash([])
+
+      // Brin droit - ligne de structure
+      ctx.strokeStyle = `rgba(59, 130, 246, ${opacity * 0.2})`
+      ctx.lineWidth = 1
+      ctx.setLineDash([2, 4])
+      ctx.beginPath()
+      for (let i = 0; i <= segmentHeight; i += 2) {
+        const progress = i / segmentHeight
+        const angle = (progress * Math.PI * 2 * turns) + offset + Math.PI
+        const x = centerX + radius + Math.cos(angle) * radius
+        const currentY = y + i
+        if (i === 0) {
+          ctx.moveTo(x, currentY)
+        } else {
+          ctx.lineTo(x, currentY)
+        }
+      }
+      ctx.stroke()
+      ctx.setLineDash([])
 
       ctx.restore()
     }
@@ -127,27 +199,29 @@ export function AnimatedDNA() {
 
       // Dessiner les segments d'ADN sur le côté gauche
       segments.forEach((segment) => {
-        drawDNASegment(segment.x, segment.y, segment.opacity, 'left')
+        drawDNASegment(segment.y, segment.offset, segment.opacity, 'left')
       })
 
       // Dessiner les segments d'ADN sur le côté droit
       segments.forEach((segment) => {
-        drawDNASegment(segment.x, segment.y, segment.opacity, 'right')
+        drawDNASegment(segment.y, segment.offset, segment.opacity, 'right')
       })
 
-      // Animer les segments (défilement vers le bas)
+      // Animer les segments (défilement vers le bas et rotation de l'hélice)
       segments.forEach((segment) => {
-        segment.y += speed * (deltaTime / 16) // Normaliser par 16ms (60fps)
+        segment.y += speed * (deltaTime / 16)
+        segment.offset += 0.02 // Rotation continue de l'hélice
         
         // Réinitialiser quand le segment sort de l'écran
-        if (segment.y > canvas.height) {
+        if (segment.y > canvas.height + segmentSpacing) {
           segment.y = -segmentSpacing
           segment.opacity = 1
+          segment.offset = (segment.id % 2) * Math.PI
         }
 
         // Réduire l'opacité progressivement
-        const progress = (segment.y + segmentSpacing) / (canvas.height + segmentSpacing)
-        segment.opacity = 1 - progress * 0.7
+        const progress = (segment.y + segmentSpacing) / (canvas.height + segmentSpacing * 2)
+        segment.opacity = Math.max(0.2, 1 - progress * 0.8)
       })
 
       animationFrameRef.current = requestAnimationFrame(animate)
