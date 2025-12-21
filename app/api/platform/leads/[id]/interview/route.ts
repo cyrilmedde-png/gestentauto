@@ -59,26 +59,63 @@ export async function POST(
       )
     }
 
-    // Créer ou mettre à jour l'entretien
-    const { data: interview, error: interviewError } = await supabase
+    // Vérifier si un entretien existe déjà pour ce lead
+    const { data: existingInterview } = await supabase
       .from('onboarding_interviews')
-      .upsert({
-        lead_id: id,
-        scheduled_at: scheduledAt,
-        status: body.status || 'scheduled',
-        meeting_link: body.meeting_link || null,
-        notes: body.notes || null,
-        interviewer_id: body.interviewer_id || null,
-      }, {
-        onConflict: 'lead_id'
-      })
-      .select()
-      .single()
+      .select('id')
+      .eq('lead_id', id)
+      .maybeSingle()
+
+    let interview
+    let interviewError
+
+    if (existingInterview) {
+      // Mettre à jour l'entretien existant
+      const { data, error } = await supabase
+        .from('onboarding_interviews')
+        .update({
+          scheduled_at: scheduledAt,
+          status: body.status || 'scheduled',
+          meeting_link: body.meeting_link || null,
+          notes: body.notes || null,
+          interviewer_id: body.interviewer_id || null,
+        })
+        .eq('lead_id', id)
+        .select()
+        .single()
+      
+      interview = data
+      interviewError = error
+    } else {
+      // Créer un nouvel entretien
+      const { data, error } = await supabase
+        .from('onboarding_interviews')
+        .insert({
+          lead_id: id,
+          scheduled_at: scheduledAt,
+          status: body.status || 'scheduled',
+          meeting_link: body.meeting_link || null,
+          notes: body.notes || null,
+          interviewer_id: body.interviewer_id || null,
+        })
+        .select()
+        .single()
+      
+      interview = data
+      interviewError = error
+    }
 
     if (interviewError) {
       console.error('Error creating/updating interview:', interviewError)
       return NextResponse.json(
         { error: interviewError.message || 'Error saving interview', details: interviewError },
+        { status: 500 }
+      )
+    }
+
+    if (!interview) {
+      return NextResponse.json(
+        { error: 'Failed to save interview' },
         { status: 500 }
       )
     }
