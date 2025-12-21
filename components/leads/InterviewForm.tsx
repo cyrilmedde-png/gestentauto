@@ -94,8 +94,16 @@ export function InterviewForm({
       // Combiner date et heure en format ISO
       let scheduledAtISO: string | null = null
       if (formData.scheduled_at && formData.scheduled_time) {
+        // Créer une date locale puis la convertir en ISO
+        // Format: YYYY-MM-DDTHH:mm:ss (sans fuseau horaire pour que ce soit interprété comme local)
         const dateTimeString = `${formData.scheduled_at}T${formData.scheduled_time}:00`
-        scheduledAtISO = new Date(dateTimeString).toISOString()
+        // Utiliser toISOString() pour avoir le format ISO UTC attendu par Supabase
+        const localDate = new Date(dateTimeString)
+        // Vérifier que la date est valide
+        if (isNaN(localDate.getTime())) {
+          throw new Error('Date ou heure invalide')
+        }
+        scheduledAtISO = localDate.toISOString()
       }
 
       const payload: {

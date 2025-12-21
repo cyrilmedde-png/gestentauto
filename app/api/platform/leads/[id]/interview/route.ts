@@ -39,12 +39,32 @@ export async function POST(
       )
     }
 
+    // Valider le format de la date (doit être au format ISO)
+    let scheduledAt = body.scheduled_at
+    try {
+      // Vérifier que c'est une date ISO valide
+      const date = new Date(scheduledAt)
+      if (isNaN(date.getTime())) {
+        return NextResponse.json(
+          { error: 'Invalid date format. Expected ISO format.' },
+          { status: 400 }
+        )
+      }
+      // S'assurer que c'est bien au format ISO
+      scheduledAt = date.toISOString()
+    } catch (dateError) {
+      return NextResponse.json(
+        { error: 'Invalid date format' },
+        { status: 400 }
+      )
+    }
+
     // Créer ou mettre à jour l'entretien
     const { data: interview, error: interviewError } = await supabase
       .from('onboarding_interviews')
       .upsert({
         lead_id: id,
-        scheduled_at: body.scheduled_at,
+        scheduled_at: scheduledAt,
         status: body.status || 'scheduled',
         meeting_link: body.meeting_link || null,
         notes: body.notes || null,
@@ -56,7 +76,11 @@ export async function POST(
       .single()
 
     if (interviewError) {
-      throw interviewError
+      console.error('Error creating/updating interview:', interviewError)
+      return NextResponse.json(
+        { error: interviewError.message || 'Error saving interview', details: interviewError },
+        { status: 500 }
+      )
     }
 
     // Mettre à jour le lead
@@ -112,8 +136,13 @@ export async function POST(
     return NextResponse.json({ interview }, { status: 201 })
   } catch (error) {
     console.error('Error in POST /api/platform/leads/[id]/interview:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
+    const errorDetails = error instanceof Error ? error.stack : undefined
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? errorDetails : undefined
+      },
       { status: 500 }
     )
   }
