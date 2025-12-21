@@ -13,7 +13,17 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = createPlatformClient()
+    let supabase
+    try {
+      supabase = createPlatformClient()
+    } catch (supabaseError) {
+      console.error('Error creating Supabase client:', supabaseError)
+      return NextResponse.json(
+        { error: 'Configuration error: Supabase client could not be created' },
+        { status: 500 }
+      )
+    }
+    
     const { id } = await params
 
     // Vérifier que le lead existe et récupérer ses infos
