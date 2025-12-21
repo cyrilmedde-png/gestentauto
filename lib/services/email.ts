@@ -55,16 +55,33 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
 
     const from = options.from || `${DEFAULT_FROM_NAME} <${DEFAULT_FROM_EMAIL}>`
 
-    const { data, error } = await resend.emails.send({
+    // Construire l'objet de configuration pour Resend
+    const emailData: any = {
       from,
       to: Array.isArray(options.to) ? options.to : [options.to],
       subject: options.subject,
-      html: options.html,
-      text: options.text,
-      replyTo: options.replyTo,
-      cc: Array.isArray(options.cc) ? options.cc : options.cc ? [options.cc] : undefined,
-      bcc: Array.isArray(options.bcc) ? options.bcc : options.bcc ? [options.bcc] : undefined,
-    })
+    }
+
+    // Ajouter html ou text (au moins un est requis)
+    if (options.html) {
+      emailData.html = options.html
+    }
+    if (options.text) {
+      emailData.text = options.text
+    }
+
+    // Ajouter les options optionnelles
+    if (options.replyTo) {
+      emailData.replyTo = options.replyTo
+    }
+    if (options.cc) {
+      emailData.cc = Array.isArray(options.cc) ? options.cc : [options.cc]
+    }
+    if (options.bcc) {
+      emailData.bcc = Array.isArray(options.bcc) ? options.bcc : [options.bcc]
+    }
+
+    const { data, error } = await resend.emails.send(emailData)
 
     if (error) {
       console.error('Resend error:', error)
