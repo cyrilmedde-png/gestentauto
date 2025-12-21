@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createPlatformClient } from '@/lib/supabase/platform'
 import { getPlatformCompanyId } from '@/lib/platform/supabase'
 import { sendOnboardingConfirmationEmail } from '@/lib/services/email'
+import { sendOnboardingConfirmationSMS } from '@/lib/services/sms'
 
 /**
  * GET /api/platform/leads
@@ -117,17 +118,27 @@ export async function POST(request: NextRequest) {
       throw insertError
     }
 
-    // Envoyer l'email de confirmation de pré-inscription (ne pas bloquer si ça échoue)
+    // Envoyer l'email et SMS de confirmation de pré-inscription (ne pas bloquer si ça échoue)
+    const leadName = lead.first_name && lead.last_name 
+      ? `${lead.first_name} ${lead.last_name}` 
+      : lead.first_name || lead.company_name || undefined
+
+    // Envoyer l'email
     try {
-      await sendOnboardingConfirmationEmail(
-        lead.email,
-        lead.first_name && lead.last_name 
-          ? `${lead.first_name} ${lead.last_name}` 
-          : lead.first_name || lead.company_name || undefined
-      )
+      await sendOnboardingConfirmationEmail(lead.email, leadName)
     } catch (emailError) {
       console.error('Error sending onboarding confirmation email:', emailError)
       // On continue quand même, l'email n'est pas critique
+    }
+
+    // Envoyer le SMS si un numéro de téléphone est fourni
+    if (lead.phone) {
+      try {
+        await sendOnboardingConfirmationSMS(lead.phone, leadName)
+      } catch (smsError) {
+        console.error('Error sending onboarding confirmation SMS:', smsError)
+        // On continue quand même, le SMS n'est pas critique
+      }
     }
 
     return NextResponse.json({ lead }, { status: 201 })

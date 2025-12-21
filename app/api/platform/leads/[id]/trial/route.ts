@@ -3,6 +3,7 @@ import { createPlatformClient } from '@/lib/supabase/platform'
 import { getPlatformCompanyId } from '@/lib/platform/supabase'
 import { randomBytes } from 'crypto'
 import { sendEmail } from '@/lib/services/email'
+import { sendTrialStartSMS } from '@/lib/services/sms'
 
 /**
  * POST /api/platform/leads/[id]/trial/start
@@ -233,16 +234,17 @@ export async function POST(
         value: true,
       })
 
-    // 9. Envoyer l'email de bienvenue avec les identifiants (ne pas bloquer si ça échoue)
+    // 9. Envoyer email et SMS de bienvenue avec les identifiants (ne pas bloquer si ça échoue)
+    const leadName = lead.first_name && lead.last_name 
+      ? `${lead.first_name} ${lead.last_name}` 
+      : lead.first_name || lead.company_name || undefined
+
+    const loginUrl = process.env.NEXT_PUBLIC_APP_URL 
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/login?email=${encodeURIComponent(lead.email)}`
+      : `/auth/login?email=${encodeURIComponent(lead.email)}`
+
+    // Envoyer l'email
     try {
-      const leadName = lead.first_name && lead.last_name 
-        ? `${lead.first_name} ${lead.last_name}` 
-        : lead.first_name || lead.company_name || undefined
-
-      const loginUrl = process.env.NEXT_PUBLIC_APP_URL 
-        ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/login?email=${encodeURIComponent(lead.email)}`
-        : `/auth/login?email=${encodeURIComponent(lead.email)}`
-
       await sendEmail({
         to: lead.email,
         subject: 'Votre essai gratuit TalosPrime démarre maintenant !',
@@ -368,6 +370,21 @@ L'équipe TalosPrime
     } catch (emailError) {
       console.error('Error sending trial start email:', emailError)
       // On continue quand même, l'email n'est pas critique
+    }
+
+    // Envoyer le SMS si un numéro de téléphone est fourni
+    if (lead.phone) {
+      try {
+        await sendTrialStartSMS(
+          lead.phone,
+          leadName,
+          lead.email,
+          tempPassword
+        )
+      } catch (smsError) {
+        console.error('Error sending trial start SMS:', smsError)
+        // On continue quand même, le SMS n'est pas critique
+      }
     }
 
     return NextResponse.json({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createPlatformClient } from '@/lib/supabase/platform'
 import type { InterviewUpdate } from '@/lib/types/onboarding'
 import { sendInterviewConfirmationEmail } from '@/lib/services/email'
+import { sendInterviewConfirmationSMS } from '@/lib/services/sms'
 
 /**
  * POST /api/platform/leads/[id]/interview/schedule
@@ -18,7 +19,7 @@ export async function POST(
     // Vérifier que le lead existe et récupérer ses infos
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('id, status, onboarding_step, email, first_name, last_name, company_name')
+      .select('id, status, onboarding_step, email, first_name, last_name, company_name, phone')
       .eq('id', id)
       .single()
 
@@ -72,21 +73,40 @@ export async function POST(
       // On continue quand même
     }
 
-    // Envoyer l'email de confirmation d'entretien (ne pas bloquer si ça échoue)
-    try {
-      const leadName = lead.first_name && lead.last_name 
-        ? `${lead.first_name} ${lead.last_name}` 
-        : lead.first_name || lead.company_name || undefined
+    // Envoyer email et SMS de confirmation d'entretien (ne pas bloquer si ça échoue)
+    const leadName = lead.first_name && lead.last_name 
+      ? `${lead.first_name} ${lead.last_name}` 
+      : lead.first_name || lead.company_name || undefined
 
+    const scheduledDate = interview.scheduled_at ? new Date(interview.scheduled_at) : undefined
+    const meetingLink = interview.meeting_link || undefined
+
+    // Envoyer l'email
+    try {
       await sendInterviewConfirmationEmail(
         lead.email,
         leadName,
-        interview.scheduled_at ? new Date(interview.scheduled_at) : undefined,
-        interview.meeting_link || undefined
+        scheduledDate,
+        meetingLink
       )
     } catch (emailError) {
       console.error('Error sending interview confirmation email:', emailError)
       // On continue quand même, l'email n'est pas critique
+    }
+
+    // Envoyer le SMS si un numéro de téléphone est fourni
+    if (lead.phone) {
+      try {
+        await sendInterviewConfirmationSMS(
+          lead.phone,
+          leadName,
+          scheduledDate,
+          meetingLink
+        )
+      } catch (smsError) {
+        console.error('Error sending interview confirmation SMS:', smsError)
+        // On continue quand même, le SMS n'est pas critique
+      }
     }
 
     return NextResponse.json({ interview }, { status: 201 })

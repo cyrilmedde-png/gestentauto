@@ -3,6 +3,7 @@ import { createPlatformClient } from '@/lib/supabase/platform'
 import { generateRecommendations } from '@/lib/platform/recommendations'
 import type { LeadUpdate } from '@/lib/types/onboarding'
 import { sendEmail } from '@/lib/services/email'
+import { sendQuestionnaireReminderSMS } from '@/lib/services/sms'
 
 /**
  * POST /api/platform/leads/[id]/questionnaire
@@ -19,7 +20,7 @@ export async function POST(
     // Vérifier que le lead existe et récupérer ses infos
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('id, status, email, first_name, last_name, company_name')
+      .select('id, status, email, first_name, last_name, company_name, phone')
       .eq('id', id)
       .single()
 
@@ -84,16 +85,19 @@ export async function POST(
       // On continue quand même car le questionnaire est sauvegardé
     }
 
-    // Envoyer un email de confirmation de complétion du questionnaire (ne pas bloquer si ça échoue)
+    // Envoyer email et SMS de confirmation de complétion du questionnaire (ne pas bloquer si ça échoue)
+    const leadName = lead.first_name && lead.last_name 
+      ? `${lead.first_name} ${lead.last_name}` 
+      : lead.first_name || lead.company_name || undefined
+
+    const nextStepText = recommendations.next_step === 'trial' 
+      ? 'Vous pouvez maintenant démarrer votre essai gratuit de 7 jours !'
+      : 'Notre équipe va vous contacter pour planifier un entretien.'
+
+    const questionnaireLink = `${process.env.NEXT_PUBLIC_APP_URL || ''}/platform/leads/${id}/questionnaire`
+
+    // Envoyer l'email
     try {
-      const leadName = lead.first_name && lead.last_name 
-        ? `${lead.first_name} ${lead.last_name}` 
-        : lead.first_name || lead.company_name || undefined
-
-      const nextStepText = recommendations.next_step === 'trial' 
-        ? 'Vous pouvez maintenant démarrer votre essai gratuit de 7 jours !'
-        : 'Notre équipe va vous contacter pour planifier un entretien.'
-
       await sendEmail({
         to: lead.email,
         subject: 'Questionnaire complété - TalosPrime',
@@ -166,6 +170,20 @@ export async function POST(
     } catch (emailError) {
       console.error('Error sending questionnaire completion email:', emailError)
       // On continue quand même, l'email n'est pas critique
+    }
+
+    // Envoyer le SMS si un numéro de téléphone est fourni
+    if (lead.phone) {
+      try {
+        await sendQuestionnaireReminderSMS(
+          lead.phone,
+          leadName,
+          questionnaireLink
+        )
+      } catch (smsError) {
+        console.error('Error sending questionnaire completion SMS:', smsError)
+        // On continue quand même, le SMS n'est pas critique
+      }
     }
 
     return NextResponse.json({
