@@ -45,11 +45,17 @@ git reset --hard origin/main || {
 
 echo "✅ Dernières modifications récupérées avec succès"
 
-echo "🔨 Construction de l'application..."
-npm run build || {
-    echo "❌ Erreur lors du build"
-    exit 1
-}
+    echo "📦 Installation des dépendances..."
+    npm install || {
+      echo "❌ Erreur lors de l'installation des dépendances"
+      exit 1
+    }
+
+    echo "🔨 Construction de l'application..."
+    npm run build || {
+      echo "❌ Erreur lors du build"
+      exit 1
+    }
 
 echo "🔄 Redémarrage de l'application PM2..."
 pm2 restart talosprime || {
