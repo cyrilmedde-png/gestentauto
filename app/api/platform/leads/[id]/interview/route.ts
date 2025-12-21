@@ -30,9 +30,17 @@ export async function POST(
       )
     }
 
-    const body = await request.json()
+    let body
+    try {
+      body = await request.json()
+    } catch (jsonError) {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
 
-    if (!body.scheduled_at) {
+    if (!body || !body.scheduled_at) {
       return NextResponse.json(
         { error: 'scheduled_at is required' },
         { status: 400 }
@@ -229,7 +237,15 @@ export async function PATCH(
     const supabase = createPlatformClient()
     const { id } = await params
 
-    const body = await request.json()
+    let body
+    try {
+      body = await request.json()
+    } catch (jsonError) {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
 
     // Vérifier que l'entretien existe
     const { data: existingInterview, error: checkError } = await supabase

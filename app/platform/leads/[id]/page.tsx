@@ -89,8 +89,14 @@ export default function LeadDetailPage() {
 
       const response = await fetch(`/api/platform/leads/${leadId}`)
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Erreur lors du chargement')
+        // Vérifier si la réponse est du JSON
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json()
+          throw new Error(data.error || 'Erreur lors du chargement')
+        } else {
+          throw new Error(`Erreur serveur (${response.status})`)
+        }
       }
 
       const data = await response.json()

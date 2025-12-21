@@ -129,8 +129,15 @@ export function InterviewForm({
         })
 
         if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Erreur lors de la mise à jour')
+          // Vérifier si la réponse est du JSON
+          const contentType = response.headers.get('content-type')
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json()
+            throw new Error(data.error || 'Erreur lors de la mise à jour')
+          } else {
+            const text = await response.text()
+            throw new Error(`Erreur serveur (${response.status}): ${text.substring(0, 100)}`)
+          }
         }
       } else {
         // Mode création (POST)
@@ -151,8 +158,15 @@ export function InterviewForm({
         })
 
         if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Erreur lors de la planification')
+          // Vérifier si la réponse est du JSON
+          const contentType = response.headers.get('content-type')
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json()
+            throw new Error(data.error || 'Erreur lors de la planification')
+          } else {
+            const text = await response.text()
+            throw new Error(`Erreur serveur (${response.status}): ${text.substring(0, 100)}`)
+          }
         }
       }
 
