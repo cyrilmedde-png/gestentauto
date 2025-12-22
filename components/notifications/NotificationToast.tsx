@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { X, CheckCircle, AlertCircle, Info, Bell, UserPlus } from 'lucide-react'
+import { useAuth } from '@/components/auth/AuthProvider'
 
 interface Notification {
   id: string
@@ -14,8 +15,33 @@ interface Notification {
 }
 
 export function NotificationToast() {
+  const { user } = useAuth()
+  const [isPlatform, setIsPlatform] = useState<boolean | null>(null)
   const [currentNotification, setCurrentNotification] = useState<Notification | null>(null)
   const [isVisible, setIsVisible] = useState(false)
+
+  // Vérifier si l'utilisateur est plateforme
+  useEffect(() => {
+    if (!user?.id) {
+      setIsPlatform(false)
+      return
+    }
+
+    fetch('/api/auth/check-user-type', {
+      method: 'GET',
+      headers: {
+        'X-User-Id': user.id,
+      },
+      credentials: 'include',
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setIsPlatform(data.isPlatform || false)
+      })
+      .catch(() => {
+        setIsPlatform(false)
+      })
+  }, [user?.id])
 
   useEffect(() => {
     const handleNewNotification = (event: CustomEvent<Notification>) => {
@@ -38,7 +64,8 @@ export function NotificationToast() {
     }
   }, [])
 
-  if (!currentNotification || !isVisible) return null
+  // Ne pas afficher si l'utilisateur n'est pas plateforme
+  if (!isPlatform || !currentNotification || !isVisible) return null
 
   const getIcon = () => {
     switch (currentNotification.type) {

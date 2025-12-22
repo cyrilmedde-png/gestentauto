@@ -3,12 +3,43 @@
 import { useState, useRef, useEffect } from 'react'
 import { Bell, X, Check, CheckCheck, ExternalLink } from 'lucide-react'
 import { useNotifications, type Notification } from '@/lib/hooks/useNotifications'
+import { useAuth } from '@/components/auth/AuthProvider'
 import Link from 'next/link'
 
 export function NotificationDropdown() {
+  const { user } = useAuth()
+  const [isPlatform, setIsPlatform] = useState<boolean | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
+
+  // Vérifier si l'utilisateur est plateforme
+  useEffect(() => {
+    if (!user?.id) {
+      setIsPlatform(false)
+      return
+    }
+
+    fetch('/api/auth/check-user-type', {
+      method: 'GET',
+      headers: {
+        'X-User-Id': user.id,
+      },
+      credentials: 'include',
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setIsPlatform(data.isPlatform || false)
+      })
+      .catch(() => {
+        setIsPlatform(false)
+      })
+  }, [user?.id])
+
+  // Ne pas afficher si l'utilisateur n'est pas plateforme
+  if (!isPlatform) {
+    return null
+  }
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
