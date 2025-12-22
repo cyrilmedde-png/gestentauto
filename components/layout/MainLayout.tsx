@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { HeaderProvider, useHeader } from './HeaderContext'
 import { SidebarProvider, useSidebar } from './SidebarContext'
+import { NotificationToast } from '@/components/notifications/NotificationToast'
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
   const { isHeaderVisible } = useHeader()
@@ -30,6 +31,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     >
       <Sidebar />
       <Header />
+      <NotificationToast />
       <main 
         className="relative z-10 transition-all duration-300"
         style={{

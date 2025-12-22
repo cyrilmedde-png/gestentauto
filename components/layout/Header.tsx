@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, Bell } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { useHeader } from './HeaderContext'
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown'
 
 export function Header() {
   const [isVisible, setIsVisible] = useState(false)
@@ -85,12 +86,7 @@ export function Header() {
 
               {/* Actions */}
               <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                <button 
-                  className="p-2 sm:p-2.5 text-muted-foreground hover:text-foreground active:text-foreground transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
-                  aria-label="Notifications"
-                >
-                  <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
-                </button>
+                <NotificationDropdown />
               </div>
             </div>
           </div>
