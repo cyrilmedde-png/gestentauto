@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
+import { checkN8NConfig, getN8NAuthHeaders, proxyN8NRequest } from '@/lib/services/n8n'
 
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
-const N8N_USERNAME = process.env.N8N_BASIC_AUTH_USER
-const N8N_PASSWORD = process.env.N8N_BASIC_AUTH_PASSWORD
 
 /**
  * Route API proxy pour la racine N8N (sans chemin)
@@ -54,9 +53,16 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  if (!N8N_USERNAME || !N8N_PASSWORD) {
+  // Vérifier la configuration N8N
+  const configCheck = checkN8NConfig()
+  if (!configCheck.valid) {
+    console.error('[N8N Proxy Root] Configuration invalide:', configCheck.error)
     return NextResponse.json(
-      { error: 'N8N authentication not configured' },
+      { 
+        error: 'Configuration N8N invalide',
+        details: configCheck.error,
+        hint: 'Vérifiez que N8N_URL, N8N_BASIC_AUTH_USER et N8N_BASIC_AUTH_PASSWORD sont configurés dans les variables d\'environnement'
+      },
       { status: 500 }
     )
   }
@@ -67,14 +73,19 @@ export async function GET(request: NextRequest) {
     .replace(/&$/, '')
   const n8nUrl = `${N8N_URL}/${queryString ? `?${queryString}` : ''}`
   
-  // Créer l'en-tête d'authentification basique
-  const auth = Buffer.from(`${N8N_USERNAME}:${N8N_PASSWORD}`).toString('base64')
+  // Obtenir les en-têtes d'authentification
+  const authHeaders = getN8NAuthHeaders()
+  if (!authHeaders) {
+    return NextResponse.json(
+      { error: 'Impossible de créer les en-têtes d\'authentification N8N' },
+      { status: 500 }
+    )
+  }
   
   try {
-    const response = await fetch(n8nUrl, {
+    const response = await proxyN8NRequest(n8nUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Basic ${auth}`,
         'User-Agent': request.headers.get('user-agent') || 'TalosPrime-Platform',
         'Accept': request.headers.get('accept') || '*/*',
         'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9',
@@ -157,10 +168,15 @@ export async function GET(request: NextRequest) {
       })
     }
   } catch (error) {
-    console.error('Error proxying N8N request:', error)
+    console.error('[N8N Proxy Root] Error proxying N8N request:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     return NextResponse.json(
-      { error: 'Failed to proxy request to N8N' },
-      { status: 500 }
+      { 
+        error: 'Échec de la connexion à N8N',
+        details: errorMessage,
+        hint: 'Vérifiez que N8N est démarré et accessible à l\'adresse ' + N8N_URL
+      },
+      { status: 503 }
     )
   }
 }
@@ -181,22 +197,26 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  if (!N8N_USERNAME || !N8N_PASSWORD) {
+  // Vérifier la configuration N8N
+  const configCheck = checkN8NConfig()
+  if (!configCheck.valid) {
+    console.error('[N8N Proxy Root POST] Configuration invalide:', configCheck.error)
     return NextResponse.json(
-      { error: 'N8N authentication not configured' },
+      { 
+        error: 'Configuration N8N invalide',
+        details: configCheck.error
+      },
       { status: 500 }
     )
   }
 
   const n8nUrl = `${N8N_URL}/`
-  const auth = Buffer.from(`${N8N_USERNAME}:${N8N_PASSWORD}`).toString('base64')
   const body = await request.text()
   
   try {
-    const response = await fetch(n8nUrl, {
+    const response = await proxyN8NRequest(n8nUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${auth}`,
         'Content-Type': request.headers.get('content-type') || 'application/json',
         'User-Agent': request.headers.get('user-agent') || 'TalosPrime-Platform',
       },
@@ -213,10 +233,15 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Error proxying N8N POST request:', error)
+    console.error('[N8N Proxy Root POST] Error proxying N8N request:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     return NextResponse.json(
-      { error: 'Failed to proxy request to N8N' },
-      { status: 500 }
+      { 
+        error: 'Échec de la connexion à N8N',
+        details: errorMessage,
+        hint: 'Vérifiez que N8N est démarré et accessible'
+      },
+      { status: 503 }
     )
   }
 }

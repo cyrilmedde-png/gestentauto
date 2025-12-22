@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
+import { checkN8NConfig, proxyN8NRequest } from '@/lib/services/n8n'
 
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
-const N8N_USERNAME = process.env.N8N_BASIC_AUTH_USER
-const N8N_PASSWORD = process.env.N8N_BASIC_AUTH_PASSWORD
 
 /**
  * Route pour intercepter les requêtes vers /rest/* depuis N8N
@@ -67,9 +66,15 @@ export async function GET(
     // On laisse passer directement - N8N gérera l'authentification
   }
 
-  if (!N8N_USERNAME || !N8N_PASSWORD) {
+  // Vérifier la configuration N8N
+  const configCheck = checkN8NConfig()
+  if (!configCheck.valid) {
+    console.error('[N8N /rest] Configuration invalide:', configCheck.error)
     return NextResponse.json(
-      { error: 'N8N authentication not configured' },
+      { 
+        error: 'Configuration N8N invalide',
+        details: configCheck.error
+      },
       { status: 500 }
     )
   }
@@ -79,24 +84,15 @@ export async function GET(
   const queryString = searchParams.toString()
   const n8nUrl = `${N8N_URL}/rest/${restPath}${queryString ? `?${queryString}` : ''}`
   
-  // Créer l'en-tête d'authentification basique
-  const auth = Buffer.from(`${N8N_USERNAME}:${N8N_PASSWORD}`).toString('base64')
-  
   // Log pour déboguer /rest/login
   if (restPath === 'login') {
     console.log('[N8N /rest/login GET] Proxying to:', n8nUrl)
-    console.log('[N8N /rest/login GET] Has auth:', !!N8N_USERNAME && !!N8N_PASSWORD)
     console.log('[N8N /rest/login GET] N8N_URL:', N8N_URL)
     console.log('[N8N /rest/login GET] Request URL:', request.url)
-    console.log('[N8N /rest/login GET] Request headers:', {
-      'user-agent': request.headers.get('user-agent'),
-      'accept': request.headers.get('accept'),
-      'cookie': request.headers.get('cookie') ? 'Present' : 'Missing',
-    })
   }
   
   try {
-    const response = await fetch(n8nUrl, {
+    const response = await proxyN8NRequest(n8nUrl, {
       method: 'GET',
       headers: {
         'Authorization': `Basic ${auth}`,
@@ -169,10 +165,15 @@ export async function GET(
       headers: responseHeaders,
     })
   } catch (error) {
-    console.error('Error proxying N8N REST API:', error)
+    console.error('[N8N /rest] Error proxying N8N REST API:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     return NextResponse.json(
-      { error: 'Failed to proxy REST API request to N8N' },
-      { status: 500 }
+      { 
+        error: 'Échec de la connexion à l\'API REST N8N',
+        details: errorMessage,
+        hint: 'Vérifiez que N8N est démarré et accessible'
+      },
+      { status: 503 }
     )
   }
 }
@@ -266,9 +267,15 @@ async function handleRestRequest(
     // On laisse passer directement - N8N gérera l'authentification
   }
 
-  if (!N8N_USERNAME || !N8N_PASSWORD) {
+  // Vérifier la configuration N8N
+  const configCheck = checkN8NConfig()
+  if (!configCheck.valid) {
+    console.error(`[N8N /rest ${method}] Configuration invalide:`, configCheck.error)
     return NextResponse.json(
-      { error: 'N8N authentication not configured' },
+      { 
+        error: 'Configuration N8N invalide',
+        details: configCheck.error
+      },
       { status: 500 }
     )
   }
@@ -278,22 +285,18 @@ async function handleRestRequest(
   const queryString = searchParams.toString()
   const n8nUrl = `${N8N_URL}/rest/${restPath}${queryString ? `?${queryString}` : ''}`
   
-  // Créer l'en-tête d'authentification basique
-  const auth = Buffer.from(`${N8N_USERNAME}:${N8N_PASSWORD}`).toString('base64')
   const body = await request.text()
   
   // Log pour déboguer /rest/login
   if (restPath === 'login') {
     console.log(`[N8N /rest/login ${method}] Proxying to:`, n8nUrl)
-    console.log(`[N8N /rest/login ${method}] Has auth:`, !!N8N_USERNAME && !!N8N_PASSWORD)
     console.log(`[N8N /rest/login ${method}] Body length:`, body.length)
   }
   
   try {
-    const response = await fetch(n8nUrl, {
+    const response = await proxyN8NRequest(n8nUrl, {
       method: method,
       headers: {
-        'Authorization': `Basic ${auth}`,
         'Content-Type': request.headers.get('content-type') || 'application/json',
         'User-Agent': request.headers.get('user-agent') || 'TalosPrime-Platform',
         'Accept': request.headers.get('accept') || 'application/json',
@@ -350,10 +353,15 @@ async function handleRestRequest(
       headers: responseHeaders,
     })
   } catch (error) {
-    console.error(`Error proxying N8N REST API ${method}:`, error)
+    console.error(`[N8N /rest ${method}] Error proxying N8N REST API:`, error)
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     return NextResponse.json(
-      { error: `Failed to proxy ${method} request to N8N` },
-      { status: 500 }
+      { 
+        error: `Échec de la connexion à l'API REST N8N (${method})`,
+        details: errorMessage,
+        hint: 'Vérifiez que N8N est démarré et accessible'
+      },
+      { status: 503 }
     )
   }
 }

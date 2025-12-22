@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
+import { checkN8NConfig, proxyN8NRequest } from '@/lib/services/n8n'
 
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
-const N8N_USERNAME = process.env.N8N_BASIC_AUTH_USER
-const N8N_PASSWORD = process.env.N8N_BASIC_AUTH_PASSWORD
 
 /**
  * Route pour intercepter les requêtes vers /assets/* depuis N8N
@@ -35,9 +34,15 @@ export async function GET(
     )
   }
 
-  if (!N8N_USERNAME || !N8N_PASSWORD) {
+  // Vérifier la configuration N8N
+  const configCheck = checkN8NConfig()
+  if (!configCheck.valid) {
+    console.error('[N8N /assets] Configuration invalide:', configCheck.error)
     return NextResponse.json(
-      { error: 'N8N authentication not configured' },
+      { 
+        error: 'Configuration N8N invalide',
+        details: configCheck.error
+      },
       { status: 500 }
     )
   }
@@ -50,14 +55,10 @@ export async function GET(
   
   const n8nUrl = `${N8N_URL}/assets/${assetPath}`
   
-  // Créer l'en-tête d'authentification basique
-  const auth = Buffer.from(`${N8N_USERNAME}:${N8N_PASSWORD}`).toString('base64')
-  
   try {
-    const response = await fetch(n8nUrl, {
+    const response = await proxyN8NRequest(n8nUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Basic ${auth}`,
         'User-Agent': request.headers.get('user-agent') || 'TalosPrime-Platform',
         'Accept': request.headers.get('accept') || '*/*',
       },
@@ -76,10 +77,15 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('Error proxying N8N asset:', error)
+    console.error('[N8N /assets] Error proxying N8N asset:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     return NextResponse.json(
-      { error: 'Failed to proxy asset from N8N' },
-      { status: 500 }
+      { 
+        error: 'Échec de la récupération de l\'asset N8N',
+        details: errorMessage,
+        hint: 'Vérifiez que N8N est démarré et accessible'
+      },
+      { status: 503 }
     )
   }
 }
