@@ -2,7 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', 'www.talosprimes.com', 'talosprimes.com'],
+    unoptimized: false,
   },
 }
 
