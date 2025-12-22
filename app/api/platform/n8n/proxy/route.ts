@@ -10,12 +10,17 @@ const N8N_PASSWORD = process.env.N8N_BASIC_AUTH_PASSWORD
  * Accessible uniquement aux utilisateurs de la plateforme
  */
 export async function GET(request: NextRequest) {
+  // Récupérer l'ID utilisateur depuis les query params si disponible
+  const { searchParams } = new URL(request.url)
+  const userId = searchParams.get('userId')
+  
   // Vérifier que l'utilisateur est de la plateforme
-  const { isPlatform, error } = await verifyPlatformUser(request)
+  // Passer l'ID utilisateur si disponible pour faciliter l'authentification
+  const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
   
   if (!isPlatform || error) {
     return NextResponse.json(
-      { error: 'Unauthorized - Plateforme uniquement' },
+      { error: 'Unauthorized - Plateforme uniquement', details: error },
       { status: 403 }
     )
   }
@@ -79,12 +84,26 @@ export async function GET(request: NextRequest) {
  * Proxy pour les requêtes POST (webhooks, etc.)
  */
 export async function POST(request: NextRequest) {
+  // Récupérer l'ID utilisateur depuis les query params ou le body si disponible
+  const { searchParams } = new URL(request.url)
+  let userId = searchParams.get('userId')
+  
+  // Essayer aussi depuis le body
+  if (!userId) {
+    try {
+      const body = await request.clone().json()
+      userId = body.userId
+    } catch {
+      // Body n'est pas JSON ou vide
+    }
+  }
+  
   // Vérifier que l'utilisateur est de la plateforme
-  const { isPlatform, error } = await verifyPlatformUser(request)
+  const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
   
   if (!isPlatform || error) {
     return NextResponse.json(
-      { error: 'Unauthorized - Plateforme uniquement' },
+      { error: 'Unauthorized - Plateforme uniquement', details: error },
       { status: 403 }
     )
   }
