@@ -95,6 +95,7 @@ export async function verifyPlatformUser(
     const platformId = await getPlatformCompanyId()
 
     if (!platformId) {
+      console.error('[verifyPlatformUser] Platform ID not found')
       return {
         isPlatform: false,
         error: 'Platform not configured',
@@ -105,7 +106,22 @@ export async function verifyPlatformUser(
     const normalizedUserCompanyId = String(userData.company_id).trim().toLowerCase()
     const normalizedPlatformId = String(platformId).trim().toLowerCase()
 
+    console.log('[verifyPlatformUser] Company comparison:', {
+      userId: finalUserId,
+      userCompanyId: normalizedUserCompanyId,
+      platformId: normalizedPlatformId,
+      match: normalizedPlatformId === normalizedUserCompanyId,
+    })
+
     const isPlatform = normalizedPlatformId === normalizedUserCompanyId
+
+    if (!isPlatform) {
+      console.warn('[verifyPlatformUser] User is not platform user:', {
+        userId: finalUserId,
+        userCompanyId: normalizedUserCompanyId,
+        platformId: normalizedPlatformId,
+      })
+    }
 
     return { isPlatform }
   } catch (error) {
