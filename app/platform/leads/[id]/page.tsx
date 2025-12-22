@@ -461,18 +461,16 @@ export default function LeadDetailPage() {
           )}
 
           {/* Actions */}
-          <div className="flex gap-4">
-            {lead.status !== 'trial_started' && questionnaire && (
-              <div className="mt-4 sm:mt-6 flex justify-end">
-                <button
-                  onClick={handleStartTrial}
-                  className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition-colors min-h-[44px] touch-manipulation text-sm sm:text-base"
-                >
-                  Démarrer l'essai gratuit
-                </button>
-              </div>
-            )}
-          </div>
+          {lead.status !== 'trial_started' && questionnaire && (
+            <div className="mt-4 sm:mt-6 flex justify-end">
+              <button
+                onClick={handleStartTrial}
+                className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition-colors min-h-[44px] touch-manipulation text-sm sm:text-base"
+              >
+                Démarrer l'essai gratuit
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Edit Modal */}
