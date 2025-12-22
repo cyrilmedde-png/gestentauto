@@ -61,18 +61,64 @@ export async function GET(
     })
 
     const contentType = response.headers.get('content-type') || 'application/octet-stream'
-    const data = await response.arrayBuffer()
+    
+    // Pour le HTML, on doit réécrire les URLs. Pour les autres, on peut utiliser arrayBuffer
+    if (contentType.includes('text/html')) {
+      let htmlData = await response.text()
+      
+      // Utiliser le domaine public depuis les headers
+      const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
+      const protocol = request.headers.get('x-forwarded-proto') || 'https'
+      const baseUrl = host 
+        ? `${protocol}://${host}`
+        : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.talosprimes.com')
+      
+      const proxyBase = `/api/platform/n8n/proxy`
+      const userIdParam = userId ? `?userId=${encodeURIComponent(userId)}` : ''
+      
+      // Remplacer les URLs relatives par des URLs proxy
+      htmlData = htmlData.replace(
+        /(src|href|action)=["']([^"']+)["']/g,
+        (match, attr, url) => {
+          // Ignorer les URLs absolutes externes
+          if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('mailto:') || url.startsWith('#')) {
+            return match
+          }
+          
+          // Si l'URL commence par /, la faire passer par le proxy
+          if (url.startsWith('/')) {
+            const cleanPath = url.substring(1)
+            return `${attr}="${baseUrl}${proxyBase}/${cleanPath}${userIdParam}"`
+          }
+          
+          // URLs relatives - construire le chemin complet
+          const currentPath = params.path && params.path.length > 0 ? params.path.join('/') : ''
+          const relativePath = currentPath ? `${currentPath}/${url}` : url
+          return `${attr}="${baseUrl}${proxyBase}/${relativePath}${userIdParam}"`
+        }
+      )
+      
+      return new NextResponse(htmlData, {
+        status: response.status,
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      })
+    } else {
+      // Pour les autres types (JS, CSS, images, etc.), utiliser arrayBuffer
+      const data = await response.arrayBuffer()
 
-    // Retourner la réponse avec les headers appropriés
-    return new NextResponse(data, {
-      status: response.status,
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': contentType.includes('javascript') || contentType.includes('css')
-          ? 'public, max-age=31536000, immutable'
-          : 'no-cache, no-store, must-revalidate',
-      },
-    })
+      return new NextResponse(data, {
+        status: response.status,
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': contentType.includes('javascript') || contentType.includes('css')
+            ? 'public, max-age=31536000, immutable'
+            : 'no-cache, no-store, must-revalidate',
+        },
+      })
+    }
   } catch (error) {
     console.error('Error proxying N8N request:', error)
     return NextResponse.json(
