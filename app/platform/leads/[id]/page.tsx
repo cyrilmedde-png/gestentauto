@@ -214,7 +214,7 @@ export default function LeadDetailPage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
+      <ProtectedPlatformRoute>
         <MainLayout>
           <div className="container mx-auto p-3 sm:p-4 md:p-6 lg:p-8">
             <div className="text-center py-12 text-muted-foreground">
@@ -222,13 +222,13 @@ export default function LeadDetailPage() {
             </div>
           </div>
         </MainLayout>
-      </ProtectedRoute>
+      </ProtectedPlatformRoute>
     )
   }
 
   if (error || !lead) {
     return (
-      <ProtectedRoute>
+      <ProtectedPlatformRoute>
         <MainLayout>
           <div className="container mx-auto p-3 sm:p-4 md:p-6 lg:p-8">
             <div className="text-center py-12">
@@ -242,7 +242,7 @@ export default function LeadDetailPage() {
             </div>
           </div>
         </MainLayout>
-      </ProtectedRoute>
+      </ProtectedPlatformRoute>
     )
   }
 
@@ -544,7 +544,7 @@ export default function LeadDetailPage() {
           />
         )}
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPlatformRoute>
   )
 }
 
