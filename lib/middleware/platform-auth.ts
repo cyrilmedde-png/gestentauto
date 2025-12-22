@@ -15,14 +15,27 @@ export async function verifyPlatformUser(
   userId?: string
 ): Promise<{ isPlatform: boolean; error?: string }> {
   try {
+    // Fonction helper pour nettoyer le userId
+    const cleanUserId = (id: string | null | undefined): string | undefined => {
+      if (!id) return undefined
+      // Nettoyer les query params, fragments et caractères invalides
+      let cleaned = id.split('?')[0].split('&')[0].split('#')[0].trim()
+      // Vérifier format UUID basique
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned)) {
+        console.error('[verifyPlatformUser] Invalid UUID format after cleanup:', { original: id, cleaned })
+        return undefined
+      }
+      return cleaned
+    }
+
     // Récupérer l'ID utilisateur depuis le header ou le body
-    let finalUserId = userId || request.headers.get('X-User-Id')
+    let finalUserId = cleanUserId(userId || request.headers.get('X-User-Id'))
 
     if (!finalUserId) {
       // Essayer de récupérer depuis le body (pour POST/PATCH)
       try {
         const body = await request.clone().json()
-        finalUserId = body.userId
+        finalUserId = cleanUserId(body.userId)
       } catch {
         // Si le body n'est pas JSON ou vide, continuer
       }
@@ -40,13 +53,25 @@ export async function verifyPlatformUser(
       }, {} as Record<string, string>)
       
       // Chercher n8n_userId (camelCase) ou n8n_userid (minuscule)
-      finalUserId = cookies['n8n_userId'] || cookies['n8n_userid']
+      finalUserId = cleanUserId(cookies['n8n_userId'] || cookies['n8n_userid'])
       
-      // Nettoyer le userId si il contient des query params (bug de construction URL)
-      if (finalUserId && finalUserId.includes('?')) {
-        finalUserId = finalUserId.split('?')[0]
+      // Log pour déboguer
+      if (cookies['n8n_userId'] || cookies['n8n_userid']) {
+        console.log('[verifyPlatformUser] Raw cookie value:', {
+          n8n_userId: cookies['n8n_userId'],
+          n8n_userid: cookies['n8n_userid'],
+          cleaned: finalUserId
+        })
       }
     }
+    
+    // Log final pour déboguer
+    console.log('[verifyPlatformUser] Final userId after all cleanup:', {
+      original: userId,
+      fromHeader: request.headers.get('X-User-Id'),
+      final: finalUserId,
+      requestUrl: request.url
+    })
 
     // Si aucun ID n'est fourni, essayer de récupérer depuis les cookies (session Supabase)
     if (!finalUserId) {

@@ -36,9 +36,18 @@ export async function GET(
     
     let userId = cookies['n8n_userId'] || cookies['n8n_userid'] || request.headers.get('X-User-Id')
     
-    // Nettoyer le userId si il contient des query params (bug de construction URL)
-    if (userId && userId.includes('?')) {
-      userId = userId.split('?')[0]
+    // Nettoyer le userId de manière robuste
+    if (userId) {
+      const originalUserId = userId
+      // Nettoyer les query params, fragments et caractères invalides
+      userId = userId.split('?')[0].split('&')[0].split('#')[0].trim()
+      // Vérifier format UUID basique
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+        console.error('[N8N /rest] Invalid UUID format:', { original: originalUserId, cleaned: userId })
+        userId = null
+      } else if (originalUserId !== userId) {
+        console.log('[N8N /rest] Cleaned userId:', { original: originalUserId, cleaned: userId })
+      }
     }
     
     // Vérifier que l'utilisateur est de la plateforme
@@ -226,9 +235,18 @@ async function handleRestRequest(
     
     let userId = cookies['n8n_userId'] || cookies['n8n_userid'] || request.headers.get('X-User-Id')
     
-    // Nettoyer le userId si il contient des query params (bug de construction URL)
-    if (userId && userId.includes('?')) {
-      userId = userId.split('?')[0]
+    // Nettoyer le userId de manière robuste
+    if (userId) {
+      const originalUserId = userId
+      // Nettoyer les query params, fragments et caractères invalides
+      userId = userId.split('?')[0].split('&')[0].split('#')[0].trim()
+      // Vérifier format UUID basique
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+        console.error('[N8N /rest] Invalid UUID format:', { original: originalUserId, cleaned: userId })
+        userId = null
+      } else if (originalUserId !== userId) {
+        console.log('[N8N /rest] Cleaned userId:', { original: originalUserId, cleaned: userId })
+      }
     }
     
     // Vérifier que l'utilisateur est de la plateforme

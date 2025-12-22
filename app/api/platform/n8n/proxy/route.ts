@@ -15,9 +15,18 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   let userId = searchParams.get('userId')
   
-  // Nettoyer le userId si il contient des query params (bug de construction URL)
-  if (userId && userId.includes('?')) {
-    userId = userId.split('?')[0]
+  // Nettoyer le userId de manière robuste
+  if (userId) {
+    const originalUserId = userId
+    // Nettoyer les query params, fragments et caractères invalides
+    userId = userId.split('?')[0].split('&')[0].split('#')[0].trim()
+    // Vérifier format UUID basique
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      console.error('[N8N Proxy Root] Invalid UUID format:', { original: originalUserId, cleaned: userId })
+      userId = null
+    } else if (originalUserId !== userId) {
+      console.log('[N8N Proxy Root] Cleaned userId:', { original: originalUserId, cleaned: userId })
+    }
   }
   
   // Log pour déboguer
