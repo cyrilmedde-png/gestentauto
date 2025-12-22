@@ -1,30 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createPlatformClient } from '@/lib/supabase/platform'
 import { getPlatformCompanyId } from '@/lib/platform/supabase'
 
 /**
  * GET /api/auth/check-user-type
  * Vérifie si l'utilisateur connecté est de la plateforme ou un client
+ * Le client doit envoyer son user ID dans le header X-User-Id
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient()
+    // Récupérer l'ID utilisateur depuis le header (envoyé par le client)
+    const userId = request.headers.get('X-User-Id')
     
-    // Vérifier l'authentification
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !authUser) {
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
+        { error: 'User ID not provided. Please send X-User-Id header.' },
+        { status: 400 }
       )
     }
 
-    // Récupérer les données utilisateur
+    // Utiliser le client platform pour accéder à toutes les données
+    const supabase = createPlatformClient()
+
+    // Récupérer les données utilisateur directement
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('company_id')
-      .eq('id', authUser.id)
+      .eq('id', userId)
       .single()
 
     if (userError || !userData) {
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest) {
     // Logs pour déboguer (seulement en développement)
     if (process.env.NODE_ENV === 'development') {
       console.log('Debug check-user-type:', {
-        userId: authUser.id,
+        userId: userId,
         userCompanyId: userData.company_id,
         platformId: platformId,
         normalizedUserCompanyId,

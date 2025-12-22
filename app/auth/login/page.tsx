@@ -68,7 +68,11 @@ export default function LoginPage() {
         
         // Vérifier si l'utilisateur est plateforme ou client
         try {
-          const checkResponse = await fetch('/api/auth/check-user-type')
+          const checkResponse = await fetch('/api/auth/check-user-type', {
+            headers: {
+              'X-User-Id': userData.id,
+            },
+          })
           if (checkResponse.ok) {
             const { isPlatform } = await checkResponse.json()
             if (isPlatform) {

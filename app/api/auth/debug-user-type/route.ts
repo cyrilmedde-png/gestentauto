@@ -8,31 +8,29 @@ import { createPlatformClient } from '@/lib/supabase/platform'
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient()
-    const platformSupabase = createPlatformClient()
+    // Récupérer l'ID utilisateur depuis le header (envoyé par le client)
+    const userId = request.headers.get('X-User-Id')
     
-    // Vérifier l'authentification
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !authUser) {
+    if (!userId) {
       return NextResponse.json({
-        error: 'Not authenticated',
-        authError: authError?.message,
-      }, { status: 401 })
+        error: 'User ID not provided. Please send X-User-Id header.',
+      }, { status: 400 })
     }
 
-    // Récupérer les données utilisateur
-    const { data: userData, error: userError } = await supabase
+    const platformSupabase = createPlatformClient()
+    
+    // Récupérer les données utilisateur directement avec le client platform
+    const { data: userData, error: userError } = await platformSupabase
       .from('users')
       .select('id, company_id, email, first_name, last_name')
-      .eq('id', authUser.id)
+      .eq('id', userId)
       .single()
 
     if (userError || !userData) {
       return NextResponse.json({
         error: 'User not found',
         userError: userError?.message,
-        userId: authUser.id,
+        userId: userId,
       }, { status: 404 })
     }
 

@@ -14,7 +14,11 @@ export default function Home() {
         router.push('/auth/login')
       } else {
         // Vérifier si l'utilisateur est plateforme ou client
-        fetch('/api/auth/check-user-type')
+        fetch('/api/auth/check-user-type', {
+          headers: {
+            'X-User-Id': user.id,
+          },
+        })
           .then((res) => res.json())
           .then((data) => {
             if (data.isPlatform) {

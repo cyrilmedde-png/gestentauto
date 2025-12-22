@@ -21,12 +21,21 @@ export function ProtectedPlatformRoute({ children }: { children: React.ReactNode
     }
 
     // Vérifier si l'utilisateur est de la plateforme
-    fetch('/api/auth/check-user-type')
+    // Envoyer l'ID utilisateur dans le header
+    fetch('/api/auth/check-user-type', {
+      headers: {
+        'X-User-Id': user.id,
+      },
+    })
       .then((res) => {
         if (!res.ok) {
           // Si erreur, essayer la route de debug
           console.error('Failed to check user type, trying debug route...')
-          return fetch('/api/auth/debug-user-type').then(res => res.json())
+          return fetch('/api/auth/debug-user-type', {
+            headers: {
+              'X-User-Id': user.id,
+            },
+          }).then(res => res.json())
         }
         return res.json()
       })
