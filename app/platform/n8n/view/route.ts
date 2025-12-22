@@ -10,14 +10,55 @@ const N8N_PASSWORD = process.env.N8N_BASIC_AUTH_PASSWORD
  * Cette page charge N8N dans un iframe avec authentification basique automatique
  */
 export async function GET(request: NextRequest) {
+  // Récupérer l'ID utilisateur depuis les query params (passé par la page client)
+  const { searchParams } = new URL(request.url)
+  const userId = searchParams.get('userId')
+  
   // Vérifier que l'utilisateur est de la plateforme
-  const { isPlatform, error } = await verifyPlatformUser(request)
+  // Passer l'ID utilisateur si disponible
+  const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
   
   if (!isPlatform || error) {
-    return NextResponse.json(
-      { error: 'Unauthorized - Plateforme uniquement' },
-      { status: 403 }
-    )
+    // Si l'authentification échoue, retourner une page HTML avec erreur
+    const errorHtml = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Erreur - N8N</title>
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #000;
+      color: #fff;
+    }
+    .error {
+      text-align: center;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="error">
+    <h1>Erreur d'authentification</h1>
+    <p>Vous devez être un utilisateur de la plateforme pour accéder à N8N.</p>
+    <p style="color: #888; font-size: 12px;">${error || 'Non autorisé'}</p>
+  </div>
+</body>
+</html>
+    `
+    return new NextResponse(errorHtml, {
+      status: 403,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+      },
+    })
   }
 
   if (!N8N_USERNAME || !N8N_PASSWORD) {
@@ -29,7 +70,8 @@ export async function GET(request: NextRequest) {
 
   // Créer une page HTML qui charge N8N via le proxy avec authentification
   // Le proxy gère l'authentification basique automatiquement
-  const proxyBaseUrl = '/api/platform/n8n/proxy'
+  // Passer l'ID utilisateur au proxy pour l'authentification
+  const proxyBaseUrl = userId ? `/api/platform/n8n/proxy?path=&userId=${userId}` : '/api/platform/n8n/proxy?path='
   
   const html = `
 <!DOCTYPE html>

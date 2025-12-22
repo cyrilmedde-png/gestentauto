@@ -3,21 +3,20 @@
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedPlatformRoute } from '@/components/auth/ProtectedPlatformRoute'
 import { useState, useEffect, useRef } from 'react'
+import { useAuth } from '@/components/auth/AuthProvider'
 
 export default function N8NPage() {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
-    // Utiliser le proxy pour charger N8N avec authentification automatique
-    const proxyUrl = '/api/platform/n8n/proxy?path='
-    
-    // Attendre un peu pour que le composant soit monté
-    setTimeout(() => {
+    // Attendre que l'utilisateur soit chargé
+    if (user) {
       setLoading(false)
-    }, 500)
-  }, [])
+    }
+  }, [user])
 
   // Fonction pour gérer les messages depuis l'iframe
   useEffect(() => {
@@ -74,7 +73,7 @@ export default function N8NPage() {
           <div className="flex-1 relative">
             <iframe
               ref={iframeRef}
-              src="/platform/n8n/view"
+              src={user ? `/platform/n8n/view?userId=${user.id}` : '/platform/n8n/view'}
               className="w-full h-full border-0"
               title="N8N Workflows"
               allow="clipboard-read; clipboard-write"
