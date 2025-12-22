@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Home, FileText, Users, Settings, Menu, UserPlus, Package, UserCheck, BarChart } from 'lucide-react'
+import { Home, FileText, Users, Settings, Menu, UserPlus, Package, UserCheck, BarChart, Workflow } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
@@ -41,6 +41,7 @@ export function Sidebar() {
     { icon: Users, label: 'Clients', href: '/platform/clients' },
     { icon: Users, label: 'Utilisateurs', href: '/platform/users' },
     { icon: Package, label: 'Modules', href: '/platform/modules' },
+    { icon: Workflow, label: 'N8N', href: '/platform/n8n' },
     { icon: BarChart, label: 'Analytics', href: '/platform/analytics' },
     { icon: Settings, label: 'Paramètres', href: '/platform/settings' },
   ]
