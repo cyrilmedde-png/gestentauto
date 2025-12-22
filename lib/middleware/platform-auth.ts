@@ -204,6 +204,65 @@ export async function verifyPlatformUser(
       }
     }
 
+    // MÉTHODE 1 : Vérifier dans la table platform_n8n_access (prioritaire - table dédiée)
+    const { data: n8nAccess, error: n8nAccessError } = await adminSupabase
+      .from('platform_n8n_access')
+      .select('is_platform_admin, has_n8n_access, access_level, company_id')
+      .eq('user_id', finalUserId)
+      .single()
+
+    if (!n8nAccessError && n8nAccess) {
+      // L'utilisateur est dans la table platform_n8n_access
+      if (n8nAccess.has_n8n_access) {
+        // Vérifier que le company_id correspond à la plateforme
+        const { data: platformSetting } = await adminSupabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'platform_company_id')
+          .single()
+
+        if (platformSetting) {
+          let platformCompanyIdValue: string
+          if (typeof platformSetting.value === 'string') {
+            platformCompanyIdValue = platformSetting.value.trim().toLowerCase()
+          } else {
+            const jsonStr = JSON.stringify(platformSetting.value)
+            platformCompanyIdValue = jsonStr.replace(/^"|"$/g, '').trim().toLowerCase()
+          }
+
+          const n8nAccessCompanyId = String(n8nAccess.company_id).trim().toLowerCase()
+
+          if (n8nAccessCompanyId === platformCompanyIdValue) {
+            console.log('[verifyPlatformUser] ✅ User has N8N access (platform_n8n_access table):', {
+              userId: finalUserId,
+              isPlatformAdmin: n8nAccess.is_platform_admin,
+              hasN8nAccess: n8nAccess.has_n8n_access,
+              accessLevel: n8nAccess.access_level,
+            })
+            return { isPlatform: true }
+          } else {
+            console.warn('[verifyPlatformUser] ⚠️ User in platform_n8n_access but company_id mismatch:', {
+              userId: finalUserId,
+              n8nAccessCompanyId: n8nAccessCompanyId,
+              platformCompanyIdValue: platformCompanyIdValue,
+            })
+          }
+        }
+      } else {
+        console.warn('[verifyPlatformUser] ⚠️ User in platform_n8n_access but has_n8n_access is false:', {
+          userId: finalUserId,
+          hasN8nAccess: n8nAccess.has_n8n_access,
+        })
+      }
+    } else if (n8nAccessError && n8nAccessError.code !== 'PGRST116') {
+      // PGRST116 = "no rows returned", ce qui est normal si l'utilisateur n'est pas dans la table
+      console.warn('[verifyPlatformUser] Error checking platform_n8n_access (will fallback to company_id check):', {
+        error: n8nAccessError.message,
+        code: n8nAccessError.code,
+      })
+    }
+
+    // MÉTHODE 2 : Fallback sur vérification par platform_company_id (méthode actuelle)
     // Récupérer directement platform_company_id depuis settings (source de vérité unique)
     const { data: platformSetting, error: platformError } = await adminSupabase
       .from('settings')
