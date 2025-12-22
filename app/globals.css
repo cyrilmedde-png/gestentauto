@@ -9,14 +9,7 @@
   body {
     @apply text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
-    background-color: #080808;
-    background-image:
-      linear-gradient(to right, #080808 0%, transparent 20%, transparent 80%, #080808 100%),
-      url('/background.png');
-    background-size: 45% 80%, 45% 80%;
-    background-position: center, center;
-    background-repeat: no-repeat, no-repeat;
-    background-attachment: fixed, fixed;
+    background-color: #000000;
   }
   
   /* Améliorer l'accessibilité tactile sur mobile */
