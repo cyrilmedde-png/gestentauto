@@ -44,14 +44,15 @@ export function NotificationToast() {
   }, [user?.id])
 
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
 
-    const handleNewNotification = (event: Event) => {
+    const handleNewNotification = (event: Event): void => {
       const customEvent = event as CustomEvent<Notification>
       if (customEvent.detail) {
         // Nettoyer le timer précédent s'il existe
         if (timer) {
           clearTimeout(timer)
+          timer = null
         }
 
         setCurrentNotification(customEvent.detail)
@@ -60,7 +61,10 @@ export function NotificationToast() {
         // Auto-fermer après 5 secondes
         timer = setTimeout(() => {
           setIsVisible(false)
-          setTimeout(() => setCurrentNotification(null), 300)
+          setTimeout(() => {
+            setCurrentNotification(null)
+            timer = null
+          }, 300)
         }, 5000)
       }
     }
@@ -71,6 +75,7 @@ export function NotificationToast() {
       window.removeEventListener('new-notification', handleNewNotification)
       if (timer) {
         clearTimeout(timer)
+        timer = null
       }
     }
   }, [])

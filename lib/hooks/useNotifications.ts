@@ -55,7 +55,12 @@ export function useNotifications() {
   }, [user?.id])
 
   useEffect(() => {
-    if (!user?.id) return
+    if (!user?.id) {
+      setNotifications([])
+      setUnreadCount(0)
+      setLoading(false)
+      return
+    }
 
     loadNotifications()
 
@@ -105,7 +110,8 @@ export function useNotifications() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user?.id, loadNotifications])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   const markAsRead = useCallback(async (notificationId: string) => {
     if (!user?.id) return
