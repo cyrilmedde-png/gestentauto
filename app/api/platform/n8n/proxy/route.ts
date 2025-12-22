@@ -15,10 +15,25 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const userId = searchParams.get('userId')
   
+  // Log pour déboguer
+  console.log('[N8N Proxy Root] Request:', {
+    url: request.url,
+    userId: userId,
+    hasCookies: !!request.headers.get('cookie'),
+  })
+  
   // Vérifier que l'utilisateur est de la plateforme
+  // Si userId n'est pas dans query params, verifyPlatformUser essaiera de le récupérer depuis les cookies
   const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
   
   if (!isPlatform || error) {
+    console.error('[N8N Proxy Root] Auth failed:', {
+      isPlatform,
+      error,
+      userId,
+      hasCookies: !!request.headers.get('cookie'),
+      url: request.url,
+    })
     return NextResponse.json(
       { error: 'Unauthorized - Plateforme uniquement', details: error },
       { status: 403 }

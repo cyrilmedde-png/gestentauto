@@ -101,10 +101,8 @@ export async function GET(request: NextRequest) {
   }
 
   // Créer une page HTML qui charge N8N via le proxy
-  // La route /api/platform/n8n/proxy gère la racine, et [...path] gère les sous-chemins
-  const proxyBaseUrl = userId 
-    ? `/api/platform/n8n/proxy?userId=${encodeURIComponent(userId)}` 
-    : '/api/platform/n8n/proxy'
+  // Le base href pointe vers le proxy, les cookies de session seront utilisés pour l'auth
+  const proxyBaseUrl = `/api/platform/n8n/proxy`
   
   const html = `
 <!DOCTYPE html>
@@ -113,7 +111,7 @@ export async function GET(request: NextRequest) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>N8N - Automatisation</title>
-  <base href="/api/platform/n8n/proxy?userId=${encodeURIComponent(userId || '')}">
+  <base href="${proxyBaseUrl}/">
   <style>
     * {
       margin: 0;
