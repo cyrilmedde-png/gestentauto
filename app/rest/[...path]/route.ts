@@ -72,6 +72,13 @@ export async function GET(
   if (restPath === 'login') {
     console.log('[N8N /rest/login GET] Proxying to:', n8nUrl)
     console.log('[N8N /rest/login GET] Has auth:', !!N8N_USERNAME && !!N8N_PASSWORD)
+    console.log('[N8N /rest/login GET] N8N_URL:', N8N_URL)
+    console.log('[N8N /rest/login GET] Request URL:', request.url)
+    console.log('[N8N /rest/login GET] Request headers:', {
+      'user-agent': request.headers.get('user-agent'),
+      'accept': request.headers.get('accept'),
+      'cookie': request.headers.get('cookie') ? 'Present' : 'Missing',
+    })
   }
   
   try {
@@ -88,7 +95,15 @@ export async function GET(
     // Log la réponse pour /rest/login
     if (restPath === 'login') {
       console.log('[N8N /rest/login GET] Response status:', response.status)
-      console.log('[N8N /rest/login GET] Response headers:', Object.fromEntries(response.headers.entries()))
+      console.log('[N8N /rest/login GET] Response statusText:', response.statusText)
+      const responseHeaders = Object.fromEntries(response.headers.entries())
+      console.log('[N8N /rest/login GET] Response headers:', responseHeaders)
+      console.log('[N8N /rest/login GET] Set-Cookie headers:', response.headers.getSetCookie())
+      
+      // Si 401, c'est peut-être normal (pas de session active)
+      if (response.status === 401) {
+        console.log('[N8N /rest/login GET] 401 is normal if no active session - N8N will POST to create session')
+      }
     }
 
     const contentType = response.headers.get('content-type') || 'application/json'
