@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedPlatformRoute } from '@/components/auth/ProtectedPlatformRoute'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { Users, Search, Filter, Plus, Mail, Phone, Calendar, CheckCircle, XCircle, Eye } from 'lucide-react'
+import { Users, Search, Filter, Plus, Mail, Phone, Calendar, CheckCircle, XCircle, Eye, Edit, Trash2 } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
 
 interface Client {
   id: string
@@ -43,8 +44,12 @@ function ClientsList() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all')
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     loadClients()
@@ -88,6 +93,51 @@ function ClientsList() {
     router.push(`/platform/clients/${clientId}`)
   }
 
+  const handleEditClient = (clientId: string) => {
+    router.push(`/platform/clients/${clientId}?edit=true`)
+  }
+
+  const handleDeleteClick = (client: Client) => {
+    setClientToDelete(client)
+    setDeleteModalOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!clientToDelete) return
+
+    try {
+      setDeleting(true)
+      setError(null)
+
+      const headers: HeadersInit = {}
+      if (user?.id) {
+        headers['X-User-Id'] = user.id
+      }
+
+      const response = await fetch(`/api/platform/companies/${clientToDelete.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers,
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Erreur lors de la suppression')
+      }
+
+      setSuccess(`Client "${clientToDelete.name}" supprimé avec succès`)
+      setDeleteModalOpen(false)
+      setClientToDelete(null)
+      setTimeout(() => setSuccess(null), 3000)
+      loadClients()
+    } catch (err) {
+      console.error('Erreur:', err)
+      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   // Filtrer les clients
   const filteredClients = clients.filter((client) => {
     const matchesSearch = 
@@ -120,6 +170,18 @@ function ClientsList() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Messages */}
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="p-4 bg-green-500/10 border border-green-500/50 rounded-lg text-green-400">
+          {success}
+        </div>
+      )}
+
       {/* Barre de recherche et filtres */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex-1 w-full sm:max-w-md">
@@ -253,13 +315,32 @@ function ClientsList() {
                       </div>
                     </td>
                     <td className="py-3 px-4 text-sm text-right">
-                      <button
-                        onClick={() => handleViewClient(client.id)}
-                        className="px-3 py-1 text-primary hover:bg-primary/10 rounded transition-colors flex items-center gap-1"
-                      >
-                        <Eye className="w-3 h-3" />
-                        Voir
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleViewClient(client.id)}
+                          className="px-3 py-1 text-primary hover:bg-primary/10 rounded transition-colors flex items-center gap-1"
+                          title="Voir les détails"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span className="hidden sm:inline">Voir</span>
+                        </button>
+                        <button
+                          onClick={() => handleEditClient(client.id)}
+                          className="px-3 py-1 text-blue-400 hover:bg-blue-400/10 rounded transition-colors flex items-center gap-1"
+                          title="Modifier"
+                        >
+                          <Edit className="w-3 h-3" />
+                          <span className="hidden sm:inline">Modifier</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(client)}
+                          className="px-3 py-1 text-red-400 hover:bg-red-400/10 rounded transition-colors flex items-center gap-1"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span className="hidden sm:inline">Supprimer</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -309,13 +390,29 @@ function ClientsList() {
                     <Calendar className="w-3 h-3" />
                     {new Date(client.created_at).toLocaleDateString('fr-FR')}
                   </div>
-                  <button
-                    onClick={() => handleViewClient(client.id)}
-                    className="px-3 py-1 text-sm text-primary hover:bg-primary/10 rounded transition-colors flex items-center gap-1"
-                  >
-                    <Eye className="w-3 h-3" />
-                    Voir détails
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleViewClient(client.id)}
+                      className="px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors"
+                      title="Voir"
+                    >
+                      <Eye className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => handleEditClient(client.id)}
+                      className="px-2 py-1 text-xs text-blue-400 hover:bg-blue-400/10 rounded transition-colors"
+                      title="Modifier"
+                    >
+                      <Edit className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(client)}
+                      className="px-2 py-1 text-xs text-red-400 hover:bg-red-400/10 rounded transition-colors"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -330,6 +427,58 @@ function ClientsList() {
           </div>
         </>
       )}
+
+      {/* Modal de confirmation de suppression */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!deleting) {
+            setDeleteModalOpen(false)
+            setClientToDelete(null)
+          }
+        }}
+        title="Confirmer la suppression"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-foreground">
+            Êtes-vous sûr de vouloir supprimer le client{' '}
+            <span className="font-semibold">{clientToDelete?.name}</span> ?
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Cette action est irréversible. Toutes les données associées à ce client seront également supprimées.
+          </p>
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              onClick={() => {
+                setDeleteModalOpen(false)
+                setClientToDelete(null)
+              }}
+              disabled={deleting}
+              className="px-4 py-2 bg-background border border-border/50 text-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+            >
+              {deleting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Suppression...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  <span>Supprimer</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

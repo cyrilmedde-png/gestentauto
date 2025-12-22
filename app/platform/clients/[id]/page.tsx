@@ -48,6 +48,14 @@ function ClientDetailsContent() {
   useEffect(() => {
     if (clientId) {
       loadClientDetails()
+      // Vérifier si on doit ouvrir en mode édition depuis l'URL
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search)
+        const editParam = urlParams.get('edit')
+        if (editParam === 'true') {
+          setIsEditing(true)
+        }
+      }
     }
   }, [clientId])
 
