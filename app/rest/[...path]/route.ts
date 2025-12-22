@@ -78,12 +78,6 @@ export async function GET(
     )
   }
 
-  // Construire le chemin N8N
-  const resolvedParams = await params
-  const restPath = resolvedParams.path && resolvedParams.path.length > 0 
-    ? resolvedParams.path.join('/')
-    : ''
-  
   // Construire l'URL N8N avec query params
   const { searchParams } = new URL(request.url)
   const queryString = searchParams.toString()
@@ -218,12 +212,6 @@ async function handleRestRequest(
     )
   }
 
-  // Construire le chemin N8N
-  const resolvedParams = await params
-  const restPath = resolvedParams.path && resolvedParams.path.length > 0 
-    ? resolvedParams.path.join('/')
-    : ''
-  
   // Construire l'URL N8N avec query params
   const { searchParams } = new URL(request.url)
   const queryString = searchParams.toString()
