@@ -34,13 +34,16 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // Récupérer le chemin demandé depuis les query params
-  const { searchParams } = new URL(request.url)
+  // Récupérer le chemin demandé depuis les query params (searchParams déjà déclaré)
   const path = searchParams.get('path') || ''
   const fullPath = path ? `/${path}` : ''
 
-  // Construire l'URL N8N complète
-  const n8nUrl = `${N8N_URL}${fullPath}${request.url.includes('?') ? '&' : '?'}${searchParams.toString().replace('path=', '')}`
+  // Construire l'URL N8N complète (enlever userId et path des query params)
+  const queryString = searchParams.toString()
+    .replace(/path=[^&]*&?/g, '')
+    .replace(/userId=[^&]*&?/g, '')
+    .replace(/&$/, '')
+  const n8nUrl = `${N8N_URL}${fullPath}${queryString ? `?${queryString}` : ''}`
   
   // Créer l'en-tête d'authentification basique
   const auth = Buffer.from(`${N8N_USERNAME}:${N8N_PASSWORD}`).toString('base64')
@@ -115,7 +118,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { searchParams } = new URL(request.url)
+  // Récupérer le chemin (searchParams déjà déclaré)
   const path = searchParams.get('path') || ''
   const fullPath = path ? `/${path}` : ''
   const n8nUrl = `${N8N_URL}${fullPath}`
