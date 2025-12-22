@@ -258,8 +258,8 @@ export async function verifyPlatformUser(
     // Si la vérification manuelle échoue, essayer la RPC comme dernier recours
     console.warn('[verifyPlatformUser] Manual check failed, trying RPC fallback:', {
       userId: finalUserId,
-      userCompanyId: normalizedUserCompanyId,
-      platformId: normalizedPlatformId,
+      userCompanyId: userCompanyIdValue,
+      platformId: platformCompanyIdValue,
     })
     
     try {
@@ -281,13 +281,13 @@ export async function verifyPlatformUser(
     // Si tout échoue, retourner false
     console.warn('[verifyPlatformUser] ❌ User is NOT platform user:', {
       userId: finalUserId,
-      userCompanyId: normalizedUserCompanyId,
-      platformId: normalizedPlatformId,
+      userCompanyId: userCompanyIdValue,
+      platformId: platformCompanyIdValue,
     })
 
     return { 
       isPlatform: false,
-      error: `User company (${normalizedUserCompanyId}) does not match platform company (${normalizedPlatformId})`
+      error: `User company (${userCompanyIdValue}) does not match platform company (${platformCompanyIdValue})`
     }
   } catch (error) {
     console.error('Error in verifyPlatformUser:', error)
