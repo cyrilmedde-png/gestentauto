@@ -230,18 +230,25 @@ export async function verifyPlatformUser(
       }
     }
 
-    // Normaliser les UUIDs pour la comparaison
-    const normalizedUserCompanyId = String(userData.company_id).trim().toLowerCase()
-    const normalizedPlatformId = String(platformId).trim().toLowerCase()
+    // Extraire les valeurs directement pour la comparaison
+    const userCompanyIdValue = String(userData.company_id).trim().toLowerCase()
+    const platformCompanyIdValue = String(platformId).trim().toLowerCase()
 
     console.log('[verifyPlatformUser] Manual check - Company comparison:', {
       userId: finalUserId,
-      userCompanyId: normalizedUserCompanyId,
-      platformId: normalizedPlatformId,
-      match: normalizedPlatformId === normalizedUserCompanyId,
+      userCompanyId: userData.company_id,
+      userCompanyIdValue: userCompanyIdValue,
+      platformId: platformId,
+      platformCompanyIdValue: platformCompanyIdValue,
+      match: platformCompanyIdValue === userCompanyIdValue,
+      types: {
+        userCompanyIdType: typeof userData.company_id,
+        platformIdType: typeof platformId,
+      },
     })
 
-    const isPlatform = normalizedPlatformId === normalizedUserCompanyId
+    // Comparer directement les valeurs normalisées
+    const isPlatform = platformCompanyIdValue === userCompanyIdValue
 
     if (isPlatform) {
       console.log('[verifyPlatformUser] ✅ User is platform user (manual check):', finalUserId)

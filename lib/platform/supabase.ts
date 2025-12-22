@@ -2,10 +2,31 @@ import { createPlatformClient } from '@/lib/supabase/platform'
 
 /**
  * Récupère l'ID de la plateforme depuis les settings
+ * Utilise la fonction RPC platform_company_id() qui extrait correctement la valeur avec value#>>'{}'
  */
 export async function getPlatformCompanyId(): Promise<string | null> {
   const supabase = createPlatformClient()
   
+  // MÉTHODE 1 : Utiliser la fonction RPC platform_company_id() qui existe dans la base de données
+  // Cette fonction extrait correctement la valeur avec value#>>'{}' comme dans is_platform_user()
+  try {
+    const { data, error } = await supabase.rpc('platform_company_id')
+    
+    if (!error && data) {
+      // La fonction RPC retourne directement l'UUID
+      const platformId = String(data).trim()
+      console.log('[getPlatformCompanyId] ✅ Récupéré via RPC:', platformId)
+      return platformId
+    }
+    
+    if (error) {
+      console.warn('[getPlatformCompanyId] RPC error, falling back to direct query:', error)
+    }
+  } catch (rpcErr) {
+    console.warn('[getPlatformCompanyId] RPC exception, falling back to direct query:', rpcErr)
+  }
+  
+  // MÉTHODE 2 : Fallback - récupérer depuis settings et extraire manuellement
   const { data, error } = await supabase
     .from('settings')
     .select('value')
@@ -14,7 +35,7 @@ export async function getPlatformCompanyId(): Promise<string | null> {
     .single()
 
   if (error || !data) {
-    console.error('Error fetching platform_company_id:', error)
+    console.error('[getPlatformCompanyId] ❌ Error fetching platform_company_id:', error)
     return null
   }
 
@@ -23,39 +44,46 @@ export async function getPlatformCompanyId(): Promise<string | null> {
   
   // Si c'est déjà une string, la retourner directement
   if (typeof value === 'string') {
-    return value.trim()
+    const platformId = value.trim()
+    console.log('[getPlatformCompanyId] ✅ Récupéré depuis settings (string):', platformId)
+    return platformId
   }
   
   // Si c'est un JSONB, essayer différentes méthodes d'extraction
   if (typeof value === 'object' && value !== null) {
-    // Si Supabase retourne un objet avec la valeur déjà extraite
-    // (parfois Supabase transforme les JSONB simples en objets)
-    if (value && typeof value === 'object') {
-      // Essayer d'accéder directement à une propriété si c'est un objet simple
-      const keys = Object.keys(value)
-      if (keys.length === 0) {
-        return null
-      }
-      // Si c'est un JSONB qui contient une string, elle peut être stockée comme objet
-      // Essayer de récupérer la valeur première clé ou la valeur directement
+    // Si c'est un tableau avec un élément
+    if (Array.isArray(value) && value.length > 0) {
+      const platformId = String(value[0]).trim()
+      console.log('[getPlatformCompanyId] ✅ Récupéré depuis settings (array):', platformId)
+      return platformId
+    }
+    
+    // Si c'est un objet, essayer de récupérer la première valeur
+    const keys = Object.keys(value)
+    if (keys.length > 0) {
       const firstValue = value[keys[0]]
       if (typeof firstValue === 'string') {
-        return firstValue.trim()
+        const platformId = firstValue.trim()
+        console.log('[getPlatformCompanyId] ✅ Récupéré depuis settings (object):', platformId)
+        return platformId
       }
     }
     
-    // Sinon, convertir en string JSON et nettoyer
+    // Dernier recours : convertir en string JSON et nettoyer
     try {
       const jsonString = JSON.stringify(value)
-      // Si c'est une string JSON entre guillemets, les enlever
+      // Enlever les guillemets JSON si présents
       const cleaned = jsonString.replace(/^"|"$/g, '').trim()
+      console.log('[getPlatformCompanyId] ✅ Récupéré depuis settings (JSON):', cleaned)
       return cleaned
     } catch (e) {
-      // Si ça échoue, essayer String()
-      return String(value).trim()
+      const platformId = String(value).trim()
+      console.log('[getPlatformCompanyId] ✅ Récupéré depuis settings (String):', platformId)
+      return platformId
     }
   }
   
+  console.error('[getPlatformCompanyId] ❌ Impossible d\'extraire la valeur')
   return null
 }
 
