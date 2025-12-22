@@ -181,7 +181,7 @@ export default function LeadDetailPage() {
     return (
       <ProtectedRoute>
         <MainLayout>
-          <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+          <div className="container mx-auto p-3 sm:p-4 md:p-6 lg:p-8">
             <div className="text-center py-12 text-muted-foreground">
               Chargement...
             </div>
@@ -195,7 +195,7 @@ export default function LeadDetailPage() {
     return (
       <ProtectedRoute>
         <MainLayout>
-          <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+          <div className="container mx-auto p-3 sm:p-4 md:p-6 lg:p-8">
             <div className="text-center py-12">
               <p className="text-red-400 mb-4">{error || 'Lead non trouvé'}</p>
               <Link
@@ -223,21 +223,23 @@ export default function LeadDetailPage() {
             >
               ← Retour à la liste
             </Link>
-            <div className="flex justify-between items-start">
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-                Lead : {lead.email}
-              </h1>
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 break-words">
+                  Lead : {lead.email}
+                </h1>
+              </div>
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setIsEditModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/30 transition-colors"
+                  className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/30 active:bg-yellow-500/40 transition-colors min-h-[44px] touch-manipulation text-sm sm:text-base flex-1 sm:flex-initial"
                 >
                   <Edit className="w-4 h-4" />
                   <span>Modifier</span>
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                  className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 active:bg-red-500/40 transition-colors min-h-[44px] touch-manipulation text-sm sm:text-base flex-1 sm:flex-initial"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Supprimer</span>
@@ -254,8 +256,8 @@ export default function LeadDetailPage() {
           )}
 
           {/* Informations principales */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6">
               <h2 className="text-lg font-semibold text-foreground mb-4">
                 Informations du lead
               </h2>
@@ -296,9 +298,9 @@ export default function LeadDetailPage() {
             </div>
 
             {/* Questionnaire */}
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-foreground">
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+                <h2 className="text-base sm:text-lg font-semibold text-foreground">
                   Questionnaire
                 </h2>
                 {questionnaire && (
@@ -356,7 +358,7 @@ export default function LeadDetailPage() {
                   </div>
                   <button
                     onClick={() => setIsQuestionnaireModalOpen(true)}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors text-sm sm:text-base min-h-[44px] touch-manipulation"
                   >
                     Compléter le questionnaire
                   </button>
@@ -366,14 +368,14 @@ export default function LeadDetailPage() {
           </div>
 
           {/* Entretien */}
-          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">
+          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+              <h2 className="text-base sm:text-lg font-semibold text-foreground">
                 Entretien
               </h2>
               <button
                 onClick={() => setIsInterviewModalOpen(true)}
-                className="px-3 py-1.5 text-sm bg-background border border-border rounded-lg hover:bg-card transition-colors text-foreground"
+                className="w-full sm:w-auto px-3 sm:px-4 py-2.5 bg-background border border-border rounded-lg hover:bg-card active:bg-card/80 transition-colors text-foreground min-h-[44px] touch-manipulation text-sm sm:text-base"
               >
                 {interview ? 'Modifier' : 'Planifier'}
               </button>
@@ -421,8 +423,8 @@ export default function LeadDetailPage() {
 
           {/* Essai */}
           {trial && (
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-6 mb-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+              <h2 className="text-base sm:text-lg font-semibold text-foreground mb-4">
                 Essai gratuit
               </h2>
               <div className="space-y-3">
@@ -461,12 +463,14 @@ export default function LeadDetailPage() {
           {/* Actions */}
           <div className="flex gap-4">
             {lead.status !== 'trial_started' && questionnaire && (
-              <button
-                onClick={handleStartTrial}
-                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                Démarrer l'essai gratuit
-              </button>
+              <div className="mt-4 sm:mt-6 flex justify-end">
+                <button
+                  onClick={handleStartTrial}
+                  className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition-colors min-h-[44px] touch-manipulation text-sm sm:text-base"
+                >
+                  Démarrer l'essai gratuit
+                </button>
+              </div>
             )}
           </div>
         </div>

@@ -7,7 +7,7 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <MainLayout>
-      <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+      <div className="container mx-auto p-3 sm:p-4 md:p-6 lg:p-8">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
             Tableau de bord

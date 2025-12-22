@@ -136,23 +136,25 @@ export default function LeadsPage() {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-          <div className="mb-6 sm:mb-8 flex justify-between items-start">
-            <div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
-                Leads d'onboarding
-              </h1>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                Gestion des pré-inscriptions et parcours d'onboarding
-              </p>
+        <div className="container mx-auto p-3 sm:p-4 md:p-6 lg:p-8">
+          <div className="mb-4 sm:mb-6 lg:mb-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-2">
+                  Leads d'onboarding
+                </h1>
+                <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
+                  Gestion des pré-inscriptions et parcours d'onboarding
+                </p>
+              </div>
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-3 rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors min-h-[44px] touch-manipulation w-full sm:w-auto"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="text-sm sm:text-base">Créer un lead</span>
+              </button>
             </div>
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-3 rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors min-h-[44px] touch-manipulation"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Créer un lead</span>
-            </button>
           </div>
 
           {/* Statistiques rapides */}
@@ -184,50 +186,52 @@ export default function LeadsPage() {
           </div>
 
           {/* Filtres */}
-          <div className="mb-6 flex flex-wrap gap-4">
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
-                Statut
-              </label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="bg-card border border-border rounded-lg px-4 py-2 text-foreground"
-              >
-                <option value="all">Tous</option>
-                {Object.entries(statusLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
+              <div className="flex-1 sm:flex-initial sm:min-w-[140px]">
+                <label className="block text-xs sm:text-sm font-medium text-muted-foreground mb-2">
+                  Statut
+                </label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full bg-card border border-border rounded-lg px-3 sm:px-4 py-2.5 sm:py-2 text-sm sm:text-base text-foreground min-h-[44px] touch-manipulation"
+                >
+                  <option value="all">Tous</option>
+                  {Object.entries(statusLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
-                Étape
-              </label>
-              <select
-                value={filterStep}
-                onChange={(e) => setFilterStep(e.target.value)}
-                className="bg-card border border-border rounded-lg px-4 py-2 text-foreground"
-              >
-                <option value="all">Toutes</option>
-                {Object.entries(stepLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="flex-1 sm:flex-initial sm:min-w-[140px]">
+                <label className="block text-xs sm:text-sm font-medium text-muted-foreground mb-2">
+                  Étape
+                </label>
+                <select
+                  value={filterStep}
+                  onChange={(e) => setFilterStep(e.target.value)}
+                  className="w-full bg-card border border-border rounded-lg px-3 sm:px-4 py-2.5 sm:py-2 text-sm sm:text-base text-foreground min-h-[44px] touch-manipulation"
+                >
+                  <option value="all">Toutes</option>
+                  {Object.entries(stepLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className="flex items-end">
-              <button
-                onClick={loadLeads}
-                className="bg-primary text-primary-foreground px-4 py-3 rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors min-h-[44px] touch-manipulation"
-              >
-                Actualiser
-              </button>
+              <div className="flex items-end">
+                <button
+                  onClick={loadLeads}
+                  className="w-full sm:w-auto bg-primary text-primary-foreground px-4 py-3 rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors min-h-[44px] touch-manipulation text-sm sm:text-base"
+                >
+                  Actualiser
+                </button>
+              </div>
             </div>
           </div>
 

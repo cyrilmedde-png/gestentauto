@@ -105,7 +105,7 @@ export default function SettingsPage() {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="container mx-auto p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="mb-6 sm:mb-8">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
               Paramètres
@@ -116,31 +116,31 @@ export default function SettingsPage() {
           </div>
 
           {/* Onglets */}
-          <div className="flex gap-2 mb-6 border-b border-border/50">
+          <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-border/50 overflow-x-auto">
             <button
               onClick={() => setActiveTab('platform')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 font-medium transition-colors whitespace-nowrap min-h-[44px] touch-manipulation ${
                 activeTab === 'platform'
                   ? 'text-primary border-b-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground active:text-foreground'
               }`}
             >
               <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                <span>Plateforme</span>
+                <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="text-sm sm:text-base">Plateforme</span>
               </div>
             </button>
             <button
               onClick={() => setActiveTab('clients')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 font-medium transition-colors whitespace-nowrap min-h-[44px] touch-manipulation ${
                 activeTab === 'clients'
                   ? 'text-primary border-b-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground active:text-foreground'
               }`}
             >
               <div className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                <span>Clients</span>
+                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="text-sm sm:text-base">Clients</span>
               </div>
             </button>
           </div>
@@ -534,55 +534,91 @@ function ClientsList({
       </div>
 
       {clients.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Aucun client abonné pour le moment</p>
+        <div className="text-center py-8 sm:py-12 text-muted-foreground">
+          <Users className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 opacity-50" />
+          <p className="text-sm sm:text-base">Aucun client abonné pour le moment</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border/50">
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  Nom
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  Email
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  Statut
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  Date d'inscription
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.map((client) => (
-                <tr key={client.id} className="border-b border-border/30 hover:bg-background/30">
-                  <td className="py-3 px-4 text-sm text-foreground">
-                    {client.name}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-muted-foreground">
-                    {client.email || '-'}
-                  </td>
-                  <td className="py-3 px-4 text-sm">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      client.subscription_status === 'active'
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-gray-500/20 text-gray-400'
-                    }`}>
-                      {client.subscription_status || 'Non défini'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-sm text-muted-foreground">
-                    {new Date(client.created_at).toLocaleDateString('fr-FR')}
-                  </td>
+        <>
+          {/* Version Desktop (tableau) */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border/50">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                    Nom
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                    Email
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                    Statut
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                    Date d'inscription
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {clients.map((client) => (
+                  <tr key={client.id} className="border-b border-border/30 hover:bg-background/30">
+                    <td className="py-3 px-4 text-sm text-foreground">
+                      {client.name}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-muted-foreground">
+                      {client.email || '-'}
+                    </td>
+                    <td className="py-3 px-4 text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        client.subscription_status === 'active'
+                          ? 'bg-green-500/20 text-green-400'
+                          : 'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {client.subscription_status || 'Non défini'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-muted-foreground">
+                      {new Date(client.created_at).toLocaleDateString('fr-FR')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Version Mobile (cartes) */}
+          <div className="md:hidden space-y-3">
+            {clients.map((client) => (
+              <div
+                key={client.id}
+                className="bg-background/30 border border-border/50 rounded-lg p-4"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-foreground text-sm sm:text-base truncate">
+                      {client.name}
+                    </div>
+                    {client.email && (
+                      <div className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
+                        {client.email}
+                      </div>
+                    )}
+                  </div>
+                  <span className={`px-2 py-1 rounded-full text-xs flex-shrink-0 ml-2 ${
+                    client.subscription_status === 'active'
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-gray-500/20 text-gray-400'
+                  }`}>
+                    {client.subscription_status || 'Non défini'}
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  Inscrit le {new Date(client.created_at).toLocaleDateString('fr-FR')}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )

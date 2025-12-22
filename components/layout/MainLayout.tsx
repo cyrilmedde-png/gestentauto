@@ -13,6 +13,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const checkMobile = () => {
+      // Mobile: < 768px, Tablet: 768px - 1023px, Desktop: >= 1024px
       setIsMobile(window.innerWidth < 1024)
     }
     checkMobile()
@@ -45,10 +46,10 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
           marginLeft: isMobile ? '0' : (isSidebarExpanded ? '256px' : '80px'),
           // Padding top selon la visibilité du header
           paddingTop: isMobile 
-            ? '4.5rem' // Header toujours visible sur mobile
+            ? '4rem' // Header toujours visible sur mobile (réduit car header plus compact)
             : (isHeaderVisible ? '4rem' : '1.5rem'),
-          paddingLeft: isMobile ? '1rem' : '0',
-          paddingRight: isMobile ? '1rem' : '0',
+          paddingLeft: isMobile ? '0.75rem' : '0',
+          paddingRight: isMobile ? '0.75rem' : '0',
         }}
       >
         {children}
