@@ -2,22 +2,32 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createPlatformClient } from '@/lib/supabase/platform'
 import { getPlatformCompanyId } from '@/lib/platform/supabase'
 import type { LeadUpdate } from '@/lib/types/onboarding'
+import { verifyPlatformUser, createForbiddenResponse } from '@/lib/middleware/platform-auth'
 
 /**
  * GET /api/platform/leads/[id]
  * Détails complets d'un lead (avec questionnaire, interview, trial)
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     const supabase = createPlatformClient()
     const { id } = await params
 
     // Récupérer le lead
     const { data: lead, error: leadError } = await supabase
-      .from('leads')
+      .from('platform_leads')
       .select('*')
       .eq('id', id)
       .single()
@@ -31,23 +41,23 @@ export async function GET(
 
     // Récupérer le questionnaire si existe
     const { data: questionnaire } = await supabase
-      .from('onboarding_questionnaires')
+      .from('platform_onboarding_questionnaires')
       .select('*')
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .single()
 
     // Récupérer l'entretien si existe
     const { data: interview } = await supabase
-      .from('onboarding_interviews')
+      .from('platform_onboarding_interviews')
       .select('*')
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .maybeSingle()
 
     // Récupérer l'essai si existe
     const { data: trial } = await supabase
-      .from('trials')
+      .from('platform_trials')
       .select('*')
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .maybeSingle()
 
     return NextResponse.json({
@@ -68,12 +78,21 @@ export async function GET(
 /**
  * PATCH /api/platform/leads/[id]
  * Mettre à jour un lead (statut, étape, etc.)
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     const supabase = createPlatformClient()
     const { id } = await params
 
@@ -81,7 +100,7 @@ export async function PATCH(
 
     // Vérifier que le lead existe
     const { data: existingLead, error: checkError } = await supabase
-      .from('leads')
+      .from('platform_leads')
       .select('id')
       .eq('id', id)
       .single()
@@ -104,7 +123,7 @@ export async function PATCH(
     if (body.company_name !== undefined) updateData.company_name = body.company_name
 
     const { data: lead, error: updateError } = await supabase
-      .from('leads')
+      .from('platform_leads')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -127,18 +146,27 @@ export async function PATCH(
 /**
  * DELETE /api/platform/leads/[id]
  * Supprimer un lead (et ses données associées via CASCADE)
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     const supabase = createPlatformClient()
     const { id } = await params
 
     // Vérifier que le lead existe
     const { data: existingLead, error: checkError } = await supabase
-      .from('leads')
+      .from('platform_leads')
       .select('id')
       .eq('id', id)
       .single()
@@ -152,7 +180,7 @@ export async function DELETE(
 
     // Supprimer le lead (les données associées seront supprimées via CASCADE)
     const { error: deleteError } = await supabase
-      .from('leads')
+      .from('platform_leads')
       .delete()
       .eq('id', id)
 

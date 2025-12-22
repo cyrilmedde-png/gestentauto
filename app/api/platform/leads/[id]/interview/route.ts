@@ -3,16 +3,26 @@ import { createPlatformClient } from '@/lib/supabase/platform'
 import type { InterviewUpdate } from '@/lib/types/onboarding'
 import { sendInterviewConfirmationEmail } from '@/lib/services/email'
 import { sendInterviewConfirmationSMS } from '@/lib/services/sms'
+import { verifyPlatformUser, createForbiddenResponse } from '@/lib/middleware/platform-auth'
 
 /**
  * POST /api/platform/leads/[id]/interview/schedule
  * Planifier un entretien pour un lead
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     let supabase
     try {
       supabase = createPlatformClient()
@@ -28,7 +38,7 @@ export async function POST(
 
     // Vérifier que le lead existe et récupérer ses infos
     const { data: lead, error: leadError } = await supabase
-      .from('leads')
+      .from('platform_leads')
       .select('id, status, onboarding_step, email, first_name, last_name, company_name, phone')
       .eq('id', id)
       .single()
@@ -79,9 +89,9 @@ export async function POST(
 
     // Vérifier si un entretien existe déjà pour ce lead
     const { data: existingInterview } = await supabase
-      .from('onboarding_interviews')
+      .from('platform_onboarding_interviews')
       .select('id')
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .maybeSingle()
 
     let interview
@@ -90,7 +100,7 @@ export async function POST(
     if (existingInterview) {
       // Mettre à jour l'entretien existant
       const { data, error } = await supabase
-        .from('onboarding_interviews')
+        .from('platform_onboarding_interviews')
         .update({
           scheduled_at: scheduledAt,
           status: body.status || 'scheduled',
@@ -98,7 +108,7 @@ export async function POST(
           notes: body.notes || null,
           interviewer_id: body.interviewer_id || null,
         })
-        .eq('lead_id', id)
+        .eq('platform_lead_id', id)
         .select()
         .single()
       
@@ -107,9 +117,9 @@ export async function POST(
     } else {
       // Créer un nouvel entretien
       const { data, error } = await supabase
-        .from('onboarding_interviews')
+        .from('platform_onboarding_interviews')
         .insert({
-          lead_id: id,
+          platform_lead_id: id,
           scheduled_at: scheduledAt,
           status: body.status || 'scheduled',
           meeting_link: body.meeting_link || null,
@@ -140,7 +150,7 @@ export async function POST(
 
     // Mettre à jour le lead
     const { error: updateError } = await supabase
-      .from('leads')
+      .from('platform_leads')
       .update({
         status: 'interview_scheduled',
         onboarding_step: 'interview',
@@ -206,12 +216,21 @@ export async function POST(
 /**
  * GET /api/platform/leads/[id]/interview
  * Récupérer l'entretien d'un lead
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     let supabase
     try {
       supabase = createPlatformClient()
@@ -226,9 +245,9 @@ export async function GET(
     const { id } = await params
 
     const { data: interview, error } = await supabase
-      .from('onboarding_interviews')
+      .from('platform_onboarding_interviews')
       .select('*')
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .maybeSingle()
 
     if (error) {
@@ -248,12 +267,21 @@ export async function GET(
 /**
  * PATCH /api/platform/leads/[id]/interview
  * Mettre à jour un entretien (statut, notes, etc.)
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     let supabase
     try {
       supabase = createPlatformClient()
@@ -279,9 +307,9 @@ export async function PATCH(
 
     // Vérifier que l'entretien existe
     const { data: existingInterview, error: checkError } = await supabase
-      .from('onboarding_interviews')
+      .from('platform_onboarding_interviews')
       .select('id')
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .single()
 
     if (checkError || !existingInterview) {
@@ -300,9 +328,9 @@ export async function PATCH(
     if (body.interviewer_id !== undefined) updateData.interviewer_id = body.interviewer_id
 
     const { data: interview, error: updateError } = await supabase
-      .from('onboarding_interviews')
+      .from('platform_onboarding_interviews')
       .update(updateData)
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .select()
       .single()
 
@@ -313,7 +341,7 @@ export async function PATCH(
     // Si l'entretien est complété, mettre à jour le lead
     if (body.status === 'completed') {
       await supabase
-        .from('leads')
+        .from('platform_leads')
         .update({
           status: 'interview_scheduled', // Ou autre statut selon la logique
           onboarding_step: 'trial', // Prêt pour l'essai

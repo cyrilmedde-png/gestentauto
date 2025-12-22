@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     // Créer un lead de test
     const { data: lead, error: insertError } = await supabase
-      .from('leads')
+      .from('platform_leads')
       .insert({
         email,
         first_name: first_name || 'Test',
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       
       // Récupérer le lead existant
       const { data: existingLead } = await supabase
-        .from('leads')
+        .from('platform_leads')
         .select('*')
         .eq('email', email)
         .single()

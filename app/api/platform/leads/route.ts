@@ -3,14 +3,24 @@ import { createPlatformClient } from '@/lib/supabase/platform'
 import { getPlatformCompanyId } from '@/lib/platform/supabase'
 import { sendOnboardingConfirmationEmail } from '@/lib/services/email'
 import { sendOnboardingConfirmationSMS } from '@/lib/services/sms'
+import { verifyPlatformUser, createForbiddenResponse } from '@/lib/middleware/platform-auth'
 
 /**
  * GET /api/platform/leads
  * Liste tous les leads avec filtres
  * Query params: ?status=xxx&step=xxx&email=xxx
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function GET(request: NextRequest) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     const supabase = createPlatformClient()
     const platformId = await getPlatformCompanyId()
 
@@ -26,34 +36,152 @@ export async function GET(request: NextRequest) {
     const step = searchParams.get('step')
     const email = searchParams.get('email')
 
-    let query = supabase
-      .from('leads')
-      .select('*')
-      .order('created_at', { ascending: false })
+    // Détection automatique du nom de table (support migration progressive)
+    // Essaie platform_leads, puis leads, puis retourne une erreur claire si aucune n'existe
+    let leads: any[] = []
+    let error: any = null
+    let tableNameUsed: string | null = null
+    
+    // Liste des noms de tables possibles à essayer
+    // IMPORTANT: platform_leads est maintenant la table standard (après migration)
+    const possibleTableNames = ['platform_leads']
+    
+    // Note: 'leads' est supprimé car la migration est complète
+    // Si vous avez encore besoin de support pour 'leads', décommentez la ligne suivante:
+    // const possibleTableNames = ['platform_leads', 'leads']
+    
+    for (const tableName of possibleTableNames) {
+      let query = supabase
+        .from(tableName)
+        .select('*')
+        .order('created_at', { ascending: false })
 
-    if (status) {
-      query = query.eq('status', status)
+      if (status) {
+        query = query.eq('status', status)
+      }
+      if (step) {
+        query = query.eq('onboarding_step', step)
+      }
+      if (email) {
+        query = query.ilike('email', `%${email}%`)
+      }
+
+      const result = await query
+      
+      if (!result.error) {
+        leads = result.data || []
+        error = null
+        tableNameUsed = tableName
+        if (tableName === 'leads') {
+          console.warn(`⚠️ Using legacy table name "leads" - please run migration SQL scripts to rename to "platform_leads"`)
+        }
+        break // Succès, sortir de la boucle
+      } else {
+        const errorCode = result.error?.code || ''
+        const errorMessage = String(result.error?.message || '').toLowerCase()
+        
+        // Si c'est une erreur "table not found", essayer le prochain nom
+        const isTableNotFound = 
+          errorCode === 'PGRST205' || // Table not found in schema cache
+          errorCode === '42P01' || // relation does not exist
+          errorCode === 'PGRST106' ||
+          errorMessage.includes('could not find the table') ||
+          errorMessage.includes('does not exist')
+        
+        if (isTableNotFound && tableName === possibleTableNames[0]) {
+          // Premier essai échoué, continuer avec le suivant
+          console.warn(`Table "${tableName}" not found (${errorCode}), trying next option...`)
+          continue
+        } else {
+          // Soit c'est la dernière table, soit c'est une autre erreur
+          error = result.error
+          break
+        }
+      }
     }
-
-    if (step) {
-      query = query.eq('onboarding_step', step)
+    
+    // Si aucune table n'a fonctionné, retourner une erreur claire
+    if (error && !tableNameUsed) {
+      console.error('❌ None of the expected tables (platform_leads, leads) exist in the database')
+      console.error('Error details:', {
+        code: error?.code,
+        message: error?.message,
+        hint: error?.hint
+      })
     }
-
-    if (email) {
-      query = query.ilike('email', `%${email}%`)
-    }
-
-    const { data: leads, error } = await query
 
     if (error) {
+      console.error('Error fetching leads:', {
+        message: error.message,
+        code: (error as any)?.code,
+        details: (error as any)?.details,
+        hint: (error as any)?.hint,
+        fullError: error
+      })
+      
+      // Si c'est une erreur "table doesn't exist", donner un message plus clair
+      const errorMessage = String(error.message || '').toLowerCase()
+      const errorCode = (error as any)?.code || ''
+      const isTableNotFound = 
+        errorCode === 'PGRST205' || // Table not found in schema cache
+        errorCode === '42P01' || // relation does not exist
+        errorCode === 'PGRST106' ||
+        errorMessage.includes('could not find the table') ||
+        errorMessage.includes('does not exist')
+      
+      if (isTableNotFound) {
+        return NextResponse.json(
+          { 
+            error: 'Table platform_leads or leads not found in database. Please check if migration SQL scripts were executed correctly. See docs/GUIDE_MIGRATION_SQL.md',
+            details: error.message,
+            code: errorCode,
+            hint: error.hint || 'Make sure the table exists and RLS is configured correctly'
+          },
+          { status: 500 }
+        )
+      }
+      
       throw error
     }
 
     return NextResponse.json({ leads: leads || [] })
   } catch (error) {
-    console.error('Error in GET /api/platform/leads:', error)
+    console.error('Error in GET /api/platform/leads:', {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    })
+    
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
+    const errorCode = (error as any)?.code
+    
+    // Améliorer le message d'erreur pour les erreurs de table
+    const errorMsgLower = errorMessage.toLowerCase()
+    const isTableNotFound = 
+      errorCode === 'PGRST205' || // Table not found in schema cache
+      errorCode === '42P01' || // relation does not exist
+      errorCode === 'PGRST106' ||
+      errorMsgLower.includes('could not find the table') ||
+      errorMsgLower.includes('does not exist')
+    
+    if (isTableNotFound) {
+      return NextResponse.json(
+        { 
+          error: 'Database table not found. Please check if migration SQL scripts were executed. See docs/GUIDE_MIGRATION_SQL.md',
+          details: errorMessage,
+          code: errorCode,
+          hint: 'Make sure the table "platform_leads" or "leads" exists in Supabase'
+        },
+        { status: 500 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { 
+        error: errorMessage,
+        code: errorCode,
+        type: 'internal_server_error'
+      },
       { status: 500 }
     )
   }
@@ -62,9 +190,18 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/platform/leads/pre-register
  * Pré-inscription : Formulaire initial
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function POST(request: NextRequest) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     const supabase = createPlatformClient()
 
     const body = await request.json()
@@ -78,9 +215,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Utiliser platform_leads (table standard après migration)
+    const tableName = 'platform_leads'
+    
     // Vérifier si le lead existe déjà
     const { data: existingLead, error: checkError } = await supabase
-      .from('leads')
+      .from(tableName)
       .select('id, status, onboarding_step')
       .eq('email', email)
       .single()
@@ -101,7 +241,7 @@ export async function POST(request: NextRequest) {
 
     // Créer le nouveau lead
     const { data: lead, error: insertError } = await supabase
-      .from('leads')
+      .from(tableName)
       .insert({
         email,
         first_name: first_name || null,

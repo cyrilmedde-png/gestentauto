@@ -1,22 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPlatformClient } from '@/lib/supabase/platform'
 import { sendEmail } from '@/lib/services/email'
+import { verifyPlatformUser, createForbiddenResponse } from '@/lib/middleware/platform-auth'
 
 /**
  * POST /api/platform/leads/[id]/trial/resend-credentials
  * Renvoyer les identifiants de l'essai par email
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     const supabase = createPlatformClient()
     const { id } = await params
 
     // Récupérer le lead et l'essai
     const { data: lead, error: leadError } = await supabase
-      .from('leads')
+      .from('platform_leads')
       .select('id, email, first_name, last_name, company_name, phone')
       .eq('id', id)
       .single()
@@ -29,9 +39,9 @@ export async function POST(
     }
 
     const { data: trial, error: trialError } = await supabase
-      .from('trials')
+      .from('platform_trials')
       .select('id, start_date, end_date, duration_days, enabled_modules')
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .eq('status', 'active')
       .single()
 
@@ -44,9 +54,9 @@ export async function POST(
 
     // Récupérer le questionnaire pour les modules recommandés
     const { data: questionnaire } = await supabase
-      .from('onboarding_questionnaires')
+      .from('platform_onboarding_questionnaires')
       .select('recommended_modules, trial_config')
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .single()
 
     const modulesToActivate = questionnaire?.recommended_modules || trial.enabled_modules || []

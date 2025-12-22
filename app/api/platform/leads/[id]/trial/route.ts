@@ -4,17 +4,27 @@ import { getPlatformCompanyId } from '@/lib/platform/supabase'
 import { randomBytes } from 'crypto'
 import { sendEmail } from '@/lib/services/email'
 import { sendTrialStartSMS } from '@/lib/services/sms'
+import { verifyPlatformUser, createForbiddenResponse } from '@/lib/middleware/platform-auth'
 
 /**
  * POST /api/platform/leads/[id]/trial/start
  * Démarrer un essai gratuit pour un lead
  * Crée automatiquement l'entreprise + utilisateur + modules activés
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     const supabase = createPlatformClient()
     const platformId = await getPlatformCompanyId()
     const { id } = await params
@@ -28,7 +38,7 @@ export async function POST(
 
     // Vérifier que le lead existe et récupérer ses infos
     const { data: lead, error: leadError } = await supabase
-      .from('leads')
+      .from('platform_leads')
       .select('*')
       .eq('id', id)
       .single()
@@ -42,9 +52,9 @@ export async function POST(
 
     // Vérifier si un essai existe déjà
     const { data: existingTrial, error: trialCheckError } = await supabase
-      .from('trials')
+      .from('platform_trials')
       .select('*')
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .eq('status', 'active')
       .maybeSingle()
 
@@ -61,9 +71,9 @@ export async function POST(
 
     // Récupérer le questionnaire pour avoir les recommandations
     const { data: questionnaire, error: questionnaireError } = await supabase
-      .from('onboarding_questionnaires')
+      .from('platform_onboarding_questionnaires')
       .select('*')
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .single()
 
     if (questionnaireError || !questionnaire) {
@@ -77,7 +87,7 @@ export async function POST(
     const tempPassword = randomBytes(12).toString('base64').slice(0, 16) + '!'
 
     // 1. Créer l'utilisateur dans Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    const { data: authData, error: createUserError } = await supabase.auth.admin.createUser({
       email: lead.email,
       password: tempPassword,
       email_confirm: true,
@@ -87,9 +97,9 @@ export async function POST(
       },
     })
 
-    if (authError || !authData.user) {
+    if (createUserError || !authData.user) {
       return NextResponse.json(
-        { error: authError?.message || 'Failed to create user' },
+        { error: createUserError?.message || 'Failed to create user' },
         { status: 400 }
       )
     }
@@ -196,9 +206,9 @@ export async function POST(
     const accessToken = randomBytes(32).toString('hex')
 
     const { data: trial, error: trialError } = await supabase
-      .from('trials')
+      .from('platform_trials')
       .insert({
-        lead_id: id,
+        platform_lead_id: id,
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
         duration_days: questionnaire.trial_config?.duration_days || 7,
@@ -218,7 +228,7 @@ export async function POST(
 
     // 7. Mettre à jour le lead
     await supabase
-      .from('leads')
+      .from('platform_leads')
       .update({
         status: 'trial_started',
         onboarding_step: 'trial',
@@ -413,17 +423,26 @@ L'équipe TalosPrime
 /**
  * GET /api/platform/leads/[id]/trial
  * Récupérer l'essai d'un lead
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     const supabase = createPlatformClient()
     const { id } = await params
 
     const { data: trial, error } = await supabase
-      .from('trials')
+      .from('platform_trials')
       .select(`
         *,
         companies (
@@ -432,7 +451,7 @@ export async function GET(
           email
         )
       `)
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .maybeSingle()
 
     if (error) {

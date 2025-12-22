@@ -4,22 +4,32 @@ import { generateRecommendations } from '@/lib/platform/recommendations'
 import type { LeadUpdate } from '@/lib/types/onboarding'
 import { sendEmail } from '@/lib/services/email'
 import { sendQuestionnaireReminderSMS } from '@/lib/services/sms'
+import { verifyPlatformUser, createForbiddenResponse } from '@/lib/middleware/platform-auth'
 
 /**
  * POST /api/platform/leads/[id]/questionnaire
  * Sauvegarder les réponses du questionnaire et générer les recommandations
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     const supabase = createPlatformClient()
     const { id } = await params
 
     // Vérifier que le lead existe et récupérer ses infos
     const { data: lead, error: leadError } = await supabase
-      .from('leads')
+      .from('platform_leads')
       .select('id, status, email, first_name, last_name, company_name, phone')
       .eq('id', id)
       .single()
@@ -46,9 +56,9 @@ export async function POST(
 
     // Créer ou mettre à jour le questionnaire
     const { data: questionnaire, error: questionnaireError } = await supabase
-      .from('onboarding_questionnaires')
+      .from('platform_onboarding_questionnaires')
       .upsert({
-        lead_id: id,
+        platform_lead_id: id,
         request_type: body.request_type,
         business_sector: body.business_sector || null,
         business_size: body.business_size || null,
@@ -60,7 +70,7 @@ export async function POST(
         recommended_modules: recommendations.modules,
         trial_config: recommendations.trial_config,
       }, {
-        onConflict: 'lead_id'
+        onConflict: 'platform_lead_id'
       })
       .select()
       .single()
@@ -76,7 +86,7 @@ export async function POST(
     }
 
     const { error: updateError } = await supabase
-      .from('leads')
+      .from('platform_leads')
       .update(updateLeadData)
       .eq('id', id)
 
@@ -206,19 +216,28 @@ export async function POST(
 /**
  * GET /api/platform/leads/[id]/questionnaire
  * Récupérer le questionnaire d'un lead
+ * 
+ * ⚠️ Accès réservé aux utilisateurs plateforme uniquement
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     const supabase = createPlatformClient()
     const { id } = await params
 
     const { data: questionnaire, error } = await supabase
-      .from('onboarding_questionnaires')
+      .from('platform_onboarding_questionnaires')
       .select('*')
-      .eq('lead_id', id)
+      .eq('platform_lead_id', id)
       .single()
 
     if (error) {
