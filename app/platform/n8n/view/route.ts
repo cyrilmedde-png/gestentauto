@@ -10,11 +10,11 @@ const N8N_PASSWORD = process.env.N8N_BASIC_AUTH_PASSWORD
  * Cette page charge N8N dans un iframe avec authentification basique automatique
  */
 export async function GET(request: NextRequest) {
+  // Récupérer l'ID utilisateur depuis les query params (passé par la page client)
+  const { searchParams } = new URL(request.url)
+  const userId = searchParams.get('userId')
+  
   try {
-    // Récupérer l'ID utilisateur depuis les query params (passé par la page client)
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    
     // Log pour debug
     console.log('[N8N View] UserId from params:', userId)
     console.log('[N8N View] Cookies:', request.headers.get('cookie'))
