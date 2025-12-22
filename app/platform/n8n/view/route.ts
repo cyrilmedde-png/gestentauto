@@ -10,17 +10,24 @@ const N8N_PASSWORD = process.env.N8N_BASIC_AUTH_PASSWORD
  * Cette page charge N8N dans un iframe avec authentification basique automatique
  */
 export async function GET(request: NextRequest) {
-  // Récupérer l'ID utilisateur depuis les query params (passé par la page client)
-  const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')
-  
-  // Vérifier que l'utilisateur est de la plateforme
-  // Passer l'ID utilisateur si disponible
-  const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
-  
-  if (!isPlatform || error) {
-    // Si l'authentification échoue, retourner une page HTML avec erreur
-    const errorHtml = `
+  try {
+    // Récupérer l'ID utilisateur depuis les query params (passé par la page client)
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    
+    // Log pour debug
+    console.log('[N8N View] UserId from params:', userId)
+    console.log('[N8N View] Cookies:', request.headers.get('cookie'))
+    
+    // Vérifier que l'utilisateur est de la plateforme
+    // Passer l'ID utilisateur si disponible
+    const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
+    
+    console.log('[N8N View] Auth result:', { isPlatform, error, userId })
+    
+    if (!isPlatform || error) {
+      // Si l'authentification échoue, retourner une page HTML avec erreur détaillée
+      const errorHtml = `
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -41,6 +48,16 @@ export async function GET(request: NextRequest) {
     .error {
       text-align: center;
       padding: 20px;
+      max-width: 600px;
+    }
+    .debug {
+      margin-top: 20px;
+      padding: 10px;
+      background: #222;
+      border-radius: 4px;
+      font-size: 11px;
+      text-align: left;
+      color: #888;
     }
   </style>
 </head>
@@ -49,16 +66,31 @@ export async function GET(request: NextRequest) {
     <h1>Erreur d'authentification</h1>
     <p>Vous devez être un utilisateur de la plateforme pour accéder à N8N.</p>
     <p style="color: #888; font-size: 12px;">${error || 'Non autorisé'}</p>
+    <div class="debug">
+      <strong>Debug info:</strong><br>
+      UserId: ${userId || 'Non fourni'}<br>
+      Error: ${error || 'Aucune erreur détaillée'}
+    </div>
   </div>
 </body>
 </html>
-    `
-    return new NextResponse(errorHtml, {
-      status: 403,
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-      },
-    })
+      `
+      return new NextResponse(errorHtml, {
+        status: 403,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+        },
+      })
+    }
+  } catch (err) {
+    console.error('[N8N View] Error:', err)
+    return new NextResponse(
+      JSON.stringify({ error: 'Internal server error', details: err instanceof Error ? err.message : 'Unknown error' }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    )
   }
 
   if (!N8N_USERNAME || !N8N_PASSWORD) {
