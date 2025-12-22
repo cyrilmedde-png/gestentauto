@@ -34,7 +34,12 @@ export async function GET(
       return acc
     }, {} as Record<string, string>)
     
-    const userId = cookies['n8n_userId'] || request.headers.get('X-User-Id')
+    let userId = cookies['n8n_userId'] || cookies['n8n_userid'] || request.headers.get('X-User-Id')
+    
+    // Nettoyer le userId si il contient des query params (bug de construction URL)
+    if (userId && userId.includes('?')) {
+      userId = userId.split('?')[0]
+    }
     
     // Vérifier que l'utilisateur est de la plateforme
     const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
@@ -219,7 +224,12 @@ async function handleRestRequest(
       return acc
     }, {} as Record<string, string>)
     
-    const userId = cookies['n8n_userId'] || request.headers.get('X-User-Id')
+    let userId = cookies['n8n_userId'] || cookies['n8n_userid'] || request.headers.get('X-User-Id')
+    
+    // Nettoyer le userId si il contient des query params (bug de construction URL)
+    if (userId && userId.includes('?')) {
+      userId = userId.split('?')[0]
+    }
     
     // Vérifier que l'utilisateur est de la plateforme
     const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
