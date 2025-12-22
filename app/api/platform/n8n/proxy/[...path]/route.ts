@@ -95,13 +95,31 @@ export async function GET(
       const proxyBase = `/api/platform/n8n/proxy`
       const userIdParam = userId ? `?userId=${encodeURIComponent(userId)}` : ''
       
-      // Remplacer les URLs relatives par des URLs proxy
+      // Remplacer les URLs par des URLs proxy
       const modifiedHtml = htmlData.replace(
         /(src|href|action)=["']([^"']+)["']/g,
         (match, attr, url) => {
-          // Ignorer les URLs absolues externes
-          if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('mailto:') || url.startsWith('#')) {
+          // Ignorer les URLs data:, mailto:, #, et externes (autres domaines)
+          if (url.startsWith('data:') || url.startsWith('mailto:') || url.startsWith('#')) {
             return match
+          }
+          
+          // URLs absolues vers le même domaine - les réécrire pour passer par le proxy
+          if (url.startsWith('http://') || url.startsWith('https://')) {
+            try {
+              const urlObj = new URL(url)
+              const currentHost = host || new URL(baseUrl).hostname
+              // Si c'est le même domaine, réécrire pour passer par le proxy
+              if (urlObj.hostname === currentHost || urlObj.hostname === 'www.talosprimes.com' || urlObj.hostname === 'talosprimes.com') {
+                const path = urlObj.pathname.startsWith('/') ? urlObj.pathname.substring(1) : urlObj.pathname
+                return `${attr}="${baseUrl}${proxyBase}/${path}${urlObj.search}${userIdParam ? (urlObj.search ? '&' : '?') + userIdParam.substring(1) : ''}"`
+              }
+              // Sinon, c'est un domaine externe, laisser tel quel
+              return match
+            } catch {
+              // Si l'URL est invalide, laisser tel quel
+              return match
+            }
           }
           
           // Si l'URL commence par /, la faire passer par le proxy
