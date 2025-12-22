@@ -62,7 +62,38 @@ export function useNotifications() {
       return
     }
 
-    loadNotifications()
+    // Charger les notifications directement dans le useEffect
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const headers: HeadersInit = {
+          'X-User-Id': user.id,
+        }
+
+        const response = await fetch('/api/platform/notifications', {
+          credentials: 'include',
+          headers,
+        })
+
+        if (!response.ok) {
+          throw new Error('Erreur lors du chargement des notifications')
+        }
+
+        const data = await response.json()
+        const loadedNotifications = data.notifications || []
+        setNotifications(loadedNotifications)
+        setUnreadCount(loadedNotifications.filter((n: Notification) => !n.read).length)
+      } catch (err) {
+        console.error('Erreur:', err)
+        setError(err instanceof Error ? err.message : 'Erreur lors du chargement')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
 
     // Abonnement Supabase Realtime pour les nouvelles notifications
     const channel = supabase
@@ -110,7 +141,6 @@ export function useNotifications() {
     return () => {
       supabase.removeChannel(channel)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
   const markAsRead = useCallback(async (notificationId: string) => {

@@ -27,6 +27,8 @@ export function NotificationToast() {
       return
     }
 
+    let cancelled = false
+
     fetch('/api/auth/check-user-type', {
       method: 'GET',
       headers: {
@@ -36,11 +38,19 @@ export function NotificationToast() {
     })
       .then((res) => res.json())
       .then((data) => {
-        setIsPlatform(data.isPlatform || false)
+        if (!cancelled) {
+          setIsPlatform(data.isPlatform || false)
+        }
       })
       .catch(() => {
-        setIsPlatform(false)
+        if (!cancelled) {
+          setIsPlatform(false)
+        }
       })
+
+    return () => {
+      cancelled = true
+    }
   }, [user?.id])
 
   useEffect(() => {

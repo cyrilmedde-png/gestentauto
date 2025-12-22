@@ -46,11 +46,7 @@ export function NotificationDropdown() {
     }
   }, [user?.id])
 
-  // Ne pas afficher si l'utilisateur n'est pas plateforme
-  if (!isPlatform) {
-    return null
-  }
-
+  // ⚠️ IMPORTANT : Tous les useEffect doivent être AVANT le return conditionnel
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -66,6 +62,12 @@ export function NotificationDropdown() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [isOpen])
+
+  // ⚠️ Le return conditionnel doit être APRÈS tous les hooks
+  // Ne pas afficher si l'utilisateur n'est pas plateforme
+  if (!isPlatform) {
+    return null
+  }
 
   const getNotificationLink = (notification: Notification) => {
     if (notification.type === 'new_registration' && notification.data?.lead_id) {
