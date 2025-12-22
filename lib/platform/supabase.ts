@@ -14,18 +14,27 @@ export async function getPlatformCompanyId(): Promise<string | null> {
     .single()
 
   if (error || !data) {
+    console.error('Error fetching platform_company_id:', error)
     return null
   }
 
   // Extraire la valeur du JSONB
   const value = data.value
+  
+  // Si c'est déjà une string, la retourner directement
   if (typeof value === 'string') {
-    return value
+    return value.trim()
   }
   
-  // Si c'est un JSONB, extraire la valeur string
+  // Si c'est un JSONB, essayer différentes méthodes d'extraction
   if (typeof value === 'object' && value !== null) {
-    return String(value)
+    // Essayer value#>>'{}' équivalent (si Supabase le retourne déjà extrait)
+    if (value && typeof value === 'object' && 'value' in value) {
+      return String(value.value).trim()
+    }
+    // Sinon, convertir en string et nettoyer
+    const stringValue = JSON.stringify(value).replace(/^"|"$/g, '')
+    return stringValue.trim()
   }
   
   return null
@@ -36,7 +45,13 @@ export async function getPlatformCompanyId(): Promise<string | null> {
  */
 export async function isPlatformCompany(companyId: string): Promise<boolean> {
   const platformId = await getPlatformCompanyId()
-  return platformId === companyId
+  if (!platformId) {
+    return false
+  }
+  // Normaliser les UUIDs pour la comparaison
+  const normalizedCompanyId = String(companyId).trim().toLowerCase()
+  const normalizedPlatformId = String(platformId).trim().toLowerCase()
+  return normalizedPlatformId === normalizedCompanyId
 }
 
 /**

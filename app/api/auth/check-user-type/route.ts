@@ -36,11 +36,33 @@ export async function GET(request: NextRequest) {
 
     // Vérifier si c'est la plateforme
     const platformId = await getPlatformCompanyId()
-    const isPlatform = platformId === userData.company_id
+    
+    // Normaliser les UUIDs pour la comparaison (enlever les espaces, convertir en minuscules)
+    const normalizedUserCompanyId = String(userData.company_id).trim().toLowerCase()
+    const normalizedPlatformId = platformId ? String(platformId).trim().toLowerCase() : null
+    
+    const isPlatform = normalizedPlatformId === normalizedUserCompanyId
+
+    // Logs pour déboguer (seulement en développement)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Debug check-user-type:', {
+        userId: authUser.id,
+        userCompanyId: userData.company_id,
+        platformId: platformId,
+        normalizedUserCompanyId,
+        normalizedPlatformId,
+        areEqual: isPlatform,
+        types: {
+          userCompanyIdType: typeof userData.company_id,
+          platformIdType: typeof platformId
+        }
+      })
+    }
 
     return NextResponse.json({
       isPlatform,
       companyId: userData.company_id,
+      platformId: platformId, // Ajouter pour debug
     })
   } catch (error) {
     console.error('Error in GET /api/auth/check-user-type:', error)
