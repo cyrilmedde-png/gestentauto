@@ -7,6 +7,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { LeadFormModal } from '@/components/leads/LeadFormModal'
 import { QuestionnaireForm } from '@/components/leads/QuestionnaireForm'
 import { InterviewForm } from '@/components/leads/InterviewForm'
+import { TrialCredentialsModal } from '@/components/leads/TrialCredentialsModal'
 import Link from 'next/link'
 import { Edit, Trash2 } from 'lucide-react'
 
@@ -77,6 +78,13 @@ export default function LeadDetailPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isQuestionnaireModalOpen, setIsQuestionnaireModalOpen] = useState(false)
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false)
+  const [isCredentialsModalOpen, setIsCredentialsModalOpen] = useState(false)
+  const [trialCredentials, setTrialCredentials] = useState<{
+    email: string
+    temporary_password: string
+    login_url: string
+    modules_activated?: string[]
+  } | null>(null)
 
   useEffect(() => {
     loadLeadDetails()
@@ -157,11 +165,38 @@ export default function LeadDetailPage() {
       }
 
       const data = await response.json()
-      alert(`Essai démarré avec succès !\n\nIdentifiants:\nEmail: ${data.credentials.email}\nMot de passe temporaire: ${data.credentials.temporary_password}`)
+      
+      // Sauvegarder les identifiants et ouvrir la modal
+      setTrialCredentials({
+        email: data.credentials.email,
+        temporary_password: data.credentials.temporary_password,
+        login_url: data.credentials.login_url,
+        modules_activated: data.modules_activated || [],
+      })
+      setIsCredentialsModalOpen(true)
+      
       loadLeadDetails() // Recharger les données
     } catch (err) {
       console.error('Error starting trial:', err)
       setError(err instanceof Error ? err.message : 'Erreur lors du démarrage')
+    }
+  }
+
+  const handleResendCredentialsEmail = async () => {
+    try {
+      const response = await fetch(`/api/platform/leads/${leadId}/trial/resend-credentials`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Erreur lors de l\'envoi de l\'email')
+      }
+
+      return Promise.resolve()
+    } catch (err) {
+      console.error('Error resending credentials email:', err)
+      throw err
     }
   }
 
@@ -494,6 +529,20 @@ export default function LeadDetailPage() {
           leadId={leadId}
           interview={interview}
         />
+        {trialCredentials && (
+          <TrialCredentialsModal
+            isOpen={isCredentialsModalOpen}
+            onClose={() => {
+              setIsCredentialsModalOpen(false)
+              setTrialCredentials(null)
+            }}
+            credentials={trialCredentials}
+            leadName={lead?.first_name && lead?.last_name
+              ? `${lead.first_name} ${lead.last_name}`
+              : lead?.first_name || lead?.company_name || undefined}
+            onResendEmail={handleResendCredentialsEmail}
+          />
+        )}
       </MainLayout>
     </ProtectedRoute>
   )
