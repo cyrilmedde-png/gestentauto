@@ -99,7 +99,7 @@ export default function SettingsPage() {
           {isPlatform ? (
             <PlatformSettings />
           ) : (
-            <CompanySettings companyId={user?.company_id} />
+            <CompanySettings companyId={user?.company_id} user={user} />
           )}
         </div>
       </MainLayout>
@@ -275,7 +275,7 @@ function PlatformSettings() {
 }
 
 // Composant pour les paramètres de l'entreprise (clients)
-function CompanySettings({ companyId }: { companyId?: string }) {
+function CompanySettings({ companyId, user }: { companyId?: string; user?: { id: string } | null }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -295,8 +295,17 @@ function CompanySettings({ companyId }: { companyId?: string }) {
   const loadCompanyConfig = async () => {
     try {
       setLoading(true)
+      
+      // Préparer les headers avec l'ID utilisateur
+      const headers: HeadersInit = {}
+      if (user?.id) {
+        headers['X-User-Id'] = user.id
+      }
+      
       const response = await fetch('/api/settings/company', {
-        credentials: 'include',
+        method: 'GET',
+        credentials: 'include', // Important : envoyer les cookies de session
+        headers,
       })
       if (!response.ok) {
         if (response.status === 403) {
@@ -324,9 +333,17 @@ function CompanySettings({ companyId }: { companyId?: string }) {
     setSuccess(null)
 
     try {
+      // Préparer les headers avec l'ID utilisateur
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (user?.id) {
+        headers['X-User-Id'] = user.id
+      }
+      
       const response = await fetch('/api/settings/company', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify(companyConfig)
       })

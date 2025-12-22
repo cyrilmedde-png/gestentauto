@@ -11,21 +11,29 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerClient(request)
     
-    // Vérifier l'authentification
+    // Essayer de récupérer l'utilisateur depuis les cookies
+    let userId: string | null = null
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    if (user) {
+      userId = user.id
+    } else {
+      // Fallback : récupérer depuis le header X-User-Id
+      userId = request.headers.get('X-User-Id')
+      
+      if (!userId) {
+        return NextResponse.json(
+          { error: 'Not authenticated. Please log in or provide X-User-Id header.' },
+          { status: 401 }
+        )
+      }
     }
 
     // Récupérer les données utilisateur avec son company_id
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('company_id')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (userError || !userData) {
@@ -75,21 +83,29 @@ export async function POST(request: NextRequest) {
     const supabase = await createServerClient(request)
     const body = await request.json()
 
-    // Vérifier l'authentification
+    // Essayer de récupérer l'utilisateur depuis les cookies
+    let userId: string | null = null
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    if (user) {
+      userId = user.id
+    } else {
+      // Fallback : récupérer depuis le header X-User-Id
+      userId = request.headers.get('X-User-Id')
+      
+      if (!userId) {
+        return NextResponse.json(
+          { error: 'Not authenticated. Please log in or provide X-User-Id header.' },
+          { status: 401 }
+        )
+      }
     }
 
     // Récupérer les données utilisateur avec son company_id
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('company_id')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (userError || !userData) {
