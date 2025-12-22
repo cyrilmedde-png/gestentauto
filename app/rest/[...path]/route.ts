@@ -68,6 +68,12 @@ export async function GET(
   // Créer l'en-tête d'authentification basique
   const auth = Buffer.from(`${N8N_USERNAME}:${N8N_PASSWORD}`).toString('base64')
   
+  // Log pour déboguer /rest/login
+  if (restPath === 'login') {
+    console.log('[N8N /rest/login GET] Proxying to:', n8nUrl)
+    console.log('[N8N /rest/login GET] Has auth:', !!N8N_USERNAME && !!N8N_PASSWORD)
+  }
+  
   try {
     const response = await fetch(n8nUrl, {
       method: 'GET',
@@ -78,6 +84,12 @@ export async function GET(
         'Content-Type': request.headers.get('content-type') || 'application/json',
       },
     })
+    
+    // Log la réponse pour /rest/login
+    if (restPath === 'login') {
+      console.log('[N8N /rest/login GET] Response status:', response.status)
+      console.log('[N8N /rest/login GET] Response headers:', Object.fromEntries(response.headers.entries()))
+    }
 
     const contentType = response.headers.get('content-type') || 'application/json'
     const data = await response.text()
@@ -189,6 +201,13 @@ async function handleRestRequest(
   const auth = Buffer.from(`${N8N_USERNAME}:${N8N_PASSWORD}`).toString('base64')
   const body = await request.text()
   
+  // Log pour déboguer /rest/login
+  if (restPath === 'login') {
+    console.log(`[N8N /rest/login ${method}] Proxying to:`, n8nUrl)
+    console.log(`[N8N /rest/login ${method}] Has auth:`, !!N8N_USERNAME && !!N8N_PASSWORD)
+    console.log(`[N8N /rest/login ${method}] Body length:`, body.length)
+  }
+  
   try {
     const response = await fetch(n8nUrl, {
       method: method,
@@ -200,6 +219,12 @@ async function handleRestRequest(
       },
       body: body,
     })
+    
+    // Log la réponse pour /rest/login
+    if (restPath === 'login') {
+      console.log(`[N8N /rest/login ${method}] Response status:`, response.status)
+      console.log(`[N8N /rest/login ${method}] Response headers:`, Object.fromEntries(response.headers.entries()))
+    }
 
     const contentType = response.headers.get('content-type') || 'application/json'
     const data = await response.text()
