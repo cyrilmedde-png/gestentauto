@@ -33,11 +33,11 @@ export function Sidebar() {
     setIsMobileOpen(false)
   }
 
+  // Navigation plateforme - tous les modules doivent suivre /platform/nom-du-module
   const navItems = [
     { icon: Home, label: 'Dashboard', href: '/platform/dashboard' },
     { icon: UserPlus, label: 'Leads', href: '/platform/leads' },
-    { icon: FileText, label: 'Factures', href: '/billing' },
-    { icon: Users, label: 'Clients', href: '/clients' },
+    { icon: Users, label: 'Clients', href: '/platform/clients' },
     { icon: Settings, label: 'Paramètres', href: '/platform/settings' },
   ]
 
