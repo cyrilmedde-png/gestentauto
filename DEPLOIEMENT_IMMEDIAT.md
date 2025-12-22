@@ -1,10 +1,9 @@
 # 🚀 DÉPLOIEMENT IMMÉDIAT - Résoudre l'erreur 500
 
-## Situation actuelle
+## ✅ Corrections appliquées
 
-- ✅ Code corrigé en local (utilise uniquement `platform_leads`)
-- ❌ Code non déployé sur le serveur (talosprimes.com)
-- ❌ Erreur 500 persiste en production
+1. **Code simplifié** : Utilise uniquement `platform_leads` (sans fallback vers `leads`)
+2. **Middleware corrigé** : Récupère l'utilisateur depuis les cookies de session Supabase
 
 ## Actions à faire MAINTENANT
 
@@ -19,7 +18,7 @@ cd "/Users/giiz_mo_o/Desktop/devellopement application/gestion complete automati
 git add -A
 
 # Committer
-git commit -m "fix: Utiliser uniquement platform_leads - Correction erreur 500"
+git commit -m "fix: Middleware auth avec cookies + utilisation uniquement platform_leads"
 
 # Pousser sur GitHub
 git push origin main
@@ -33,7 +32,7 @@ git push origin main
 # 1. Aller dans le répertoire
 cd /var/www/talosprime
 
-# 2. Libérer le port 3000 (tuer les processus qui l'utilisent)
+# 2. Libérer le port 3000 (si nécessaire)
 sudo lsof -ti:3000 | xargs sudo kill -9 2>/dev/null || true
 
 # 3. Arrêter toutes les instances PM2
@@ -79,9 +78,22 @@ Après ces étapes :
    pm2 logs talosprime --err --lines 100
    ```
 
+## Changements techniques
+
+### 1. Utilisation uniquement de `platform_leads`
+
+Le code ne cherche plus dans `leads`, seulement dans `platform_leads` (table qui existe ✅).
+
+### 2. Authentification via cookies
+
+Le middleware `verifyPlatformUser` récupère maintenant l'utilisateur depuis les cookies de session Supabase, donc **plus besoin de passer l'ID utilisateur dans les headers** depuis le frontend.
+
 ## Pourquoi ça va fonctionner
 
-Le code a été modifié pour utiliser **uniquement** `platform_leads` (sans fallback vers `leads`). Comme la table `platform_leads` existe dans votre base de données (confirmé par le diagnostic), l'application devrait fonctionner une fois le code déployé.
+- ✅ La table `platform_leads` existe (confirmé par le diagnostic)
+- ✅ Le code utilise uniquement cette table
+- ✅ L'authentification utilise les cookies de session (plus robuste)
+- ✅ Plus besoin de headers personnalisés
 
 ## Si ça ne fonctionne toujours pas
 
@@ -89,4 +101,3 @@ Vérifier les logs serveur et me donner l'erreur exacte :
 ```bash
 pm2 logs talosprime --err --lines 200 | tail -50
 ```
-
