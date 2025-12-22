@@ -147,7 +147,7 @@ export default function LeadDetailPage() {
 
     try {
       setError(null)
-      const response = await fetch(`/api/platform/leads/${leadId}/trial/start`, {
+      const response = await fetch(`/api/platform/leads/${leadId}/trial`, {
         method: 'POST',
       })
 
