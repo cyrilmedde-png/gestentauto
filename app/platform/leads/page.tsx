@@ -417,7 +417,7 @@ export default function LeadsPage() {
           lead={editingLead}
         />
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPlatformRoute>
   )
 }
 

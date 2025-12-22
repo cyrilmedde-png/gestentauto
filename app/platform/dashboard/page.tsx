@@ -83,7 +83,7 @@ export default function PlatformDashboardPage() {
           </div>
         </div>
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPlatformRoute>
   )
 }
 
