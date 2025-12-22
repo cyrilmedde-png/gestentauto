@@ -41,31 +41,49 @@ EXECUTE FUNCTION update_updated_at_column();
 -- RLS (Row Level Security) - Les notifications sont visibles uniquement par les utilisateurs plateforme
 ALTER TABLE platform_notifications ENABLE ROW LEVEL SECURITY;
 
+-- Fonction helper pour vérifier si un utilisateur est plateforme
+CREATE OR REPLACE FUNCTION public.is_platform_user()
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user_company_id UUID;
+  v_platform_company_id UUID;
+BEGIN
+  -- Récupérer le company_id de l'utilisateur
+  SELECT company_id INTO v_user_company_id
+  FROM users
+  WHERE id = auth.uid()
+  LIMIT 1;
+
+  IF v_user_company_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  -- Récupérer l'ID de la plateforme depuis settings
+  SELECT (value#>>'{}')::UUID INTO v_platform_company_id
+  FROM settings
+  WHERE key = 'platform_company_id'
+  LIMIT 1;
+
+  IF v_platform_company_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  -- Comparer les UUIDs
+  RETURN (v_user_company_id = v_platform_company_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Politique : Les utilisateurs plateforme peuvent voir toutes les notifications
 CREATE POLICY "Platform users can view all notifications"
 ON platform_notifications
 FOR SELECT
-USING (
-  EXISTS (
-    SELECT 1 FROM users u
-    INNER JOIN companies c ON u.company_id = c.id
-    WHERE u.id = auth.uid()
-    AND c.is_platform = true
-  )
-);
+USING (public.is_platform_user());
 
 -- Politique : Les utilisateurs plateforme peuvent mettre à jour les notifications (marquer comme lues)
 CREATE POLICY "Platform users can update notifications"
 ON platform_notifications
 FOR UPDATE
-USING (
-  EXISTS (
-    SELECT 1 FROM users u
-    INNER JOIN companies c ON u.company_id = c.id
-    WHERE u.id = auth.uid()
-    AND c.is_platform = true
-  )
-);
+USING (public.is_platform_user());
 
 -- Commentaires
 COMMENT ON TABLE platform_notifications IS 'Notifications pour les utilisateurs de la plateforme (nouvelles inscriptions, leads, etc.)';
