@@ -34,11 +34,11 @@ export function Sidebar() {
   }
 
   const navItems = [
-    { icon: Home, label: 'Dashboard', href: '/dashboard' },
+    { icon: Home, label: 'Dashboard', href: '/platform/dashboard' },
     { icon: UserPlus, label: 'Leads', href: '/platform/leads' },
     { icon: FileText, label: 'Factures', href: '/billing' },
     { icon: Users, label: 'Clients', href: '/clients' },
-    { icon: Settings, label: 'Paramètres', href: '/settings' },
+    { icon: Settings, label: 'Paramètres', href: '/platform/settings' },
   ]
 
   return (

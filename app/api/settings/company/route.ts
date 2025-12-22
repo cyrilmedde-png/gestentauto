@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { getPlatformCompanyId } from '@/lib/platform/supabase'
 
 /**
@@ -30,11 +30,11 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Utiliser le client admin pour récupérer les données (bypass RLS si nécessaire)
-    const supabase = await createServerClient(request)
+    // ✅ Utiliser le client admin pour récupérer les données (bypass RLS)
+    const adminSupabase = createAdminClient()
 
     // Récupérer les données utilisateur avec son company_id
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error: userError } = await adminSupabase
       .from('users')
       .select('company_id')
       .eq('id', userId)
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Récupérer les données de l'entreprise du client
-    const { data: company, error: companyError } = await supabase
+    const { data: company, error: companyError } = await adminSupabase
       .from('companies')
       .select('*')
       .eq('id', userData.company_id)
@@ -107,10 +107,11 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const supabase = await createServerClient(request)
+    // ✅ Utiliser le client admin pour récupérer les données (bypass RLS)
+    const adminSupabase = createAdminClient()
 
     // Récupérer les données utilisateur avec son company_id
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error: userError } = await adminSupabase
       .from('users')
       .select('company_id')
       .eq('id', userId)
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Mettre à jour uniquement l'entreprise du client connecté
-    const { data: updated, error: updateError } = await supabase
+    const { data: updated, error: updateError } = await adminSupabase
       .from('companies')
       .update({
         name: body.name,
