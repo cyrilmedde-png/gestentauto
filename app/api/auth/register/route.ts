@@ -9,11 +9,11 @@ import { createAdminClient } from '@/lib/supabase/server'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, companyName, email, firstName, lastName } = body
+    const { userId, companyName, email, firstName, lastName, phone } = body
 
-    if (!userId || !companyName || !email) {
+    if (!userId || !companyName || !email || !phone) {
       return NextResponse.json(
-        { error: 'Paramètres manquants' },
+        { error: 'Paramètres manquants (userId, companyName, email, phone requis)' },
         { status: 400 }
       )
     }
@@ -98,7 +98,89 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ success: true, companyId: companyData.id })
+    // 4. Créer un lead dans platform_leads (comme si créé manuellement)
+    let lead = null
+    try {
+      const { data: leadData, error: leadError } = await adminClient
+        .from('platform_leads')
+        .insert({
+          email: email,
+          first_name: firstName || null,
+          last_name: lastName || null,
+          company_name: companyName,
+          phone: phone,
+          status: 'pre_registered',
+          onboarding_step: 'form',
+        })
+        .select()
+        .single()
+
+      if (leadError) {
+        console.error('Erreur création lead:', leadError)
+        // Ne pas bloquer l'inscription si la création du lead échoue
+      } else {
+        lead = leadData
+      }
+    } catch (leadErr) {
+      console.error('Erreur lors de la création du lead:', leadErr)
+      // Ne pas bloquer l'inscription
+    }
+
+    // 5. Envoyer email et SMS de confirmation (comme pour un lead manuel)
+    if (lead) {
+      const leadName = lead.first_name && lead.last_name 
+        ? `${lead.first_name} ${lead.last_name}` 
+        : lead.first_name || lead.company_name || undefined
+
+      // Envoyer l'email
+      try {
+        const { sendOnboardingConfirmationEmail } = await import('@/lib/services/email')
+        await sendOnboardingConfirmationEmail(lead.email, leadName)
+      } catch (emailError) {
+        console.error('Error sending onboarding confirmation email:', emailError)
+        // On continue quand même, l'email n'est pas critique
+      }
+
+      // Envoyer le SMS (maintenant qu'on a le téléphone)
+      if (lead.phone) {
+        try {
+          const { sendOnboardingConfirmationSMS } = await import('@/lib/services/sms')
+          await sendOnboardingConfirmationSMS(lead.phone, leadName)
+        } catch (smsError) {
+          console.error('Error sending onboarding confirmation SMS:', smsError)
+          // On continue quand même, le SMS n'est pas critique
+        }
+      }
+    }
+
+    // 6. Créer une notification pour la plateforme
+    try {
+      await adminClient
+        .from('platform_notifications')
+        .insert({
+          type: 'new_registration',
+          title: 'Nouvelle inscription',
+          message: `${companyName} s'est inscrit sur la plateforme`,
+          data: {
+            lead_id: lead?.id || null,
+            company_id: companyData.id,
+            user_id: authUser.user.id,
+            email: email,
+            phone: phone,
+            company_name: companyName,
+          },
+          read: false,
+        })
+    } catch (notifError) {
+      console.error('Error creating notification:', notifError)
+      // Ne pas bloquer si la notification échoue (la table peut ne pas exister encore)
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      companyId: companyData.id,
+      leadId: lead?.id || null,
+    })
   } catch (error) {
     console.error('Erreur inattendue dans register API:', error)
     return NextResponse.json(

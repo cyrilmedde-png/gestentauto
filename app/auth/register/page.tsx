@@ -14,6 +14,7 @@ export default function RegisterPage() {
     companyName: '',
     firstName: '',
     lastName: '',
+    phone: '',
   })
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -42,6 +43,11 @@ export default function RegisterPage() {
 
     if (!formData.companyName.trim()) {
       setError('Le nom de l\'entreprise est requis')
+      return
+    }
+
+    if (!formData.phone.trim()) {
+      setError('Le numéro de téléphone est obligatoire pour vous contacter')
       return
     }
 
@@ -86,6 +92,7 @@ export default function RegisterPage() {
           email: formData.email,
           firstName: formData.firstName,
           lastName: formData.lastName,
+          phone: formData.phone,
         }),
       })
 
@@ -157,6 +164,23 @@ export default function RegisterPage() {
               autoComplete="email"
               className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               placeholder="votre@email.com"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-2">
+              Téléphone * <span className="text-xs text-muted-foreground font-normal">(obligatoire pour vous contacter)</span>
+            </label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              value={formData.phone}
+              onChange={handleChange}
+              required
+              autoComplete="tel"
+              className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="+33 6 12 34 56 78"
             />
           </div>
 
