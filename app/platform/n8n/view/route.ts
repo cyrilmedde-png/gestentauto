@@ -155,12 +155,27 @@ export async function GET(request: NextRequest) {
 </html>
   `
 
-  return new NextResponse(html, {
+  // Créer la réponse avec le cookie n8n_userId si disponible
+  const response = new NextResponse(html, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
     },
   })
+
+  // Ajouter un cookie pour le userId si disponible (pour les requêtes des assets)
+  // Ce cookie sera utilisé par verifyPlatformUser si les cookies de session ne sont pas transmis
+  if (userId) {
+    response.cookies.set('n8n_userId', userId, {
+      httpOnly: false, // Accessible depuis JS si nécessaire
+      secure: true,
+      sameSite: 'none', // Permet la transmission dans l'iframe
+      path: '/',
+      maxAge: 60 * 60, // 1 heure
+    })
+  }
+
+  return response
 }
 

@@ -28,6 +28,20 @@ export async function verifyPlatformUser(
       }
     }
 
+    // Si aucun ID n'est fourni, essayer de récupérer depuis le cookie n8n_userId (pour iframe N8N)
+    if (!finalUserId) {
+      const cookieHeader = request.headers.get('cookie') || ''
+      const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+        const [key, ...valueParts] = cookie.trim().split('=')
+        if (key && valueParts.length > 0) {
+          acc[key.trim()] = decodeURIComponent(valueParts.join('='))
+        }
+        return acc
+      }, {} as Record<string, string>)
+      
+      finalUserId = cookies['n8n_userId']
+    }
+
     // Si aucun ID n'est fourni, essayer de récupérer depuis les cookies (session Supabase)
     if (!finalUserId) {
       try {
