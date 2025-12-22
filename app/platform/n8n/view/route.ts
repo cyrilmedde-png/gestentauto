@@ -9,20 +9,20 @@ const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
  * Cette page charge N8N dans un iframe avec authentification basique automatique
  */
 export async function GET(request: NextRequest) {
-  // Récupérer l'ID utilisateur depuis les query params (passé par la page client)
-  const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')
+  // NE PAS récupérer userId depuis query params
+  // Utiliser uniquement la session Supabase pour identifier l'utilisateur
+  // verifyPlatformUser récupérera automatiquement l'utilisateur depuis la session
   
   try {
     // Log pour debug
-    console.log('[N8N View] UserId from params:', userId)
     console.log('[N8N View] Cookies:', request.headers.get('cookie'))
+    console.log('[N8N View] Using session-based authentication (no userId in URL)')
     
     // Vérifier que l'utilisateur est de la plateforme
-    // Passer l'ID utilisateur si disponible
-    const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
+    // Ne pas passer userId - laisser verifyPlatformUser utiliser uniquement la session Supabase
+    const { isPlatform, error } = await verifyPlatformUser(request)
     
-    console.log('[N8N View] Auth result:', { isPlatform, error, userId })
+    console.log('[N8N View] Auth result:', { isPlatform, error })
     
     if (!isPlatform || error) {
       // Si l'authentification échoue, retourner une page HTML avec erreur détaillée
@@ -164,8 +164,8 @@ export async function GET(request: NextRequest) {
   const proxyBaseUrl = `/api/platform/n8n/proxy`
   const fullProxyBaseUrl = `${baseUrl}${proxyBaseUrl}`
   
-  // Construire l'URL de l'iframe avec le userId si disponible
-  const iframeSrc = userId ? `${proxyBaseUrl}?userId=${encodeURIComponent(userId)}` : proxyBaseUrl
+  // Ne pas passer userId dans l'URL - utiliser uniquement la session Supabase
+  const iframeSrc = proxyBaseUrl
   
   const html = `
 <!DOCTYPE html>
@@ -218,7 +218,7 @@ export async function GET(request: NextRequest) {
 </html>
   `
 
-  // Créer la réponse avec le cookie n8n_userId si disponible
+  // Créer la réponse - utiliser uniquement la session Supabase (pas de cookie n8n_userId)
   const response = new NextResponse(html, {
     status: 200,
     headers: {
@@ -227,17 +227,9 @@ export async function GET(request: NextRequest) {
     },
   })
 
-  // Ajouter un cookie pour le userId si disponible (pour les requêtes des assets)
-  // Ce cookie sera utilisé par verifyPlatformUser si les cookies de session ne sont pas transmis
-  if (userId) {
-    response.cookies.set('n8n_userId', userId, {
-      httpOnly: false, // Accessible depuis JS si nécessaire
-      secure: true,
-      sameSite: 'none', // Permet la transmission dans l'iframe
-      path: '/',
-      maxAge: 60 * 60, // 1 heure
-    })
-  }
+  // Ne pas créer de cookie n8n_userId
+  // verifyPlatformUser utilisera uniquement la session Supabase pour identifier l'utilisateur
+  // puis vérifiera si son company_id correspond au platform_company_id
 
   return response
 }

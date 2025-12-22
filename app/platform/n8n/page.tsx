@@ -119,7 +119,7 @@ export default function N8NPage() {
           <div className="flex-1 relative">
             <iframe
               ref={iframeRef}
-              src={user ? `/platform/n8n/view?userId=${user.id}` : '/platform/n8n/view'}
+              src="/platform/n8n/view"
               className="w-full h-full border-0"
               title="N8N Workflows"
               allow="clipboard-read; clipboard-write"

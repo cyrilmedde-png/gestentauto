@@ -10,40 +10,24 @@ const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
  * Redirige vers N8N avec authentification automatique
  */
 export async function GET(request: NextRequest) {
-  // Récupérer l'ID utilisateur depuis les query params
-  const { searchParams } = new URL(request.url)
-  let userId = searchParams.get('userId')
-  
-  // Nettoyer le userId de manière robuste
-  if (userId) {
-    const originalUserId = userId
-    // Nettoyer les query params, fragments et caractères invalides
-    userId = userId.split('?')[0].split('&')[0].split('#')[0].trim()
-    // Vérifier format UUID basique
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
-      console.error('[N8N Proxy Root] Invalid UUID format:', { original: originalUserId, cleaned: userId })
-      userId = null
-    } else if (originalUserId !== userId) {
-      console.log('[N8N Proxy Root] Cleaned userId:', { original: originalUserId, cleaned: userId })
-    }
-  }
+  // NE PAS récupérer userId depuis query params
+  // Utiliser uniquement la session Supabase pour identifier l'utilisateur
+  // verifyPlatformUser récupérera automatiquement l'utilisateur depuis la session
   
   // Log pour déboguer
   console.log('[N8N Proxy Root] Request:', {
     url: request.url,
-    userId: userId,
     hasCookies: !!request.headers.get('cookie'),
   })
   
   // Vérifier que l'utilisateur est de la plateforme
-  // Si userId n'est pas dans query params, verifyPlatformUser essaiera de le récupérer depuis les cookies
-  const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
+  // Utiliser uniquement la session Supabase (pas de userId dans query params)
+  const { isPlatform, error } = await verifyPlatformUser(request)
   
   if (!isPlatform || error) {
     console.error('[N8N Proxy Root] Auth failed:', {
       isPlatform,
       error,
-      userId,
       hasCookies: !!request.headers.get('cookie'),
       url: request.url,
     })
@@ -106,7 +90,7 @@ export async function GET(request: NextRequest) {
         : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.talosprimes.com')
       
       const proxyBase = `/api/platform/n8n/proxy`
-      const userIdParam = userId ? `?userId=${encodeURIComponent(userId)}` : ''
+      // Ne pas passer userId dans les URLs - utiliser uniquement la session Supabase
       
       // Remplacer les URLs par des URLs proxy
       let modifiedHtml = htmlData.replace(
@@ -131,7 +115,7 @@ export async function GET(request: NextRequest) {
                   urlObj.hostname === 'talosprimes.com' ||
                   urlObj.hostname.endsWith('.talosprimes.com')) {
                 const path = urlObj.pathname.startsWith('/') ? urlObj.pathname.substring(1) : urlObj.pathname
-                return `${attr}="${baseUrl}${proxyBase}/${path}${urlObj.search}${userIdParam ? (urlObj.search ? '&' : '?') + userIdParam.substring(1) : ''}"`
+                return `${attr}="${baseUrl}${proxyBase}/${path}${urlObj.search}"`
               }
               // Sinon, c'est un domaine externe, laisser tel quel
               return match
@@ -144,20 +128,20 @@ export async function GET(request: NextRequest) {
           // Si l'URL commence par /, la faire passer par le proxy
           if (url.startsWith('/')) {
             const cleanPath = url.substring(1)
-            return `${attr}="${baseUrl}${proxyBase}/${cleanPath}${userIdParam}"`
+            return `${attr}="${baseUrl}${proxyBase}/${cleanPath}"`
           }
           
           // URLs relatives - utiliser le proxy racine
-          return `${attr}="${baseUrl}${proxyBase}/${url}${userIdParam}"`
+          return `${attr}="${baseUrl}${proxyBase}/${url}"`
         }
       )
       
       // Injecter un script pour intercepter les requêtes fetch et XMLHttpRequest
+      // Ne pas passer userId - utiliser uniquement la session Supabase
       const interceptScript = `
 <script>
 (function() {
   const proxyBase = '${baseUrl}${proxyBase}';
-  const userIdParam = '${userIdParam}';
   const n8nHost = '${new URL(N8N_URL).hostname}';
   
   // Fonction pour déterminer si une URL doit être proxifiée
@@ -187,13 +171,12 @@ export async function GET(request: NextRequest) {
   function toProxyUrl(url) {
     try {
       if (url.startsWith('/')) {
-        return proxyBase + url + userIdParam;
+        return proxyBase + url;
       }
       
       const urlObj = new URL(url, window.location.href);
       const path = urlObj.pathname + urlObj.search;
-      const separator = path.includes('?') ? '&' : '?';
-      return proxyBase + path + separator + userIdParam.substring(1);
+      return proxyBase + path;
     } catch {
       return url;
     }
@@ -269,10 +252,10 @@ export async function GET(request: NextRequest) {
  * Proxy pour les requêtes POST (webhooks, API calls, etc.)
  */
 export async function POST(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')
+  // NE PAS récupérer userId depuis query params
+  // Utiliser uniquement la session Supabase pour identifier l'utilisateur
   
-  const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
+  const { isPlatform, error } = await verifyPlatformUser(request)
   
   if (!isPlatform || error) {
     return NextResponse.json(
