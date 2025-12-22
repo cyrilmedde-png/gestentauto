@@ -164,6 +164,9 @@ export async function GET(request: NextRequest) {
   const proxyBaseUrl = `/api/platform/n8n/proxy`
   const fullProxyBaseUrl = `${baseUrl}${proxyBaseUrl}`
   
+  // Construire l'URL de l'iframe avec le userId si disponible
+  const iframeSrc = userId ? `${proxyBaseUrl}?userId=${encodeURIComponent(userId)}` : proxyBaseUrl
+  
   const html = `
 <!DOCTYPE html>
 <html lang="fr">
@@ -204,7 +207,7 @@ export async function GET(request: NextRequest) {
   <div class="loading" id="loading">Chargement de N8N...</div>
   <iframe 
     id="n8n-iframe"
-    src="${proxyBaseUrl}"
+    src="${iframeSrc}"
     style="display: none;"
     allow="clipboard-read; clipboard-write"
     sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation"
