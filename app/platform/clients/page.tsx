@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedPlatformRoute } from '@/components/auth/ProtectedPlatformRoute'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { Users, Search, Filter, Plus, Mail, Phone, Calendar, CheckCircle, XCircle } from 'lucide-react'
+import { Users, Search, Filter, Plus, Mail, Phone, Calendar, CheckCircle, XCircle, Eye } from 'lucide-react'
 
 interface Client {
   id: string
@@ -38,6 +39,7 @@ export default function PlatformClientsPage() {
 
 function ClientsList() {
   const { user } = useAuth()
+  const router = useRouter()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -76,6 +78,14 @@ function ClientsList() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleCreateClient = () => {
+    router.push('/platform/onboarding')
+  }
+
+  const handleViewClient = (clientId: string) => {
+    router.push(`/platform/clients/${clientId}`)
   }
 
   // Filtrer les clients
@@ -139,7 +149,7 @@ function ClientsList() {
         </div>
 
         <button
-          onClick={() => {/* TODO: Ouvrir modal création client */}}
+          onClick={handleCreateClient}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
         >
           <Plus className="w-4 h-4" />
@@ -159,7 +169,7 @@ function ClientsList() {
           </p>
           {!searchTerm && filterStatus === 'all' && (
             <button
-              onClick={() => {/* TODO: Ouvrir modal création client */}}
+              onClick={handleCreateClient}
               className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
             >
               Créer le premier client
@@ -244,9 +254,10 @@ function ClientsList() {
                     </td>
                     <td className="py-3 px-4 text-sm text-right">
                       <button
-                        onClick={() => {/* TODO: Voir détails client */}}
-                        className="px-3 py-1 text-primary hover:bg-primary/10 rounded transition-colors"
+                        onClick={() => handleViewClient(client.id)}
+                        className="px-3 py-1 text-primary hover:bg-primary/10 rounded transition-colors flex items-center gap-1"
                       >
+                        <Eye className="w-3 h-3" />
                         Voir
                       </button>
                     </td>
@@ -299,9 +310,10 @@ function ClientsList() {
                     {new Date(client.created_at).toLocaleDateString('fr-FR')}
                   </div>
                   <button
-                    onClick={() => {/* TODO: Voir détails client */}}
-                    className="px-3 py-1 text-sm text-primary hover:bg-primary/10 rounded transition-colors"
+                    onClick={() => handleViewClient(client.id)}
+                    className="px-3 py-1 text-sm text-primary hover:bg-primary/10 rounded transition-colors flex items-center gap-1"
                   >
+                    <Eye className="w-3 h-3" />
                     Voir détails
                   </button>
                 </div>
