@@ -2,11 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 // ⚠️ Cette route utilise maintenant le client plateforme
 import { createPlatformClient } from '@/lib/supabase/platform'
 import { getPlatformCompanyId } from '@/lib/platform/supabase'
+import { verifyPlatformUser, createForbiddenResponse } from '@/lib/middleware/platform-auth'
 
 // ⚠️ Cette route utilise maintenant le client plateforme pour compatibilité avec le frontend
+// ⚠️ Accès réservé aux utilisateurs plateforme uniquement
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // ✅ Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     const supabase = createPlatformClient()
     
     // Récupérer l'ID de l'entreprise plateforme
@@ -66,6 +75,13 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // ✅ Vérifier que l'utilisateur est plateforme
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    
+    if (!isPlatform) {
+      return createForbiddenResponse(authError || 'Access denied. Platform user required.')
+    }
+
     const supabase = createPlatformClient()
     const body = await request.json()
 

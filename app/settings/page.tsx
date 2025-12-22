@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { useAuth } from '@/components/auth/AuthProvider'
 import { Building2, Users, Save, Edit, Mail, Phone, MapPin, FileText, Globe } from 'lucide-react'
 
-interface PlatformConfig {
+interface CompanyConfig {
   id?: string
   name: string
   siret?: string
@@ -27,11 +28,92 @@ interface Client {
 }
 
 export default function SettingsPage() {
+  const { user } = useAuth()
+  const [isPlatform, setIsPlatform] = useState<boolean | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (user) {
+      checkUserType()
+    }
+  }, [user])
+
+  const checkUserType = async () => {
+    try {
+      setLoading(true)
+      const headers: HeadersInit = {}
+      if (user?.id) {
+        headers['X-User-Id'] = user.id
+      }
+
+      const response = await fetch('/api/auth/check-user-type', {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setIsPlatform(data.isPlatform || false)
+      } else {
+        setIsPlatform(false)
+      }
+    } catch (error) {
+      console.error('Error checking user type:', error)
+      setIsPlatform(false)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading || isPlatform === null) {
+    return (
+      <ProtectedRoute>
+        <MainLayout>
+          <div className="container mx-auto p-3 sm:p-4 md:p-6 lg:p-8">
+            <div className="text-center py-12 text-muted-foreground">
+              Chargement...
+            </div>
+          </div>
+        </MainLayout>
+      </ProtectedRoute>
+    )
+  }
+
+  return (
+    <ProtectedRoute>
+      <MainLayout>
+        <div className="container mx-auto p-3 sm:p-4 md:p-6 lg:p-8">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
+              Paramètres
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              {isPlatform 
+                ? 'Configuration de la plateforme et gestion des clients'
+                : 'Configuration de votre entreprise'
+              }
+            </p>
+          </div>
+
+          {isPlatform ? (
+            <PlatformSettings />
+          ) : (
+            <CompanySettings companyId={user?.company_id} />
+          )}
+        </div>
+      </MainLayout>
+    </ProtectedRoute>
+  )
+}
+
+// Composant pour les paramètres plateforme
+function PlatformSettings() {
   const [activeTab, setActiveTab] = useState<'platform' | 'clients'>('platform')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [platformConfig, setPlatformConfig] = useState<PlatformConfig>({
+  const [platformConfig, setPlatformConfig] = useState<CompanyConfig>({
     name: '',
     country: 'FR'
   })
@@ -47,8 +129,15 @@ export default function SettingsPage() {
   const loadPlatformConfig = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/settings/platform')
-      if (!response.ok) throw new Error('Erreur lors du chargement')
+      const response = await fetch('/api/settings/platform', {
+        credentials: 'include',
+      })
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('Accès refusé. Utilisateur plateforme requis.')
+        }
+        throw new Error('Erreur lors du chargement')
+      }
       
       const data = await response.json()
       if (data.platform) {
@@ -64,7 +153,9 @@ export default function SettingsPage() {
 
   const loadClients = async () => {
     try {
-      const response = await fetch('/api/settings/clients')
+      const response = await fetch('/api/settings/clients', {
+        credentials: 'include',
+      })
       if (!response.ok) throw new Error('Erreur lors du chargement')
       
       const data = await response.json()
@@ -84,6 +175,7 @@ export default function SettingsPage() {
       const response = await fetch('/api/settings/platform', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(platformConfig)
       })
 
@@ -103,103 +195,212 @@ export default function SettingsPage() {
   }
 
   return (
-    <ProtectedRoute>
-      <MainLayout>
-        <div className="container mx-auto p-3 sm:p-4 md:p-6 lg:p-8">
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
-              Paramètres
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Configuration de la plateforme et gestion des clients
-            </p>
+    <>
+      {/* Onglets */}
+      <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-border/50 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('platform')}
+          className={`px-3 sm:px-4 py-2 sm:py-2.5 font-medium transition-colors whitespace-nowrap min-h-[44px] touch-manipulation ${
+            activeTab === 'platform'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground active:text-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">Plateforme</span>
           </div>
-
-          {/* Onglets */}
-          <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-border/50 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('platform')}
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 font-medium transition-colors whitespace-nowrap min-h-[44px] touch-manipulation ${
-                activeTab === 'platform'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground active:text-foreground'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">Plateforme</span>
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('clients')}
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 font-medium transition-colors whitespace-nowrap min-h-[44px] touch-manipulation ${
-                activeTab === 'clients'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground active:text-foreground'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">Clients</span>
-              </div>
-            </button>
+        </button>
+        <button
+          onClick={() => setActiveTab('clients')}
+          className={`px-3 sm:px-4 py-2 sm:py-2.5 font-medium transition-colors whitespace-nowrap min-h-[44px] touch-manipulation ${
+            activeTab === 'clients'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground active:text-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">Clients</span>
           </div>
+        </button>
+      </div>
 
-          {/* Messages */}
-          {error && (
-            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="mb-4 p-4 bg-green-500/10 border border-green-500/50 rounded-lg text-green-400">
-              {success}
-            </div>
-          )}
-
-          {/* Contenu */}
-          {activeTab === 'platform' && (
-            <>
-              {isEditing ? (
-                <PlatformConfigForm
-                  config={platformConfig}
-                  setConfig={setPlatformConfig}
-                  onSave={handleSavePlatform}
-                  onCancel={() => {
-                    setIsEditing(false)
-                    loadPlatformConfig()
-                  }}
-                  loading={loading}
-                  saving={saving}
-                />
-              ) : (
-                <PlatformConfigCard
-                  config={platformConfig}
-                  onEdit={() => setIsEditing(true)}
-                  loading={loading}
-                />
-              )}
-            </>
-          )}
-
-          {activeTab === 'clients' && (
-            <ClientsList clients={clients} onRefresh={loadClients} />
-          )}
+      {/* Messages */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
+          {error}
         </div>
-      </MainLayout>
-    </ProtectedRoute>
+      )}
+      {success && (
+        <div className="mb-4 p-4 bg-green-500/10 border border-green-500/50 rounded-lg text-green-400">
+          {success}
+        </div>
+      )}
+
+      {/* Contenu */}
+      {activeTab === 'platform' && (
+        <>
+          {isEditing ? (
+            <CompanyConfigForm
+              config={platformConfig}
+              setConfig={setPlatformConfig}
+              onSave={handleSavePlatform}
+              onCancel={() => {
+                setIsEditing(false)
+                loadPlatformConfig()
+              }}
+              loading={loading}
+              saving={saving}
+              title="Informations de la plateforme"
+              description="Configuration de la plateforme système"
+            />
+          ) : (
+            <CompanyConfigCard
+              config={platformConfig}
+              onEdit={() => setIsEditing(true)}
+              loading={loading}
+              title="Informations de la plateforme"
+              description="Configuration de la plateforme système"
+            />
+          )}
+        </>
+      )}
+
+      {activeTab === 'clients' && (
+        <ClientsList clients={clients} onRefresh={loadClients} />
+      )}
+    </>
   )
 }
 
-// Composant carte de configuration plateforme (mode lecture)
-function PlatformConfigCard({
+// Composant pour les paramètres de l'entreprise (clients)
+function CompanySettings({ companyId }: { companyId?: string }) {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [companyConfig, setCompanyConfig] = useState<CompanyConfig>({
+    name: '',
+    country: 'FR'
+  })
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (companyId) {
+      loadCompanyConfig()
+    }
+  }, [companyId])
+
+  const loadCompanyConfig = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/settings/company', {
+        credentials: 'include',
+      })
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('Accès refusé. Cette route est réservée aux clients.')
+        }
+        throw new Error('Erreur lors du chargement')
+      }
+      
+      const data = await response.json()
+      if (data.company) {
+        setCompanyConfig(data.company)
+      }
+    } catch (err) {
+      console.error('Erreur:', err)
+      setError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveCompany = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const response = await fetch('/api/settings/company', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(companyConfig)
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Erreur lors de la sauvegarde')
+      }
+
+      setSuccess('Configuration de votre entreprise sauvegardée avec succès')
+      setIsEditing(false)
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <>
+      {/* Messages */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-4 p-4 bg-green-500/10 border border-green-500/50 rounded-lg text-green-400">
+          {success}
+        </div>
+      )}
+
+      {/* Contenu */}
+      {isEditing ? (
+        <CompanyConfigForm
+          config={companyConfig}
+          setConfig={setCompanyConfig}
+          onSave={handleSaveCompany}
+          onCancel={() => {
+            setIsEditing(false)
+            loadCompanyConfig()
+          }}
+          loading={loading}
+          saving={saving}
+          title="Informations de votre entreprise"
+          description="Configurez les informations de votre entreprise"
+        />
+      ) : (
+        <CompanyConfigCard
+          config={companyConfig}
+          onEdit={() => setIsEditing(true)}
+          loading={loading}
+          title="Informations de votre entreprise"
+          description="Informations de votre entreprise"
+        />
+      )}
+    </>
+  )
+}
+
+// Composant carte de configuration (mode lecture) - réutilisable
+function CompanyConfigCard({
   config,
   onEdit,
-  loading
+  loading,
+  title,
+  description
 }: {
-  config: PlatformConfig
+  config: CompanyConfig
   onEdit: () => void
   loading: boolean
+  title: string
+  description: string
 }) {
   if (loading) {
     return (
@@ -214,12 +415,12 @@ function PlatformConfigCard({
       <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6">
         <div className="text-center py-12">
           <Building2 className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
-          <p className="text-muted-foreground mb-4">Aucune configuration de plateforme</p>
+          <p className="text-muted-foreground mb-4">Aucune configuration</p>
           <button
             onClick={onEdit}
             className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
           >
-            Configurer la plateforme
+            Configurer
           </button>
         </div>
       </div>
@@ -231,10 +432,10 @@ function PlatformConfigCard({
       <div className="flex justify-between items-start mb-6">
         <div>
           <h2 className="text-xl font-semibold text-foreground mb-2">
-            Informations de la plateforme
+            {title}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Configuration de la plateforme système
+            {description}
           </p>
         </div>
         <button
@@ -326,21 +527,25 @@ function PlatformConfigCard({
   )
 }
 
-// Composant formulaire de configuration plateforme
-function PlatformConfigForm({
+// Composant formulaire de configuration - réutilisable
+function CompanyConfigForm({
   config,
   setConfig,
   onSave,
   onCancel,
   loading,
-  saving
+  saving,
+  title,
+  description
 }: {
-  config: PlatformConfig
-  setConfig: (config: PlatformConfig) => void
+  config: CompanyConfig
+  setConfig: (config: CompanyConfig) => void
   onSave: (e: React.FormEvent) => void
   onCancel: () => void
   loading: boolean
   saving: boolean
+  title: string
+  description: string
 }) {
   if (loading) {
     return (
@@ -355,17 +560,17 @@ function PlatformConfigForm({
       <div className="space-y-6">
         <div>
           <h2 className="text-xl font-semibold text-foreground mb-4">
-            Informations de la plateforme
+            {title}
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
-            La plateforme est configurée comme le premier client primordial pour le fonctionnement du système.
+            {description}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Nom de la plateforme <span className="text-red-400">*</span>
+              Nom <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -373,7 +578,7 @@ function PlatformConfigForm({
               value={config.name}
               onChange={(e) => setConfig({ ...config, name: e.target.value })}
               className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              placeholder="Ma Plateforme SaaS"
+              placeholder="Nom de l'entreprise"
             />
           </div>
 
@@ -386,7 +591,7 @@ function PlatformConfigForm({
               value={config.email || ''}
               onChange={(e) => setConfig({ ...config, email: e.target.value })}
               className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              placeholder="contact@plateforme.com"
+              placeholder="contact@entreprise.com"
             />
           </div>
 
@@ -511,7 +716,7 @@ function PlatformConfigForm({
   )
 }
 
-// Composant liste des clients
+// Composant liste des clients (pour plateforme uniquement)
 function ClientsList({
   clients,
   onRefresh
@@ -623,4 +828,3 @@ function ClientsList({
     </div>
   )
 }
-
