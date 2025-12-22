@@ -64,7 +64,7 @@ export async function GET(
     
     // Pour le HTML, on doit réécrire les URLs. Pour les autres, on peut utiliser arrayBuffer
     if (contentType.includes('text/html')) {
-      let htmlData = await response.text()
+      const htmlData = await response.text()
       
       // Utiliser le domaine public depuis les headers
       const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
@@ -77,10 +77,10 @@ export async function GET(
       const userIdParam = userId ? `?userId=${encodeURIComponent(userId)}` : ''
       
       // Remplacer les URLs relatives par des URLs proxy
-      htmlData = htmlData.replace(
+      const modifiedHtml = htmlData.replace(
         /(src|href|action)=["']([^"']+)["']/g,
         (match, attr, url) => {
-          // Ignorer les URLs absolutes externes
+          // Ignorer les URLs absolues externes
           if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('mailto:') || url.startsWith('#')) {
             return match
           }
@@ -98,7 +98,7 @@ export async function GET(
         }
       )
       
-      return new NextResponse(htmlData, {
+      return new NextResponse(modifiedHtml, {
         status: response.status,
         headers: {
           'Content-Type': contentType,
