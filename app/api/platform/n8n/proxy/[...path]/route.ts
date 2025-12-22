@@ -12,7 +12,7 @@ const N8N_PASSWORD = process.env.N8N_BASIC_AUTH_PASSWORD
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   // Récupérer l'ID utilisateur depuis les query params
   const { searchParams } = new URL(request.url)
@@ -35,9 +35,12 @@ export async function GET(
     )
   }
 
+  // Attendre les params (Next.js 16)
+  const resolvedParams = await params
+
   // Construire le chemin N8N depuis les paramètres de route
-  const n8nPath = params.path && params.path.length > 0 
-    ? `/${params.path.join('/')}` 
+  const n8nPath = resolvedParams.path && resolvedParams.path.length > 0 
+    ? `/${resolvedParams.path.join('/')}` 
     : '/'
   
   // Construire l'URL N8N complète (enlever userId des query params)
@@ -92,7 +95,7 @@ export async function GET(
           }
           
           // URLs relatives - construire le chemin complet
-          const currentPath = params.path && params.path.length > 0 ? params.path.join('/') : ''
+          const currentPath = resolvedParams.path && resolvedParams.path.length > 0 ? resolvedParams.path.join('/') : ''
           const relativePath = currentPath ? `${currentPath}/${url}` : url
           return `${attr}="${baseUrl}${proxyBase}/${relativePath}${userIdParam}"`
         }
@@ -133,7 +136,7 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { searchParams } = new URL(request.url)
   const userId = searchParams.get('userId')
@@ -154,8 +157,11 @@ export async function POST(
     )
   }
 
-  const n8nPath = params.path && params.path.length > 0 
-    ? `/${params.path.join('/')}` 
+  // Attendre les params (Next.js 16)
+  const resolvedParams = await params
+
+  const n8nPath = resolvedParams.path && resolvedParams.path.length > 0 
+    ? `/${resolvedParams.path.join('/')}` 
     : '/'
   const n8nUrl = `${N8N_URL}${n8nPath}`
   
