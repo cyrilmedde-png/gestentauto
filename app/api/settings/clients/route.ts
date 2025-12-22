@@ -18,7 +18,7 @@ export async function GET() {
     // La plateforme voit tous ses clients (entreprises abonnées)
     const { data: companies, error } = await supabase
       .from('companies')
-      .select('id, name, email, created_at')
+      .select('id, name, email, phone, created_at')
       .neq('id', platformId)
       .order('created_at', { ascending: false })
 
