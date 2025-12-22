@@ -87,26 +87,6 @@ export async function verifyPlatformUser(
         }
         
         finalUserId = user.id
-        
-        // MÉTHODE 1 : Utiliser la fonction RPC is_platform_user() (plus fiable, utilise la session Supabase)
-        try {
-          const { data: isPlatformRPC, error: rpcError } = await supabase.rpc('is_platform_user')
-          
-          if (!rpcError && isPlatformRPC === true) {
-            console.log('[verifyPlatformUser] User is platform (via RPC is_platform_user):', finalUserId)
-            return { isPlatform: true }
-          }
-          
-          if (rpcError) {
-            console.warn('[verifyPlatformUser] RPC error, falling back to manual check:', rpcError)
-          } else if (isPlatformRPC === false) {
-            console.log('[verifyPlatformUser] User is NOT platform (via RPC):', finalUserId)
-            // Si RPC retourne explicitement false, on peut retourner directement
-            // Mais on continue quand même avec la vérification manuelle pour plus de détails
-          }
-        } catch (rpcErr) {
-          console.warn('[verifyPlatformUser] RPC call failed, falling back to manual check:', rpcErr)
-        }
       } catch (sessionError) {
         return {
           isPlatform: false,
@@ -122,6 +102,7 @@ export async function verifyPlatformUser(
       }
     }
 
+    // MÉTHODE PRINCIPALE : Vérification manuelle (plus fiable dans les routes API)
     // Utiliser le client admin pour bypasser RLS
     const adminSupabase = createAdminClient()
 
@@ -140,6 +121,20 @@ export async function verifyPlatformUser(
         details: userError.details,
         hint: userError.hint,
       })
+      
+      // Si l'utilisateur n'est pas trouvé, essayer la RPC comme fallback
+      try {
+        const supabase = await createServerClient(request)
+        const { data: isPlatformRPC, error: rpcError } = await supabase.rpc('is_platform_user')
+        
+        if (!rpcError && isPlatformRPC === true) {
+          console.log('[verifyPlatformUser] User is platform (via RPC fallback after user not found):', finalUserId)
+          return { isPlatform: true }
+        }
+      } catch (rpcErr) {
+        // Ignorer l'erreur RPC
+      }
+      
       return {
         isPlatform: false,
         error: `User not found: ${userError.message}`,
@@ -150,6 +145,20 @@ export async function verifyPlatformUser(
       console.error('[verifyPlatformUser] User data is null:', {
         userId: finalUserId,
       })
+      
+      // Essayer la RPC comme fallback
+      try {
+        const supabase = await createServerClient(request)
+        const { data: isPlatformRPC, error: rpcError } = await supabase.rpc('is_platform_user')
+        
+        if (!rpcError && isPlatformRPC === true) {
+          console.log('[verifyPlatformUser] User is platform (via RPC fallback after null userData):', finalUserId)
+          return { isPlatform: true }
+        }
+      } catch (rpcErr) {
+        // Ignorer l'erreur RPC
+      }
+      
       return {
         isPlatform: false,
         error: 'User not found in database',
@@ -161,6 +170,20 @@ export async function verifyPlatformUser(
 
     if (!platformId) {
       console.error('[verifyPlatformUser] Platform ID not found')
+      
+      // Essayer la RPC comme fallback
+      try {
+        const supabase = await createServerClient(request)
+        const { data: isPlatformRPC, error: rpcError } = await supabase.rpc('is_platform_user')
+        
+        if (!rpcError && isPlatformRPC === true) {
+          console.log('[verifyPlatformUser] User is platform (via RPC fallback after platformId not found):', finalUserId)
+          return { isPlatform: true }
+        }
+      } catch (rpcErr) {
+        // Ignorer l'erreur RPC
+      }
+      
       return {
         isPlatform: false,
         error: 'Platform not configured',
@@ -171,7 +194,7 @@ export async function verifyPlatformUser(
     const normalizedUserCompanyId = String(userData.company_id).trim().toLowerCase()
     const normalizedPlatformId = String(platformId).trim().toLowerCase()
 
-    console.log('[verifyPlatformUser] Company comparison:', {
+    console.log('[verifyPlatformUser] Manual check - Company comparison:', {
       userId: finalUserId,
       userCompanyId: normalizedUserCompanyId,
       platformId: normalizedPlatformId,
@@ -180,15 +203,45 @@ export async function verifyPlatformUser(
 
     const isPlatform = normalizedPlatformId === normalizedUserCompanyId
 
-    if (!isPlatform) {
-      console.warn('[verifyPlatformUser] User is not platform user:', {
-        userId: finalUserId,
-        userCompanyId: normalizedUserCompanyId,
-        platformId: normalizedPlatformId,
-      })
+    if (isPlatform) {
+      console.log('[verifyPlatformUser] ✅ User is platform user (manual check):', finalUserId)
+      return { isPlatform: true }
     }
 
-    return { isPlatform }
+    // Si la vérification manuelle échoue, essayer la RPC comme dernier recours
+    console.warn('[verifyPlatformUser] Manual check failed, trying RPC fallback:', {
+      userId: finalUserId,
+      userCompanyId: normalizedUserCompanyId,
+      platformId: normalizedPlatformId,
+    })
+    
+    try {
+      const supabase = await createServerClient(request)
+      const { data: isPlatformRPC, error: rpcError } = await supabase.rpc('is_platform_user')
+      
+      if (!rpcError && isPlatformRPC === true) {
+        console.log('[verifyPlatformUser] ✅ User is platform (via RPC fallback):', finalUserId)
+        return { isPlatform: true }
+      }
+      
+      if (rpcError) {
+        console.warn('[verifyPlatformUser] RPC fallback error:', rpcError)
+      }
+    } catch (rpcErr) {
+      console.warn('[verifyPlatformUser] RPC fallback exception:', rpcErr)
+    }
+
+    // Si tout échoue, retourner false
+    console.warn('[verifyPlatformUser] ❌ User is NOT platform user:', {
+      userId: finalUserId,
+      userCompanyId: normalizedUserCompanyId,
+      platformId: normalizedPlatformId,
+    })
+
+    return { 
+      isPlatform: false,
+      error: `User company (${normalizedUserCompanyId}) does not match platform company (${normalizedPlatformId})`
+    }
   } catch (error) {
     console.error('Error in verifyPlatformUser:', error)
     return {
