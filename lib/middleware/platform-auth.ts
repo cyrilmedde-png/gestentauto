@@ -39,7 +39,13 @@ export async function verifyPlatformUser(
         return acc
       }, {} as Record<string, string>)
       
-      finalUserId = cookies['n8n_userId']
+      // Chercher n8n_userId (camelCase) ou n8n_userid (minuscule)
+      finalUserId = cookies['n8n_userId'] || cookies['n8n_userid']
+      
+      // Nettoyer le userId si il contient des query params (bug de construction URL)
+      if (finalUserId && finalUserId.includes('?')) {
+        finalUserId = finalUserId.split('?')[0]
+      }
     }
 
     // Si aucun ID n'est fourni, essayer de récupérer depuis les cookies (session Supabase)

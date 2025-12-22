@@ -16,7 +16,12 @@ export async function GET(
 ) {
   // Récupérer l'ID utilisateur depuis les query params
   const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')
+  let userId = searchParams.get('userId')
+  
+  // Nettoyer le userId si il contient des query params (bug de construction URL)
+  if (userId && userId.includes('?')) {
+    userId = userId.split('?')[0]
+  }
   
   // Log pour déboguer
   console.log('[N8N Proxy Catch-all] Request:', {
