@@ -13,26 +13,62 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  // Récupérer l'ID utilisateur depuis les cookies (n8n_userId ou session)
-  const cookieHeader = request.headers.get('cookie') || ''
-  const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-    const [key, ...valueParts] = cookie.trim().split('=')
-    if (key && valueParts.length > 0) {
-      acc[key.trim()] = decodeURIComponent(valueParts.join('='))
+  // Construire le chemin N8N
+  const resolvedParams = await params
+  const restPath = resolvedParams.path && resolvedParams.path.length > 0 
+    ? resolvedParams.path.join('/')
+    : ''
+  
+  // Pour /rest/login, on permet l'accès sans vérification stricte (N8N gère sa propre auth)
+  // Mais on vérifie quand même que la requête vient d'un utilisateur authentifié de la plateforme
+  const isLoginRoute = restPath === 'login'
+  
+  if (!isLoginRoute) {
+    // Pour les autres routes REST, vérifier que l'utilisateur est de la plateforme
+    const cookieHeader = request.headers.get('cookie') || ''
+    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+      const [key, ...valueParts] = cookie.trim().split('=')
+      if (key && valueParts.length > 0) {
+        acc[key.trim()] = decodeURIComponent(valueParts.join('='))
+      }
+      return acc
+    }, {} as Record<string, string>)
+    
+    const userId = cookies['n8n_userId'] || request.headers.get('X-User-Id')
+    
+    // Vérifier que l'utilisateur est de la plateforme
+    const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
+    
+    if (!isPlatform || error) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Plateforme uniquement', details: error },
+        { status: 403 }
+      )
     }
-    return acc
-  }, {} as Record<string, string>)
-  
-  const userId = cookies['n8n_userId'] || request.headers.get('X-User-Id')
-  
-  // Vérifier que l'utilisateur est de la plateforme
-  const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
-  
-  if (!isPlatform || error) {
-    return NextResponse.json(
-      { error: 'Unauthorized - Plateforme uniquement', details: error },
-      { status: 403 }
-    )
+  } else {
+    // Pour /rest/login, on vérifie juste qu'il y a un cookie n8n_userId (utilisateur plateforme)
+    // Cela garantit que seuls les utilisateurs de la plateforme peuvent accéder à N8N
+    const cookieHeader = request.headers.get('cookie') || ''
+    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+      const [key, ...valueParts] = cookie.trim().split('=')
+      if (key && valueParts.length > 0) {
+        acc[key.trim()] = decodeURIComponent(valueParts.join('='))
+      }
+      return acc
+    }, {} as Record<string, string>)
+    
+    const userId = cookies['n8n_userId'] || request.headers.get('X-User-Id')
+    
+    // Vérifier que l'utilisateur est de la plateforme (mais plus permissif pour login)
+    const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
+    
+    if (!isPlatform && !userId) {
+      // Si pas de userId du tout, refuser
+      return NextResponse.json(
+        { error: 'Unauthorized - Plateforme uniquement', details: 'No user ID found' },
+        { status: 403 }
+      )
+    }
   }
 
   if (!N8N_USERNAME || !N8N_PASSWORD) {
@@ -122,26 +158,57 @@ async function handleRestRequest(
   params: Promise<{ path: string[] }>,
   method: string
 ) {
-  // Récupérer l'ID utilisateur depuis les cookies
-  const cookieHeader = request.headers.get('cookie') || ''
-  const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-    const [key, ...valueParts] = cookie.trim().split('=')
-    if (key && valueParts.length > 0) {
-      acc[key.trim()] = decodeURIComponent(valueParts.join('='))
+  // Construire le chemin N8N
+  const resolvedParams = await params
+  const restPath = resolvedParams.path && resolvedParams.path.length > 0 
+    ? resolvedParams.path.join('/')
+    : ''
+  
+  // Pour /rest/login, on permet l'accès sans vérification stricte
+  const isLoginRoute = restPath === 'login'
+  
+  if (!isLoginRoute) {
+    // Pour les autres routes REST, vérifier que l'utilisateur est de la plateforme
+    const cookieHeader = request.headers.get('cookie') || ''
+    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+      const [key, ...valueParts] = cookie.trim().split('=')
+      if (key && valueParts.length > 0) {
+        acc[key.trim()] = decodeURIComponent(valueParts.join('='))
+      }
+      return acc
+    }, {} as Record<string, string>)
+    
+    const userId = cookies['n8n_userId'] || request.headers.get('X-User-Id')
+    
+    // Vérifier que l'utilisateur est de la plateforme
+    const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
+    
+    if (!isPlatform || error) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Plateforme uniquement', details: error },
+        { status: 403 }
+      )
     }
-    return acc
-  }, {} as Record<string, string>)
-  
-  const userId = cookies['n8n_userId'] || request.headers.get('X-User-Id')
-  
-  // Vérifier que l'utilisateur est de la plateforme
-  const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
-  
-  if (!isPlatform || error) {
-    return NextResponse.json(
-      { error: 'Unauthorized - Plateforme uniquement', details: error },
-      { status: 403 }
-    )
+  } else {
+    // Pour /rest/login, on vérifie juste qu'il y a un cookie n8n_userId
+    const cookieHeader = request.headers.get('cookie') || ''
+    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+      const [key, ...valueParts] = cookie.trim().split('=')
+      if (key && valueParts.length > 0) {
+        acc[key.trim()] = decodeURIComponent(valueParts.join('='))
+      }
+      return acc
+    }, {} as Record<string, string>)
+    
+    const userId = cookies['n8n_userId'] || request.headers.get('X-User-Id')
+    
+    if (!userId) {
+      // Si pas de userId du tout, refuser
+      return NextResponse.json(
+        { error: 'Unauthorized - Plateforme uniquement', details: 'No user ID found' },
+        { status: 403 }
+      )
+    }
   }
 
   if (!N8N_USERNAME || !N8N_PASSWORD) {
