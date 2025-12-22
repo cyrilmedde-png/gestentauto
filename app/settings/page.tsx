@@ -314,10 +314,15 @@ function CompanySettings({ companyId, user }: { companyId?: string; user?: { id:
         headers,
       })
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }))
+        
+        if (response.status === 401) {
+          throw new Error(errorData.error || 'Non authentifié. Veuillez vous reconnecter.')
+        }
         if (response.status === 403) {
           throw new Error('Accès refusé. Cette route est réservée aux clients.')
         }
-        throw new Error('Erreur lors du chargement')
+        throw new Error(errorData.error || 'Erreur lors du chargement')
       }
       
       const data = await response.json()
