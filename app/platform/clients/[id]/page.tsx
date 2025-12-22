@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedPlatformRoute } from '@/components/auth/ProtectedPlatformRoute'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Calendar, CheckCircle, XCircle, Edit, Save, X } from 'lucide-react'
+import { ArrowLeft, Building2, Mail, Phone, MapPin, Calendar, CheckCircle, XCircle, Edit, Save, X, Users, UserPlus, Key, Trash2 } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
 
 interface ClientDetails {
   id: string
@@ -22,6 +23,20 @@ interface ClientDetails {
   subscription_status?: string
 }
 
+interface User {
+  id: string
+  email: string
+  first_name: string | null
+  last_name: string | null
+  company_id: string
+  role_id: string | null
+  created_at: string
+  roles: {
+    id: string
+    name: string
+  } | null
+}
+
 export default function ClientDetailsPage() {
   return (
     <ProtectedPlatformRoute>
@@ -35,9 +50,11 @@ export default function ClientDetailsPage() {
 function ClientDetailsContent() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const clientId = params.id as string
   
+  const [activeTab, setActiveTab] = useState<'details' | 'users'>('details')
   const [client, setClient] = useState<ClientDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -49,15 +66,12 @@ function ClientDetailsContent() {
     if (clientId) {
       loadClientDetails()
       // Vérifier si on doit ouvrir en mode édition depuis l'URL
-      if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search)
-        const editParam = urlParams.get('edit')
-        if (editParam === 'true') {
-          setIsEditing(true)
-        }
+      const editParam = searchParams.get('edit')
+      if (editParam === 'true') {
+        setIsEditing(true)
       }
     }
-  }, [clientId])
+  }, [clientId, searchParams])
 
   const loadClientDetails = async () => {
     try {
@@ -234,7 +248,40 @@ function ClientDetailsContent() {
         </div>
       )}
 
-      {/* Détails */}
+      {/* Onglets */}
+      <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-border/50 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('details')}
+          className={`px-3 sm:px-4 py-2 sm:py-2.5 font-medium transition-colors whitespace-nowrap min-h-[44px] touch-manipulation ${
+            activeTab === 'details'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground active:text-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">Détails</span>
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`px-3 sm:px-4 py-2 sm:py-2.5 font-medium transition-colors whitespace-nowrap min-h-[44px] touch-manipulation ${
+            activeTab === 'users'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground active:text-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">Utilisateurs</span>
+          </div>
+        </button>
+      </div>
+
+      {/* Contenu selon l'onglet */}
+      {activeTab === 'details' && (
+        <>
+          {/* Détails */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6">
           <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -429,7 +476,587 @@ function ClientDetailsContent() {
           </div>
         </div>
       </div>
+        </>
+      )}
+
+      {activeTab === 'users' && client && (
+        <ClientUsersTab companyId={client.id} currentUserId={user?.id} />
+      )}
     </div>
+  )
+}
+
+// Composant pour l'onglet Utilisateurs
+function ClientUsersTab({ 
+  companyId, 
+  currentUserId 
+}: { 
+  companyId: string
+  currentUserId?: string 
+}) {
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [resettingPassword, setResettingPassword] = useState<string | null>(null)
+  const [deletingUser, setDeletingUser] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadUsers()
+  }, [companyId])
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const headers: HeadersInit = {}
+      if (currentUserId) {
+        headers['X-User-Id'] = currentUserId
+      }
+
+      const response = await fetch(`/api/platform/users?company_id=${companyId}`, {
+        credentials: 'include',
+        headers,
+      })
+
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement des utilisateurs')
+      }
+
+      const data = await response.json()
+      setUsers(data.users || [])
+    } catch (err) {
+      console.error('Erreur:', err)
+      setError(err instanceof Error ? err.message : 'Erreur lors du chargement')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async (userId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
+      return
+    }
+
+    try {
+      setDeletingUser(userId)
+      setError(null)
+      setSuccess(null)
+
+      const headers: HeadersInit = {}
+      if (currentUserId) {
+        headers['X-User-Id'] = currentUserId
+      }
+
+      const response = await fetch(`/api/platform/users/${userId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers,
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Erreur lors de la suppression')
+      }
+
+      setSuccess('Utilisateur supprimé avec succès')
+      setTimeout(() => setSuccess(null), 3000)
+      loadUsers()
+    } catch (err) {
+      console.error('Erreur:', err)
+      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression')
+    } finally {
+      setDeletingUser(null)
+    }
+  }
+
+  const handleResetPassword = async (userId: string, newPassword: string) => {
+    if (!newPassword || newPassword.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères')
+      return
+    }
+
+    try {
+      setError(null)
+      setSuccess(null)
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (currentUserId) {
+        headers['X-User-Id'] = currentUserId
+      }
+
+      const response = await fetch(`/api/platform/users/${userId}/reset-password`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({ new_password: newPassword }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Erreur lors de la réinitialisation')
+      }
+
+      setSuccess('Mot de passe réinitialisé avec succès')
+      setTimeout(() => setSuccess(null), 3000)
+      setResettingPassword(null)
+    } catch (err) {
+      console.error('Erreur:', err)
+      setError(err instanceof Error ? err.message : 'Erreur lors de la réinitialisation')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        Chargement des utilisateurs...
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="p-4 bg-green-500/10 border border-green-500/50 rounded-lg text-green-400">
+          {success}
+        </div>
+      )}
+
+      {/* Header avec bouton créer */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold text-foreground">
+          Utilisateurs de l'entreprise
+        </h2>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+        >
+          <UserPlus className="w-4 h-4" />
+          <span>Nouvel utilisateur</span>
+        </button>
+      </div>
+
+      {/* Liste des utilisateurs */}
+      {users.length === 0 ? (
+        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-8 sm:p-12 text-center">
+          <Users className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
+          <p className="text-muted-foreground mb-4">
+            Aucun utilisateur pour cette entreprise
+          </p>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+          >
+            Créer le premier utilisateur
+          </button>
+        </div>
+      ) : (
+        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-background/30">
+              <tr>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                  Nom
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                  Email
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                  Rôle
+                </th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                  Date de création
+                </th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((userItem) => (
+                <tr 
+                  key={userItem.id} 
+                  className="border-b border-border/30 hover:bg-background/30 transition-colors"
+                >
+                  <td className="py-3 px-4 text-sm text-foreground">
+                    {userItem.first_name || userItem.last_name
+                      ? `${userItem.first_name || ''} ${userItem.last_name || ''}`.trim()
+                      : '-'
+                    }
+                  </td>
+                  <td className="py-3 px-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-3 h-3" />
+                      {userItem.email}
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-sm text-muted-foreground">
+                    {userItem.roles?.name || '-'}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-muted-foreground">
+                    {new Date(userItem.created_at).toLocaleDateString('fr-FR')}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setEditingUser(userItem)}
+                        className="p-1.5 text-primary hover:bg-primary/10 rounded transition-colors"
+                        title="Modifier"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setResettingPassword(userItem.id)}
+                        className="p-1.5 text-yellow-400 hover:bg-yellow-400/10 rounded transition-colors"
+                        title="Réinitialiser le mot de passe"
+                      >
+                        <Key className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(userItem.id)}
+                        disabled={deletingUser === userItem.id}
+                        className="p-1.5 text-red-400 hover:bg-red-400/10 rounded transition-colors disabled:opacity-50"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modals */}
+      {(showCreateModal || editingUser) && (
+        <UserModal
+          user={editingUser}
+          companyId={companyId}
+          onClose={() => {
+            setShowCreateModal(false)
+            setEditingUser(null)
+          }}
+          onSuccess={() => {
+            setShowCreateModal(false)
+            setEditingUser(null)
+            loadUsers()
+          }}
+          currentUserId={currentUserId}
+        />
+      )}
+
+      {resettingPassword && (
+        <ResetPasswordModal
+          userId={resettingPassword}
+          onClose={() => setResettingPassword(null)}
+          onSuccess={(newPassword) => {
+            handleResetPassword(resettingPassword, newPassword)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Modal création/édition utilisateur
+function UserModal({
+  user,
+  companyId,
+  onClose,
+  onSuccess,
+  currentUserId,
+}: {
+  user: User | null
+  companyId: string
+  onClose: () => void
+  onSuccess: () => void
+  currentUserId?: string
+}) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [email, setEmail] = useState(user?.email || '')
+  const [password, setPassword] = useState('')
+  const [firstName, setFirstName] = useState(user?.first_name || '')
+  const [lastName, setLastName] = useState(user?.last_name || '')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    if (!email) {
+      setError('Email est obligatoire')
+      return
+    }
+
+    if (!user && !password) {
+      setError('Le mot de passe est obligatoire pour la création')
+      return
+    }
+
+    if (password && password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (currentUserId) {
+        headers['X-User-Id'] = currentUserId
+      }
+
+      if (user) {
+        // Édition
+        const response = await fetch(`/api/platform/users/${user.id}`, {
+          method: 'PATCH',
+          headers,
+          credentials: 'include',
+          body: JSON.stringify({
+            first_name: firstName || null,
+            last_name: lastName || null,
+          }),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Erreur lors de la modification')
+        }
+
+        onSuccess()
+      } else {
+        // Création
+        const response = await fetch('/api/platform/users', {
+          method: 'POST',
+          headers,
+          credentials: 'include',
+          body: JSON.stringify({
+            company_id: companyId,
+            email,
+            password,
+            first_name: firstName || null,
+            last_name: lastName || null,
+          }),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Erreur lors de la création')
+        }
+
+        onSuccess()
+      }
+    } catch (err) {
+      console.error('Erreur:', err)
+      setError(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={user ? 'Modifier l\'utilisateur' : 'Nouvel utilisateur'}
+      size="md"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="p-3 bg-red-500/10 border border-red-500/50 rounded text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Email <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={!!user}
+            className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+            placeholder="user@example.com"
+          />
+        </div>
+
+        {!user && (
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Mot de passe <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={8}
+              className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Minimum 8 caractères"
+            />
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Prénom
+            </label>
+            <input
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Jean"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Nom
+            </label>
+            <input
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Dupont"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="px-4 py-2 bg-background border border-border/50 text-foreground rounded-lg hover:bg-background/70 transition-colors disabled:opacity-50"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            {loading ? 'Enregistrement...' : user ? 'Modifier' : 'Créer'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+// Modal réinitialisation mot de passe
+function ResetPasswordModal({
+  userId,
+  onClose,
+  onSuccess,
+}: {
+  userId: string
+  onClose: () => void
+  onSuccess: (newPassword: string) => void
+}) {
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    if (!password || password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError('Les mots de passe ne correspondent pas')
+      return
+    }
+
+    onSuccess(password)
+  }
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title="Réinitialiser le mot de passe"
+      size="sm"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="p-3 bg-red-500/10 border border-red-500/50 rounded text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Nouveau mot de passe <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
+            className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            placeholder="Minimum 8 caractères"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Confirmer le mot de passe <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="password"
+            required
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            minLength={8}
+            className="w-full px-4 py-2 bg-background border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            placeholder="Répétez le mot de passe"
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-background border border-border/50 text-foreground rounded-lg hover:bg-background/70 transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Key className="w-4 h-4" />
+            Réinitialiser
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
