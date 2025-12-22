@@ -95,7 +95,6 @@ export async function GET(
     const response = await proxyN8NRequest(n8nUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Basic ${auth}`,
         'User-Agent': request.headers.get('user-agent') || 'TalosPrime-Platform',
         'Accept': request.headers.get('accept') || 'application/json',
         'Content-Type': request.headers.get('content-type') || 'application/json',
