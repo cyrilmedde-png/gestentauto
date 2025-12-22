@@ -287,19 +287,25 @@ function CompanySettings({ companyId, user }: { companyId?: string; user?: { id:
   const [success, setSuccess] = useState<string | null>(null)
 
   useEffect(() => {
-    if (companyId) {
+    // Attendre que user soit chargé avant de charger les données
+    if (user?.id) {
       loadCompanyConfig()
     }
-  }, [companyId])
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadCompanyConfig = async () => {
     try {
       setLoading(true)
+      setError(null)
+      
+      // Vérifier que user est disponible
+      if (!user?.id) {
+        throw new Error('Utilisateur non connecté')
+      }
       
       // Préparer les headers avec l'ID utilisateur
-      const headers: HeadersInit = {}
-      if (user?.id) {
-        headers['X-User-Id'] = user.id
+      const headers: HeadersInit = {
+        'X-User-Id': user.id, // Toujours envoyer l'ID utilisateur
       }
       
       const response = await fetch('/api/settings/company', {

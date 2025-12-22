@@ -9,25 +9,29 @@ import { getPlatformCompanyId } from '@/lib/platform/supabase'
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient(request)
+    // Priorité 1 : Récupérer depuis le header X-User-Id (plus fiable)
+    let userId = request.headers.get('X-User-Id')
     
-    // Essayer de récupérer l'utilisateur depuis les cookies
-    let userId: string | null = null
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (user) {
-      userId = user.id
-    } else {
-      // Fallback : récupérer depuis le header X-User-Id
-      userId = request.headers.get('X-User-Id')
+    // Priorité 2 : Essayer depuis les cookies si pas de header
+    if (!userId) {
+      const supabase = await createServerClient(request)
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
       
-      if (!userId) {
-        return NextResponse.json(
-          { error: 'Not authenticated. Please log in or provide X-User-Id header.' },
-          { status: 401 }
-        )
+      if (user) {
+        userId = user.id
       }
     }
+    
+    if (!userId) {
+      console.error('No user ID found in header or cookies')
+      return NextResponse.json(
+        { error: 'Not authenticated. Please log in or provide X-User-Id header.' },
+        { status: 401 }
+      )
+    }
+    
+    // Utiliser le client admin pour récupérer les données (bypass RLS si nécessaire)
+    const supabase = await createServerClient(request)
 
     // Récupérer les données utilisateur avec son company_id
     const { data: userData, error: userError } = await supabase
@@ -80,26 +84,30 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient(request)
     const body = await request.json()
-
-    // Essayer de récupérer l'utilisateur depuis les cookies
-    let userId: string | null = null
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (user) {
-      userId = user.id
-    } else {
-      // Fallback : récupérer depuis le header X-User-Id
-      userId = request.headers.get('X-User-Id')
+    // Priorité 1 : Récupérer depuis le header X-User-Id (plus fiable)
+    let userId = request.headers.get('X-User-Id')
+    
+    // Priorité 2 : Essayer depuis les cookies si pas de header
+    if (!userId) {
+      const supabase = await createServerClient(request)
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
       
-      if (!userId) {
-        return NextResponse.json(
-          { error: 'Not authenticated. Please log in or provide X-User-Id header.' },
-          { status: 401 }
-        )
+      if (user) {
+        userId = user.id
       }
     }
+    
+    if (!userId) {
+      console.error('No user ID found in header or cookies')
+      return NextResponse.json(
+        { error: 'Not authenticated. Please log in or provide X-User-Id header.' },
+        { status: 401 }
+      )
+    }
+    
+    const supabase = await createServerClient(request)
 
     // Récupérer les données utilisateur avec son company_id
     const { data: userData, error: userError } = await supabase
