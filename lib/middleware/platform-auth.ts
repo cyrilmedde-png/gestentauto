@@ -77,17 +77,48 @@ export async function verifyPlatformUser(
     if (!finalUserId) {
       try {
         const supabase = await createServerClient(request)
+        
+        // Log pour déboguer
+        const cookieHeader = request.headers.get('cookie') || ''
+        console.log('[verifyPlatformUser] Attempting to get user from session...', {
+          hasCookies: !!cookieHeader,
+          cookieLength: cookieHeader.length,
+          cookiePreview: cookieHeader.substring(0, 150) + (cookieHeader.length > 150 ? '...' : ''),
+          requestUrl: request.url,
+        })
+        
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         
+        console.log('[verifyPlatformUser] Session check result:', {
+          hasUser: !!user,
+          userId: user?.id,
+          userEmail: user?.email,
+          authError: authError?.message,
+          authErrorCode: authError?.status,
+          authErrorName: authError?.name,
+        })
+        
         if (authError || !user) {
+          console.error('[verifyPlatformUser] ❌ Session error:', {
+            error: authError?.message,
+            code: authError?.status,
+            name: authError?.name,
+            hasCookies: !!cookieHeader,
+            cookieKeys: cookieHeader ? cookieHeader.split(';').map(c => c.split('=')[0].trim()).filter(Boolean) : [],
+          })
           return {
             isPlatform: false,
-            error: 'Not authenticated. Please log in.',
+            error: `Not authenticated. Please log in. ${authError?.message || ''}`,
           }
         }
         
         finalUserId = user.id
+        console.log('[verifyPlatformUser] ✅ User ID retrieved from session:', finalUserId)
       } catch (sessionError) {
+        console.error('[verifyPlatformUser] ❌ Session exception:', {
+          error: sessionError instanceof Error ? sessionError.message : String(sessionError),
+          stack: sessionError instanceof Error ? sessionError.stack : undefined,
+        })
         return {
           isPlatform: false,
           error: 'Could not retrieve user session. Please provide X-User-Id header or log in.',
@@ -103,6 +134,8 @@ export async function verifyPlatformUser(
     }
 
     // MÉTHODE PRINCIPALE : Vérification manuelle (plus fiable dans les routes API)
+    console.log('[verifyPlatformUser] Starting manual verification for userId:', finalUserId)
+    
     // Utiliser le client admin pour bypasser RLS
     const adminSupabase = createAdminClient()
 
@@ -112,6 +145,13 @@ export async function verifyPlatformUser(
       .select('company_id')
       .eq('id', finalUserId)
       .single()
+    
+    console.log('[verifyPlatformUser] User data fetch result:', {
+      hasUserData: !!userData,
+      userCompanyId: userData?.company_id,
+      error: userError?.message,
+      errorCode: userError?.code,
+    })
 
     if (userError) {
       console.error('[verifyPlatformUser] Error fetching user:', {
