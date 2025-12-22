@@ -44,20 +44,24 @@ export function NotificationToast() {
   }, [user?.id])
 
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null
+
     const handleNewNotification = (event: Event) => {
       const customEvent = event as CustomEvent<Notification>
       if (customEvent.detail) {
+        // Nettoyer le timer précédent s'il existe
+        if (timer) {
+          clearTimeout(timer)
+        }
+
         setCurrentNotification(customEvent.detail)
         setIsVisible(true)
 
         // Auto-fermer après 5 secondes
-        const timer = setTimeout(() => {
+        timer = setTimeout(() => {
           setIsVisible(false)
           setTimeout(() => setCurrentNotification(null), 300)
         }, 5000)
-
-        // Nettoyer le timer si le composant est démonté
-        return () => clearTimeout(timer)
       }
     }
 
@@ -65,6 +69,9 @@ export function NotificationToast() {
 
     return () => {
       window.removeEventListener('new-notification', handleNewNotification)
+      if (timer) {
+        clearTimeout(timer)
+      }
     }
   }, [])
 
