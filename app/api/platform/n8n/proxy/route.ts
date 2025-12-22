@@ -77,8 +77,14 @@ export async function GET(request: NextRequest) {
 
     // Si c'est du HTML, modifier les URLs pour qu'elles passent par le proxy
     if (contentType.includes('text/html') && data) {
-      // Remplacer les URLs relatives et absolues de N8N par le proxy
-      const baseUrl = request.nextUrl.origin
+      // Utiliser le domaine public depuis les headers ou la variable d'environnement
+      // request.nextUrl.origin retourne localhost:3000 côté serveur, donc on utilise les headers
+      const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
+      const protocol = request.headers.get('x-forwarded-proto') || 'https'
+      const baseUrl = host 
+        ? `${protocol}://${host}`
+        : (process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin)
+      
       const proxyPath = `/api/platform/n8n/proxy?userId=${encodeURIComponent(userId || '')}&path=`
       
       // Remplacer les chemins relatifs (assets, api, etc.)
