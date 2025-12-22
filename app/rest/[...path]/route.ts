@@ -267,11 +267,44 @@ async function handleRestRequest(
     const contentType = response.headers.get('content-type') || 'application/json'
     const data = await response.text()
 
+    // Pour /rest/login, transmettre les cookies de session N8N
+    const responseHeaders: HeadersInit = {
+      'Content-Type': contentType,
+    }
+    
+    // Transmettre les cookies Set-Cookie de N8N pour la session
+    const setCookieHeaders = response.headers.getSetCookie()
+    if (setCookieHeaders && setCookieHeaders.length > 0) {
+      const nextResponse = new NextResponse(data, {
+        status: response.status,
+        headers: responseHeaders,
+      })
+      setCookieHeaders.forEach(cookie => {
+        const [nameValue] = cookie.split(';')
+        const [name, ...valueParts] = nameValue.split('=')
+        if (name && valueParts.length > 0) {
+          const value = valueParts.join('=')
+          // Extraire les options du cookie
+          const options: any = {}
+          if (cookie.includes('HttpOnly')) options.httpOnly = true
+          if (cookie.includes('Secure')) options.secure = true
+          if (cookie.includes('SameSite=None')) options.sameSite = 'none'
+          if (cookie.includes('SameSite=Lax')) options.sameSite = 'lax'
+          if (cookie.includes('SameSite=Strict')) options.sameSite = 'strict'
+          const maxAgeMatch = cookie.match(/Max-Age=(\d+)/)
+          if (maxAgeMatch) options.maxAge = parseInt(maxAgeMatch[1])
+          const pathMatch = cookie.match(/Path=([^;]+)/)
+          if (pathMatch) options.path = pathMatch[1]
+          
+          nextResponse.cookies.set(name.trim(), value, options)
+        }
+      })
+      return nextResponse
+    }
+
     return new NextResponse(data, {
       status: response.status,
-      headers: {
-        'Content-Type': contentType,
-      },
+      headers: responseHeaders,
     })
   } catch (error) {
     console.error(`Error proxying N8N REST API ${method}:`, error)
