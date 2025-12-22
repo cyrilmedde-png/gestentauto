@@ -87,6 +87,26 @@ export async function verifyPlatformUser(
         }
         
         finalUserId = user.id
+        
+        // MÉTHODE 1 : Utiliser la fonction RPC is_platform_user() (plus fiable, utilise la session Supabase)
+        try {
+          const { data: isPlatformRPC, error: rpcError } = await supabase.rpc('is_platform_user')
+          
+          if (!rpcError && isPlatformRPC === true) {
+            console.log('[verifyPlatformUser] User is platform (via RPC is_platform_user):', finalUserId)
+            return { isPlatform: true }
+          }
+          
+          if (rpcError) {
+            console.warn('[verifyPlatformUser] RPC error, falling back to manual check:', rpcError)
+          } else if (isPlatformRPC === false) {
+            console.log('[verifyPlatformUser] User is NOT platform (via RPC):', finalUserId)
+            // Si RPC retourne explicitement false, on peut retourner directement
+            // Mais on continue quand même avec la vérification manuelle pour plus de détails
+          }
+        } catch (rpcErr) {
+          console.warn('[verifyPlatformUser] RPC call failed, falling back to manual check:', rpcErr)
+        }
       } catch (sessionError) {
         return {
           isPlatform: false,
