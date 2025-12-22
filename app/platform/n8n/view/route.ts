@@ -100,13 +100,11 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // Créer une page HTML qui charge N8N via le proxy avec authentification
-  // Le proxy gère l'authentification basique automatiquement
-  // Passer l'ID utilisateur au proxy pour l'authentification
-  // Construire l'URL correctement sans double query params
+  // Créer une page HTML qui charge N8N via le proxy catch-all
+  // La route catch-all /api/platform/n8n/proxy/[...path] capture tous les chemins
   const proxyBaseUrl = userId 
-    ? `/api/platform/n8n/proxy?path=&userId=${encodeURIComponent(userId)}` 
-    : '/api/platform/n8n/proxy?path='
+    ? `/api/platform/n8n/proxy/?userId=${encodeURIComponent(userId)}` 
+    : '/api/platform/n8n/proxy/'
   
   const html = `
 <!DOCTYPE html>
@@ -115,6 +113,7 @@ export async function GET(request: NextRequest) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>N8N - Automatisation</title>
+  <base href="/api/platform/n8n/proxy/?userId=${encodeURIComponent(userId || '')}">
   <style>
     * {
       margin: 0;
