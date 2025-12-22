@@ -112,7 +112,7 @@ export async function GET(
       const userIdParam = userId ? `?userId=${encodeURIComponent(userId)}` : ''
       
       // Remplacer les URLs par des URLs proxy
-      const modifiedHtml = htmlData.replace(
+      let modifiedHtml = htmlData.replace(
         /(src|href|action)=["']([^"']+)["']/g,
         (match, attr, url) => {
           // Ignorer les URLs data:, mailto:, #, et externes (autres domaines)
@@ -155,6 +155,78 @@ export async function GET(
           const relativePath = currentPath ? `${currentPath}/${url}` : url
           return `${attr}="${baseUrl}${proxyBase}/${relativePath}${userIdParam}"`
         }
+      )
+      
+      // Injecter un script pour intercepter les requêtes fetch et XMLHttpRequest
+      const interceptScript = `
+<script>
+(function() {
+  const proxyBase = '${baseUrl}${proxyBase}';
+  const userIdParam = '${userIdParam}';
+  const n8nHost = '${new URL(N8N_URL).hostname}';
+  
+  // Fonction pour déterminer si une URL doit être proxifiée
+  function shouldProxy(url) {
+    try {
+      const urlObj = new URL(url, window.location.href);
+      const currentHost = window.location.hostname;
+      
+      return urlObj.hostname === currentHost || 
+             urlObj.hostname === n8nHost || 
+             urlObj.hostname === 'www.talosprimes.com' || 
+             urlObj.hostname === 'talosprimes.com' ||
+             urlObj.hostname.endsWith('.talosprimes.com') ||
+             url.startsWith('/');
+    } catch {
+      return url.startsWith('/');
+    }
+  }
+  
+  // Fonction pour convertir une URL en URL proxy
+  function toProxyUrl(url) {
+    try {
+      if (url.startsWith('/')) {
+        return proxyBase + url + userIdParam;
+      }
+      
+      const urlObj = new URL(url, window.location.href);
+      const path = urlObj.pathname + urlObj.search;
+      const separator = path.includes('?') ? '&' : '?';
+      return proxyBase + path + separator + userIdParam.substring(1);
+    } catch {
+      return url;
+    }
+  }
+  
+  // Intercepter fetch
+  const originalFetch = window.fetch;
+  window.fetch = function(url, options = {}) {
+    if (typeof url === 'string' && shouldProxy(url)) {
+      const proxyUrl = toProxyUrl(url);
+      console.log('[N8N Proxy] Intercepting fetch:', url, '->', proxyUrl);
+      return originalFetch.call(this, proxyUrl, options);
+    }
+    return originalFetch.call(this, url, options);
+  };
+  
+  // Intercepter XMLHttpRequest
+  const originalOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url, ...args) {
+    if (typeof url === 'string' && shouldProxy(url)) {
+      const proxyUrl = toProxyUrl(url);
+      console.log('[N8N Proxy] Intercepting XHR:', url, '->', proxyUrl);
+      return originalOpen.call(this, method, proxyUrl, ...args);
+    }
+    return originalOpen.call(this, method, url, ...args);
+  };
+})();
+</script>
+`
+      
+      // Injecter le script juste après <head>
+      modifiedHtml = modifiedHtml.replace(
+        /(<head[^>]*>)/i,
+        `$1${interceptScript}`
       )
       
       return new NextResponse(modifiedHtml, {
