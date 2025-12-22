@@ -1,10 +1,11 @@
+import { createServerClient as createSupabaseServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
 /**
  * Client Supabase pour les Server Components et API Routes
- * Récupère automatiquement les cookies pour la session
+ * Utilise @supabase/ssr pour gérer correctement les cookies de session
  */
 export async function createServerClient(request?: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -14,53 +15,55 @@ export async function createServerClient(request?: NextRequest) {
     throw new Error('Supabase environment variables are not set')
   }
 
-  // Récupérer les cookies
-  let cookieHeader = ''
+  // Pour les API Routes (request fourni)
   if (request) {
-    // Dans les API Routes, utiliser les cookies de la requête
-    cookieHeader = request.headers.get('cookie') || ''
-  } else {
-    // Dans les Server Components, utiliser next/headers
-    const cookieStore = await cookies()
-    cookieHeader = cookieStore.toString()
+    return createSupabaseServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        get(name: string) {
+          const cookieHeader = request.headers.get('cookie') || ''
+          const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+            const [key, ...valueParts] = cookie.trim().split('=')
+            if (key && valueParts.length > 0) {
+              acc[key] = decodeURIComponent(valueParts.join('='))
+            }
+            return acc
+          }, {} as Record<string, string>)
+          return cookies[name] || undefined
+        },
+        set() {
+          // Read-only dans les API routes (on ne modifie pas les cookies dans les réponses API)
+        },
+        remove() {
+          // Read-only dans les API routes
+        },
+      },
+    })
   }
 
-  const client = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-    global: {
-      headers: cookieHeader ? { cookie: cookieHeader } : {},
+  // Pour les Server Components (pas de request)
+  const cookieStore = await cookies()
+  
+  return createSupabaseServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      get(name: string) {
+        return cookieStore.get(name)?.value
+      },
+      set(name: string, value: string, options: any) {
+        try {
+          cookieStore.set(name, value, options)
+        } catch (error) {
+          // Erreur attendue dans certains contextes (par exemple si les cookies sont déjà envoyés)
+        }
+      },
+      remove(name: string, options: any) {
+        try {
+          cookieStore.set(name, '', { ...options, maxAge: 0 })
+        } catch (error) {
+          // Erreur attendue dans certains contextes
+        }
+      },
     },
   })
-
-  // Si on a des cookies, essayer de récupérer la session
-  if (cookieHeader) {
-    // Extraire le token depuis les cookies Supabase
-    const cookiesArray = cookieHeader.split(';').map(c => c.trim())
-    const accessTokenCookie = cookiesArray.find(c => c.startsWith('sb-') && c.includes('auth-token'))
-    
-    if (accessTokenCookie) {
-      try {
-        // Les cookies Supabase sont généralement au format: sb-<project-ref>-auth-token=<token>
-        const tokenMatch = cookieHeader.match(/sb-[^-]+-auth-token=([^;]+)/)
-        if (tokenMatch) {
-          // Essayer de récupérer la session depuis le token
-          const { data: { session } } = await client.auth.getSession()
-          if (session) {
-            // La session est déjà disponible
-            return client
-          }
-        }
-      } catch (e) {
-        // Ignorer les erreurs de parsing
-      }
-    }
-  }
-
-  return client
 }
 
 /**

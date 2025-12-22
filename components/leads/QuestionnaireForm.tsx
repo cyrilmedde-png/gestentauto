@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
+import { useAuth } from '@/components/auth/AuthProvider'
 
 interface Questionnaire {
   id?: string
@@ -96,6 +97,7 @@ export function QuestionnaireForm({
   leadId,
   questionnaire,
 }: QuestionnaireFormProps) {
+  const { user } = useAuth()
   const [formData, setFormData] = useState({
     request_type: '',
     business_sector: '',
@@ -212,11 +214,17 @@ export function QuestionnaireForm({
         additional_info: formData.additional_info || null,
       }
 
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (user?.id) {
+        headers['X-User-Id'] = user.id
+      }
+
       const response = await fetch(`/api/platform/leads/${leadId}/questionnaire`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers,
         body: JSON.stringify(payload),
       })
 

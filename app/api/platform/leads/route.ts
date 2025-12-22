@@ -36,95 +36,40 @@ export async function GET(request: NextRequest) {
     const step = searchParams.get('step')
     const email = searchParams.get('email')
 
-    // Détection automatique du nom de table (support migration progressive)
-    // Essaie platform_leads, puis leads, puis retourne une erreur claire si aucune n'existe
-    let leads: any[] = []
-    let error: any = null
-    let tableNameUsed: string | null = null
+    // Utiliser uniquement platform_leads (table standard après migration)
+    const tableName = 'platform_leads'
     
-    // Liste des noms de tables possibles à essayer
-    // IMPORTANT: platform_leads est maintenant la table standard (après migration)
-    const possibleTableNames = ['platform_leads']
-    
-    // Note: 'leads' est supprimé car la migration est complète
-    // Si vous avez encore besoin de support pour 'leads', décommentez la ligne suivante:
-    // const possibleTableNames = ['platform_leads', 'leads']
-    
-    for (const tableName of possibleTableNames) {
-      let query = supabase
-        .from(tableName)
-        .select('*')
-        .order('created_at', { ascending: false })
+    let query = supabase
+      .from(tableName)
+      .select('*')
+      .order('created_at', { ascending: false })
 
-      if (status) {
-        query = query.eq('status', status)
-      }
-      if (step) {
-        query = query.eq('onboarding_step', step)
-      }
-      if (email) {
-        query = query.ilike('email', `%${email}%`)
-      }
+    if (status) {
+      query = query.eq('status', status)
+    }
+    if (step) {
+      query = query.eq('onboarding_step', step)
+    }
+    if (email) {
+      query = query.ilike('email', `%${email}%`)
+    }
 
-      const result = await query
-      
-      if (!result.error) {
-        leads = result.data || []
-        error = null
-        tableNameUsed = tableName
-        if (tableName === 'leads') {
-          console.warn(`⚠️ Using legacy table name "leads" - please run migration SQL scripts to rename to "platform_leads"`)
-        }
-        break // Succès, sortir de la boucle
-      } else {
-        const errorCode = result.error?.code || ''
-        const errorMessage = String(result.error?.message || '').toLowerCase()
-        
-        // Si c'est une erreur "table not found", essayer le prochain nom
-        const isTableNotFound = 
-          errorCode === 'PGRST205' || // Table not found in schema cache
-          errorCode === '42P01' || // relation does not exist
-          errorCode === 'PGRST106' ||
-          errorMessage.includes('could not find the table') ||
-          errorMessage.includes('does not exist')
-        
-        if (isTableNotFound && tableName === possibleTableNames[0]) {
-          // Premier essai échoué, continuer avec le suivant
-          console.warn(`Table "${tableName}" not found (${errorCode}), trying next option...`)
-          continue
-        } else {
-          // Soit c'est la dernière table, soit c'est une autre erreur
-          error = result.error
-          break
-        }
-      }
-    }
-    
-    // Si aucune table n'a fonctionné, retourner une erreur claire
-    if (error && !tableNameUsed) {
-      console.error('❌ None of the expected tables (platform_leads, leads) exist in the database')
-      console.error('Error details:', {
-        code: error?.code,
-        message: error?.message,
-        hint: error?.hint
-      })
-    }
+    const { data: leads, error } = await query
 
     if (error) {
-      console.error('Error fetching leads:', {
+      console.error('Error fetching leads from platform_leads:', {
         message: error.message,
-        code: (error as any)?.code,
+        code: error.code,
         details: (error as any)?.details,
         hint: (error as any)?.hint,
-        fullError: error
       })
       
-      // Si c'est une erreur "table doesn't exist", donner un message plus clair
+      // Vérifier si c'est une erreur "table not found"
+      const errorCode = error.code || ''
       const errorMessage = String(error.message || '').toLowerCase()
-      const errorCode = (error as any)?.code || ''
       const isTableNotFound = 
-        errorCode === 'PGRST205' || // Table not found in schema cache
-        errorCode === '42P01' || // relation does not exist
+        errorCode === 'PGRST205' ||
+        errorCode === '42P01' ||
         errorCode === 'PGRST106' ||
         errorMessage.includes('could not find the table') ||
         errorMessage.includes('does not exist')
@@ -132,16 +77,25 @@ export async function GET(request: NextRequest) {
       if (isTableNotFound) {
         return NextResponse.json(
           { 
-            error: 'Table platform_leads or leads not found in database. Please check if migration SQL scripts were executed correctly. See docs/GUIDE_MIGRATION_SQL.md',
+            error: 'Table platform_leads not found in database. Please check if migration SQL scripts were executed correctly. See docs/GUIDE_MIGRATION_SQL.md',
             details: error.message,
-            code: errorCode,
-            hint: error.hint || 'Make sure the table exists and RLS is configured correctly'
+            code: error.code,
+            hint: (error as any)?.hint || 'Make sure the table exists and RLS is configured correctly'
           },
           { status: 500 }
         )
       }
       
-      throw error
+      return NextResponse.json(
+        { 
+          error: error.message,
+          code: error.code,
+          details: (error as any)?.details,
+          hint: (error as any)?.hint,
+          type: 'supabase_error'
+        },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({ leads: leads || [] })

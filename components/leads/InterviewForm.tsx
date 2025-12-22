@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
+import { useAuth } from '@/components/auth/AuthProvider'
 
 interface Interview {
   id?: string
@@ -34,6 +35,7 @@ export function InterviewForm({
   leadId,
   interview,
 }: InterviewFormProps) {
+  const { user } = useAuth()
   const [formData, setFormData] = useState({
     scheduled_at: '',
     scheduled_time: '',
@@ -120,11 +122,17 @@ export function InterviewForm({
         if (formData.notes !== undefined) payload.notes = formData.notes
         payload.status = formData.status
 
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        }
+        if (user?.id) {
+          headers['X-User-Id'] = user.id
+        }
+
         const response = await fetch(`/api/platform/leads/${leadId}/interview`, {
           method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          credentials: 'include',
+          headers,
           body: JSON.stringify(payload),
         })
 
@@ -149,11 +157,17 @@ export function InterviewForm({
         if (formData.meeting_link) payload.meeting_link = formData.meeting_link
         if (formData.notes) payload.notes = formData.notes
 
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        }
+        if (user?.id) {
+          headers['X-User-Id'] = user.id
+        }
+
         const response = await fetch(`/api/platform/leads/${leadId}/interview`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          credentials: 'include',
+          headers,
           body: JSON.stringify(payload),
         })
 

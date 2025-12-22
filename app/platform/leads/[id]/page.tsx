@@ -8,6 +8,7 @@ import { LeadFormModal } from '@/components/leads/LeadFormModal'
 import { QuestionnaireForm } from '@/components/leads/QuestionnaireForm'
 import { InterviewForm } from '@/components/leads/InterviewForm'
 import { TrialCredentialsModal } from '@/components/leads/TrialCredentialsModal'
+import { useAuth } from '@/components/auth/AuthProvider'
 import Link from 'next/link'
 import { Edit, Trash2 } from 'lucide-react'
 
@@ -67,6 +68,7 @@ interface Trial {
 export default function LeadDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useAuth()
   const leadId = params.id as string
 
   const [lead, setLead] = useState<Lead | null>(null)
@@ -95,7 +97,15 @@ export default function LeadDetailPage() {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`/api/platform/leads/${leadId}`)
+      const headers: HeadersInit = {}
+      if (user?.id) {
+        headers['X-User-Id'] = user.id
+      }
+
+      const response = await fetch(`/api/platform/leads/${leadId}`, {
+        credentials: 'include',
+        headers,
+      })
       if (!response.ok) {
         // Vérifier si la réponse est du JSON
         const contentType = response.headers.get('content-type')
@@ -127,8 +137,16 @@ export default function LeadDetailPage() {
 
     try {
       setError(null)
+      
+      const headers: HeadersInit = {}
+      if (user?.id) {
+        headers['X-User-Id'] = user.id
+      }
+      
       const response = await fetch(`/api/platform/leads/${leadId}`, {
         method: 'DELETE',
+        credentials: 'include',
+        headers,
       })
 
       if (!response.ok) {
@@ -155,8 +173,16 @@ export default function LeadDetailPage() {
 
     try {
       setError(null)
+      
+      const headers: HeadersInit = {}
+      if (user?.id) {
+        headers['X-User-Id'] = user.id
+      }
+      
       const response = await fetch(`/api/platform/leads/${leadId}/trial`, {
         method: 'POST',
+        credentials: 'include',
+        headers,
       })
 
       if (!response.ok) {
@@ -184,8 +210,15 @@ export default function LeadDetailPage() {
 
   const handleResendCredentialsEmail = async () => {
     try {
+      const headers: HeadersInit = {}
+      if (user?.id) {
+        headers['X-User-Id'] = user.id
+      }
+      
       const response = await fetch(`/api/platform/leads/${leadId}/trial/resend-credentials`, {
         method: 'POST',
+        credentials: 'include',
+        headers,
       })
 
       if (!response.ok) {

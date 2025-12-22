@@ -21,14 +21,13 @@ export function ProtectedPlatformRoute({ children }: { children: React.ReactNode
     }
 
     // Vérifier si l'utilisateur est de la plateforme
-    // Envoyer l'ID utilisateur dans le header et le body
+    // Envoyer l'ID utilisateur dans le header
     fetch('/api/auth/check-user-type', {
-      method: 'POST',
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         'X-User-Id': user.id,
       },
-      body: JSON.stringify({ userId: user.id }),
+      credentials: 'include', // Important : envoyer les cookies de session
     })
       .then((res) => {
         if (!res.ok) {
@@ -38,6 +37,7 @@ export function ProtectedPlatformRoute({ children }: { children: React.ReactNode
             headers: {
               'X-User-Id': user.id,
             },
+            credentials: 'include', // Important : envoyer les cookies de session
           }).then(res => res.json())
         }
         return res.json()

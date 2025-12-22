@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedPlatformRoute } from '@/components/auth/ProtectedPlatformRoute'
 import { LeadFormModal } from '@/components/leads/LeadFormModal'
+import { useAuth } from '@/components/auth/AuthProvider'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 
@@ -47,6 +48,7 @@ const stepLabels: Record<string, string> = {
 }
 
 export default function LeadsPage() {
+  const { user } = useAuth()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -71,7 +73,17 @@ export default function LeadsPage() {
       if (filterStep !== 'all') params.append('step', filterStep)
       if (params.toString()) url += '?' + params.toString()
 
-      const response = await fetch(url)
+      // Préparer les headers avec l'ID utilisateur
+      const headers: HeadersInit = {}
+      if (user?.id) {
+        headers['X-User-Id'] = user.id
+      }
+
+      const response = await fetch(url, {
+        credentials: 'include', // Important : envoyer les cookies de session
+        headers,
+      })
+      
       if (!response.ok) {
         const data = await response.json()
         throw new Error(data.error || 'Erreur lors du chargement des leads')
@@ -99,8 +111,17 @@ export default function LeadsPage() {
 
     try {
       setError(null)
+      
+      // Préparer les headers avec l'ID utilisateur
+      const headers: HeadersInit = {}
+      if (user?.id) {
+        headers['X-User-Id'] = user.id
+      }
+      
       const response = await fetch(`/api/platform/leads/${leadId}`, {
         method: 'DELETE',
+        credentials: 'include', // Important : envoyer les cookies de session
+        headers,
       })
 
       if (!response.ok) {

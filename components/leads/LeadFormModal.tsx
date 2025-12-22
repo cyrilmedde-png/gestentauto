@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
+import { useAuth } from '@/components/auth/AuthProvider'
 
 interface Lead {
   id?: string
@@ -39,6 +40,7 @@ const stepOptions = [
 ]
 
 export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalProps) {
+  const { user } = useAuth()
   const [formData, setFormData] = useState<Lead>({
     email: '',
     first_name: null,
@@ -108,11 +110,17 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
             company_name: formData.company_name,
           }
 
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (user?.id) {
+        headers['X-User-Id'] = user.id
+      }
+
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers,
         body: JSON.stringify(payload),
       })
 
