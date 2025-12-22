@@ -73,7 +73,49 @@ export async function GET(request: NextRequest) {
 
     // Récupérer le contenu
     const contentType = response.headers.get('content-type') || 'text/html'
-    const data = await response.text()
+    let data = await response.text()
+
+    // Si c'est du HTML, modifier les URLs pour qu'elles passent par le proxy
+    if (contentType.includes('text/html') && data) {
+      // Remplacer les URLs relatives et absolues de N8N par le proxy
+      const baseUrl = request.nextUrl.origin
+      const proxyPath = `/api/platform/n8n/proxy?userId=${encodeURIComponent(userId || '')}&path=`
+      
+      // Remplacer les chemins relatifs (assets, api, etc.)
+      data = data.replace(
+        /(src|href|action)=["']([^"']+)["']/g,
+        (match, attr, url) => {
+          // Ignorer les URLs absolutes externes et les data: URLs
+          if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('mailto:') || url.startsWith('#')) {
+            return match
+          }
+          
+          // Si l'URL commence par /, la faire passer par le proxy
+          if (url.startsWith('/')) {
+            const cleanPath = url.substring(1) // Enlever le / initial
+            return `${attr}="${baseUrl}${proxyPath}${encodeURIComponent(cleanPath)}"`
+          }
+          
+          // URLs relatives (sans /)
+          return `${attr}="${baseUrl}${proxyPath}${encodeURIComponent(fullPath ? `${fullPath.replace(/^\//, '')}/${url}` : url)}"`
+        }
+      )
+      
+      // Remplacer aussi les URLs dans les scripts et styles inline
+      data = data.replace(
+        /url\(["']?([^"')]+)["']?\)/g,
+        (match, url) => {
+          if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+            return match
+          }
+          if (url.startsWith('/')) {
+            const cleanPath = url.substring(1)
+            return `url("${baseUrl}${proxyPath}${encodeURIComponent(cleanPath)}")`
+          }
+          return match
+        }
+      )
+    }
 
     // Retourner la réponse avec les headers appropriés
     return new NextResponse(data, {
