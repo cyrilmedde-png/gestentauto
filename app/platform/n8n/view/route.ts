@@ -103,7 +103,10 @@ export async function GET(request: NextRequest) {
   // Créer une page HTML qui charge N8N via le proxy avec authentification
   // Le proxy gère l'authentification basique automatiquement
   // Passer l'ID utilisateur au proxy pour l'authentification
-  const proxyBaseUrl = userId ? `/api/platform/n8n/proxy?path=&userId=${userId}` : '/api/platform/n8n/proxy?path='
+  // Construire l'URL correctement sans double query params
+  const proxyBaseUrl = userId 
+    ? `/api/platform/n8n/proxy?path=&userId=${encodeURIComponent(userId)}` 
+    : '/api/platform/n8n/proxy?path='
   
   const html = `
 <!DOCTYPE html>
@@ -144,7 +147,7 @@ export async function GET(request: NextRequest) {
   <div class="loading" id="loading">Chargement de N8N...</div>
   <iframe 
     id="n8n-iframe"
-    src="${proxyBaseUrl}?path="
+    src="${proxyBaseUrl}"
     style="display: none;"
     allow="clipboard-read; clipboard-write"
     sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation"
