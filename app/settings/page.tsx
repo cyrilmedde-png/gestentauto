@@ -28,15 +28,15 @@ interface Client {
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [isPlatform, setIsPlatform] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (user) {
+    if (!authLoading && user) {
       checkUserType()
     }
-  }, [user])
+  }, [user, authLoading])
 
   const checkUserType = async () => {
     try {
@@ -66,7 +66,7 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading || isPlatform === null) {
+  if (authLoading || loading || isPlatform === null) {
     return (
       <ProtectedRoute>
         <MainLayout>
