@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { ProtectedPlatformRoute } from '@/components/auth/ProtectedPlatformRoute'
 import { LeadFormModal } from '@/components/leads/LeadFormModal'
 import { QuestionnaireForm } from '@/components/leads/QuestionnaireForm'
 import { InterviewForm } from '@/components/leads/InterviewForm'

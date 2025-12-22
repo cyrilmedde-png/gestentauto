@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { ProtectedPlatformRoute } from '@/components/auth/ProtectedPlatformRoute'
 import { LeadFormModal } from '@/components/leads/LeadFormModal'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
@@ -134,7 +134,7 @@ export default function LeadsPage() {
   }
 
   return (
-    <ProtectedRoute>
+      <ProtectedPlatformRoute>
       <MainLayout>
         <div className="container mx-auto p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="mb-4 sm:mb-6 lg:mb-8">

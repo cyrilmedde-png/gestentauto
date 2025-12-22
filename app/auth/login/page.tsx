@@ -65,9 +65,30 @@ export default function LoginPage() {
         }
 
         console.log('✅ Utilisateur trouvé dans la table users:', userData)
-        console.log('🚀 Redirection vers le dashboard...')
         
-        router.push('/dashboard')
+        // Vérifier si l'utilisateur est plateforme ou client
+        try {
+          const checkResponse = await fetch('/api/auth/check-user-type')
+          if (checkResponse.ok) {
+            const { isPlatform } = await checkResponse.json()
+            if (isPlatform) {
+              console.log('🚀 Redirection vers le dashboard plateforme...')
+              router.push('/platform/dashboard')
+            } else {
+              console.log('🚀 Redirection vers le dashboard client...')
+              router.push('/dashboard')
+            }
+          } else {
+            // En cas d'erreur, rediriger par défaut vers le dashboard client
+            console.log('⚠️ Impossible de déterminer le type d\'utilisateur, redirection par défaut vers /dashboard')
+            router.push('/dashboard')
+          }
+        } catch (checkError) {
+          console.error('Erreur lors de la vérification du type d\'utilisateur:', checkError)
+          // En cas d'erreur, rediriger par défaut vers le dashboard client
+          router.push('/dashboard')
+        }
+        
         router.refresh()
       }
     } catch (err) {

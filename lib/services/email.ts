@@ -319,7 +319,9 @@ export async function sendInterviewConfirmationEmail(
   meetingLink?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const subject = 'Confirmation de votre entretien - TalosPrime'
+  // Convertir la date en heure locale (Europe/Paris) pour l'affichage
   const dateStr = scheduledDate ? new Date(scheduledDate).toLocaleString('fr-FR', {
+    timeZone: 'Europe/Paris',
     weekday: 'long',
     year: 'numeric',
     month: 'long',

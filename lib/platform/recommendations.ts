@@ -110,13 +110,8 @@ export function generateRecommendations(questionnaire: QuestionnaireData): Recom
     trialType = 'limited'
   }
   
-  // Déterminer la durée (par défaut 7 jours, mais peut varier)
-  let durationDays = 7
-  if (questionnaire.timeline === 'immediate') {
-    durationDays = 7
-  } else if (questionnaire.timeline === '1_month') {
-    durationDays = 14
-  }
+  // Durée fixe de 7 jours pour tous les essais gratuits
+  const durationDays = 7
   
   // Déterminer la prochaine étape
   let nextStep: 'interview' | 'trial' | 'contact' = 'interview'
