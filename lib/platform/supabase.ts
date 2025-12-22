@@ -28,13 +28,32 @@ export async function getPlatformCompanyId(): Promise<string | null> {
   
   // Si c'est un JSONB, essayer différentes méthodes d'extraction
   if (typeof value === 'object' && value !== null) {
-    // Essayer value#>>'{}' équivalent (si Supabase le retourne déjà extrait)
-    if (value && typeof value === 'object' && 'value' in value) {
-      return String(value.value).trim()
+    // Si Supabase retourne un objet avec la valeur déjà extraite
+    // (parfois Supabase transforme les JSONB simples en objets)
+    if (value && typeof value === 'object') {
+      // Essayer d'accéder directement à une propriété si c'est un objet simple
+      const keys = Object.keys(value)
+      if (keys.length === 0) {
+        return null
+      }
+      // Si c'est un JSONB qui contient une string, elle peut être stockée comme objet
+      // Essayer de récupérer la valeur première clé ou la valeur directement
+      const firstValue = value[keys[0]]
+      if (typeof firstValue === 'string') {
+        return firstValue.trim()
+      }
     }
-    // Sinon, convertir en string et nettoyer
-    const stringValue = JSON.stringify(value).replace(/^"|"$/g, '')
-    return stringValue.trim()
+    
+    // Sinon, convertir en string JSON et nettoyer
+    try {
+      const jsonString = JSON.stringify(value)
+      // Si c'est une string JSON entre guillemets, les enlever
+      const cleaned = jsonString.replace(/^"|"$/g, '').trim()
+      return cleaned
+    } catch (e) {
+      // Si ça échoue, essayer String()
+      return String(value).trim()
+    }
   }
   
   return null

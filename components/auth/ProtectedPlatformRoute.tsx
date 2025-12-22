@@ -24,12 +24,27 @@ export function ProtectedPlatformRoute({ children }: { children: React.ReactNode
     fetch('/api/auth/check-user-type')
       .then((res) => {
         if (!res.ok) {
-          throw new Error('Failed to check user type')
+          // Si erreur, essayer la route de debug
+          console.error('Failed to check user type, trying debug route...')
+          return fetch('/api/auth/debug-user-type').then(res => res.json())
         }
         return res.json()
       })
       .then((data) => {
-        if (!data.isPlatform) {
+        // Logs détaillés pour debug
+        console.log('User type check result:', data)
+        
+        // Vérifier si isPlatform existe (route normale) ou result.isPlatform (route debug)
+        const isPlatformUser = data.isPlatform !== undefined 
+          ? data.isPlatform 
+          : (data.result?.isPlatform || false)
+        
+        if (!isPlatformUser) {
+          console.warn('User is not platform, redirecting to client dashboard', {
+            userCompanyId: data.companyId || data.user?.company_id,
+            platformId: data.platformId || data.platform?.extracted_platform_id,
+            comparison: data.comparison,
+          })
           // Si ce n'est pas un utilisateur plateforme, rediriger vers le dashboard client
           router.push('/dashboard')
           return
