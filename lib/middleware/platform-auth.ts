@@ -67,10 +67,27 @@ export async function verifyPlatformUser(
       .eq('id', finalUserId)
       .single()
 
-    if (userError || !userData) {
+    if (userError) {
+      console.error('[verifyPlatformUser] Error fetching user:', {
+        userId: finalUserId,
+        error: userError.message,
+        code: userError.code,
+        details: userError.details,
+        hint: userError.hint,
+      })
       return {
         isPlatform: false,
-        error: 'User not found',
+        error: `User not found: ${userError.message}`,
+      }
+    }
+
+    if (!userData) {
+      console.error('[verifyPlatformUser] User data is null:', {
+        userId: finalUserId,
+      })
+      return {
+        isPlatform: false,
+        error: 'User not found in database',
       }
     }
 

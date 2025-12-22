@@ -14,11 +14,22 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const userId = searchParams.get('userId')
   
+  // Log pour debug
+  console.log('[N8N Proxy] UserId from params:', userId)
+  console.log('[N8N Proxy] Request URL:', request.url)
+  console.log('[N8N Proxy] Headers:', {
+    'X-User-Id': request.headers.get('X-User-Id'),
+    'Cookie': request.headers.get('cookie') ? 'Present' : 'Missing',
+  })
+  
   // Vérifier que l'utilisateur est de la plateforme
   // Passer l'ID utilisateur si disponible pour faciliter l'authentification
   const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
   
+  console.log('[N8N Proxy] Auth result:', { isPlatform, error, userId })
+  
   if (!isPlatform || error) {
+    console.error('[N8N Proxy] Authentication failed:', { isPlatform, error, userId })
     return NextResponse.json(
       { error: 'Unauthorized - Plateforme uniquement', details: error },
       { status: 403 }
