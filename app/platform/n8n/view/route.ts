@@ -155,7 +155,14 @@ export async function GET(request: NextRequest) {
 
   // Créer une page HTML qui charge N8N via le proxy
   // Le base href pointe vers le proxy, les cookies de session seront utilisés pour l'auth
+  const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
+  const protocol = request.headers.get('x-forwarded-proto') || 'https'
+  const baseUrl = host 
+    ? `${protocol}://${host}`
+    : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.talosprimes.com')
+  
   const proxyBaseUrl = `/api/platform/n8n/proxy`
+  const fullProxyBaseUrl = `${baseUrl}${proxyBaseUrl}`
   
   const html = `
 <!DOCTYPE html>
@@ -164,7 +171,7 @@ export async function GET(request: NextRequest) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>N8N - Automatisation</title>
-  <base href="${proxyBaseUrl}/">
+  <base href="${fullProxyBaseUrl}/">
   <style>
     * {
       margin: 0;

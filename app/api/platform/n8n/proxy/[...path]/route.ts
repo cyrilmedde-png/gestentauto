@@ -167,6 +167,11 @@ export async function GET(
   
   // Fonction pour déterminer si une URL doit être proxifiée
   function shouldProxy(url) {
+    // Si c'est déjà une URL proxy, ne pas la proxifier à nouveau
+    if (url.includes('/api/platform/n8n/proxy')) {
+      return false;
+    }
+    
     try {
       const urlObj = new URL(url, window.location.href);
       const currentHost = window.location.hostname;
@@ -178,6 +183,7 @@ export async function GET(
              urlObj.hostname.endsWith('.talosprimes.com') ||
              url.startsWith('/');
     } catch {
+      // Si l'URL est invalide, proxifier si elle commence par /
       return url.startsWith('/');
     }
   }
