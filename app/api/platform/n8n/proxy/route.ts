@@ -117,13 +117,19 @@ export async function GET(request: NextRequest) {
             return match
           }
           
-          // URLs absolues vers le même domaine - les réécrire pour passer par le proxy
+          // URLs absolues vers le même domaine ou vers N8N - les réécrire pour passer par le proxy
           if (url.startsWith('http://') || url.startsWith('https://')) {
             try {
               const urlObj = new URL(url)
               const currentHost = host || new URL(baseUrl).hostname
-              // Si c'est le même domaine, réécrire pour passer par le proxy
-              if (urlObj.hostname === currentHost || urlObj.hostname === 'www.talosprimes.com' || urlObj.hostname === 'talosprimes.com') {
+              const n8nHost = new URL(N8N_URL).hostname
+              
+              // Si c'est le même domaine, le domaine N8N, ou un sous-domaine talosprimes, réécrire pour passer par le proxy
+              if (urlObj.hostname === currentHost || 
+                  urlObj.hostname === n8nHost || 
+                  urlObj.hostname === 'www.talosprimes.com' || 
+                  urlObj.hostname === 'talosprimes.com' ||
+                  urlObj.hostname.endsWith('.talosprimes.com')) {
                 const path = urlObj.pathname.startsWith('/') ? urlObj.pathname.substring(1) : urlObj.pathname
                 return `${attr}="${baseUrl}${proxyBase}/${path}${urlObj.search}${userIdParam ? (urlObj.search ? '&' : '?') + userIdParam.substring(1) : ''}"`
               }
