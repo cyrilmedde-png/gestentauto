@@ -313,12 +313,12 @@ export async function GET(request: NextRequest) {
         const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
         if (iframeDoc) {
           const script = iframeDoc.createElement('script');
-          // CORRECTION: Calculer la valeur AVANT de l'utiliser (évite l'interpolation de template string)
-          const proxyBaseValue = baseUrl + '/api/platform/n8n/proxy';
+          // CORRECTION: Utiliser proxyBaseValue qui est déjà calculé dans le scope parent (ligne 201)
+          // proxyBaseValue est défini plus haut dans le code TypeScript
           script.textContent = 
             '(function() {' +
-            '  console.log("[N8N Iframe] Script d\\'interception injecté dans l\\'iframe");' +
-            '  const proxyBase = ' + JSON.stringify(proxyBaseValue) + ';' +
+            '  console.log("[N8N Iframe] Script interception injecte dans iframe");' +
+            '  var proxyBase = ' + JSON.stringify(proxyBaseValue) + ';' +
             '  function shouldProxy(url) {' +
             '    return url.includes("/rest/") || url.includes("/assets/") || url.startsWith("/");' +
             '  }' +

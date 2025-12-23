@@ -19,7 +19,6 @@ export async function GET(
     : ''
   
   // Pour /rest/login, on permet l'accès sans vérification stricte (N8N gère sa propre auth)
-  // Mais on vérifie quand même que la requête vient d'un utilisateur authentifié
   const isLoginRoute = restPath === 'login'
   
   if (!isLoginRoute) {
@@ -51,11 +50,10 @@ export async function GET(
       hasCookies: !!request.headers.get('cookie'),
     })
   } else {
-    // Pour /rest/login, on permet l'accès sans aucune vérification
+    // Pour /rest/login, on permet l'accès SANS aucune vérification d'authentification
     // N8N gère sa propre authentification via cette route
-    // Le fait que la requête passe par notre proxy est déjà une garantie de sécurité
-    console.log('[N8N /rest/login] Allowing login request - N8N will handle authentication')
-    // On laisse passer directement - N8N gérera l'authentification
+    // IMPORTANT: Ne pas vérifier l'authentification pour /rest/login car c'est la route de connexion N8N
+    console.log('[N8N /rest/login GET] Allowing login request WITHOUT auth check - N8N will handle authentication')
   }
 
   // Vérifier la configuration N8N
@@ -228,15 +226,14 @@ async function handleRestRequest(
       })
       return NextResponse.json(
         { error: 'Unauthorized - Authentication required', details: error },
-        { status: 403 }
+        { status: 401 }
       )
     }
   } else {
-    // Pour /rest/login, on permet l'accès sans aucune vérification
+    // Pour /rest/login, on permet l'accès SANS aucune vérification d'authentification
     // N8N gère sa propre authentification via cette route
-    // Le fait que la requête passe par notre proxy est déjà une garantie de sécurité
-    console.log(`[N8N /rest/login ${method}] Allowing login request - N8N will handle authentication`)
-    // On laisse passer directement - N8N gérera l'authentification
+    // IMPORTANT: Ne pas vérifier l'authentification pour /rest/login car c'est la route de connexion N8N
+    console.log(`[N8N /rest/login ${method}] Allowing login request WITHOUT auth check - N8N will handle authentication`)
   }
 
   // Vérifier la configuration N8N
