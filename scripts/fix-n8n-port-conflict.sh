@@ -124,11 +124,26 @@ if [ -n "$CURSOR_PIDS" ]; then
         fi
     done
     
-    # Vérifier si PM2 cursor gère N8N
+    # Vérifier si PM2 cursor gère N8N (plus agressif)
     if [ -d "/home/cursor/.pm2" ]; then
         log_info "Arrêt de N8N dans PM2 cursor..."
-        sudo -u cursor pm2 stop n8n 2>/dev/null || true
+        sudo -u cursor pm2 stop all 2>/dev/null || true
         sudo -u cursor pm2 delete n8n 2>/dev/null || true
+        sudo -u cursor pm2 kill 2>/dev/null || true
+        log_info "PM2 cursor arrêté"
+    fi
+    
+    # Attendre un peu pour que les processus se terminent
+    sleep 2
+    
+    # Vérifier et tuer à nouveau les processus cursor qui auraient redémarré
+    CURSOR_PIDS_AFTER=$(ps aux | grep -i "cursor.*n8n\|n8n.*cursor" | grep -v grep | awk '{print $2}' || true)
+    if [ -n "$CURSOR_PIDS_AFTER" ]; then
+        log_warning "Processus cursor redémarrés, arrêt forcé..."
+        for pid in $CURSOR_PIDS_AFTER; do
+            kill -9 "$pid" 2>/dev/null || true
+        done
+        sleep 1
     fi
     
     sleep 2
