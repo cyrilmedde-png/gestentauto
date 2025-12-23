@@ -45,6 +45,9 @@ git reset --hard origin/main || {
 
 echo "✅ Dernières modifications récupérées avec succès"
 
+    echo "🧹 Nettoyage des dépendances existantes..."
+    rm -rf node_modules package-lock.json .next || true
+    
     echo "📦 Installation des dépendances..."
     npm install || {
       echo "❌ Erreur lors de l'installation des dépendances"
