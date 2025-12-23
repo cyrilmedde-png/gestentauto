@@ -311,13 +311,35 @@ export async function POST(
   // NE PAS récupérer userId depuis query params
   // Utiliser uniquement la session Supabase pour identifier l'utilisateur
   
-  const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
+  // Attendre les params (Next.js 16)
+  const resolvedParams = await params
+
+  const n8nPath = resolvedParams.path && resolvedParams.path.length > 0 
+    ? `/${resolvedParams.path.join('/')}` 
+    : '/'
   
-  if (!isAuthenticated || error) {
-    return NextResponse.json(
-      { error: 'Unauthorized - Authentication required', details: error },
-      { status: 403 }
-    )
+  // Pour /rest/login, on permet l'accès SANS vérification d'authentification
+  const isRestLogin = n8nPath === '/rest/login' || n8nPath.startsWith('/rest/login')
+  
+  // Vérifier que l'utilisateur est authentifié (plateforme ou client) SAUF pour /rest/login
+  if (!isRestLogin) {
+    const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
+    
+    if (!isAuthenticated || error) {
+      console.error('[N8N Proxy Catch-all POST] Auth failed:', {
+        isAuthenticated,
+        error,
+        hasCookies: !!request.headers.get('cookie'),
+        url: request.url,
+        n8nPath,
+      })
+      return NextResponse.json(
+        { error: 'Unauthorized - Authentication required', details: error },
+        { status: 401 }
+      )
+    }
+  } else {
+    console.log('[N8N Proxy Catch-all POST] Allowing /rest/login WITHOUT auth check - N8N will handle authentication')
   }
 
   // Vérifier la configuration N8N
@@ -332,13 +354,6 @@ export async function POST(
       { status: 500 }
     )
   }
-
-  // Attendre les params (Next.js 16)
-  const resolvedParams = await params
-
-  const n8nPath = resolvedParams.path && resolvedParams.path.length > 0 
-    ? `/${resolvedParams.path.join('/')}` 
-    : '/'
   const n8nUrl = `${N8N_URL}${n8nPath}`
   
   const body = await request.text()
