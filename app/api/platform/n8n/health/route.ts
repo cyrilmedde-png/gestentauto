@@ -40,8 +40,10 @@ export async function GET(request: NextRequest) {
     // Tester la connexion à N8N
     const status = await testN8NConnection(5000)
 
+    // Toujours retourner 200, même si N8N n'est pas accessible
+    // Cela évite de bloquer l'interface utilisateur
     return NextResponse.json(status, {
-      status: status.connected ? 200 : 503,
+      status: 200,
     })
   } catch (error) {
     // Ne pas logger d'erreurs pendant le build
@@ -49,12 +51,13 @@ export async function GET(request: NextRequest) {
     if (!isBuildTime) {
       console.error('[N8N Health] Error:', error)
     }
+    // Retourner 200 même en cas d'erreur pour ne pas bloquer l'interface
     return NextResponse.json(
       {
         connected: false,
         error: error instanceof Error ? error.message : 'Erreur inconnue',
       },
-      { status: 500 }
+      { status: 200 }
     )
   }
 }

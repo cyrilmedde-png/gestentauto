@@ -114,7 +114,7 @@ export async function testN8NConnection(timeout: number = 5000): Promise<N8NConn
       if (error.message.includes('ECONNREFUSED') || error.message.includes('ENOTFOUND')) {
         return {
           connected: false,
-          error: `Impossible de se connecter à N8N: ${error.message}`,
+          error: `Impossible de se connecter à N8N: ${error.message}. Vérifiez que N8N est démarré et que l'URL est correcte.`,
           details: {
             url: N8N_URL,
             hasAuth: true,
@@ -123,9 +123,28 @@ export async function testN8NConnection(timeout: number = 5000): Promise<N8NConn
         }
       }
 
+      // Gérer les erreurs SSL/TLS
+      if (error.message.includes('certificate') || error.message.includes('SSL') || error.message.includes('TLS')) {
+        return {
+          connected: false,
+          error: `Erreur SSL lors de la connexion à N8N: ${error.message}. Vérifiez le certificat SSL de N8N.`,
+          details: {
+            url: N8N_URL,
+            hasAuth: true,
+            responseTime,
+          },
+        }
+      }
+
+      // Améliorer le message d'erreur pour "fetch failed"
+      let errorMessage = error.message
+      if (error.message === 'fetch failed' || error.message.includes('fetch failed')) {
+        errorMessage = `Impossible de se connecter à N8N (${N8N_URL}). Vérifiez que N8N est démarré et accessible. Erreur réseau: ${error.message}`
+      }
+
       return {
         connected: false,
-        error: `Erreur de connexion à N8N: ${error.message}`,
+        error: errorMessage,
         details: {
           url: N8N_URL,
           hasAuth: true,
