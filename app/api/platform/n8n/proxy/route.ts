@@ -172,15 +172,96 @@ export async function GET(request: NextRequest) {
 `
 
       // Injecter un script pour intercepter les requêtes fetch et XMLHttpRequest
-      // Ne pas passer userId - utiliser uniquement la session Supabase
-      const interceptScript = `
-<script>
-// SCRIPT D'INTERCEPTION N8N - DOIT S'EXÉCUTER IMMÉDIATEMENT
-// Injection synchrone pour capturer toutes les requêtes dès le chargement
-(function() {
-  console.log('[N8N Proxy] 🚀 Script d\\'interception chargé');
-  const proxyBase = ${JSON.stringify(proxyBaseValue)};
-  const n8nHost = ${JSON.stringify(n8nHostValue)};
+      // CORRECTION: Créer le script JavaScript en utilisant une concaténation de chaînes pour éviter tous les problèmes d'échappement
+      const interceptScript = '<script>\n' +
+        '(function() {\n' +
+        '  var proxyBase = ' + JSON.stringify(proxyBaseValue) + ';\n' +
+        '  var n8nHost = ' + JSON.stringify(n8nHostValue) + ';\n' +
+        '  console.log("[N8N Proxy] Script interception charge");\n' +
+        '  \n' +
+        '  function shouldProxy(url) {\n' +
+        '    if (url.indexOf("/api/platform/n8n/proxy") !== -1) return false;\n' +
+        '    if (url.indexOf("/rest/") !== -1 || url.indexOf("/assets/") !== -1) return true;\n' +
+        '    if (url.indexOf("/rest") === 0 || url.indexOf("/assets") === 0) return true;\n' +
+        '    try {\n' +
+        '      var urlObj = new URL(url, window.location.href);\n' +
+        '      var currentHost = window.location.hostname;\n' +
+        '      if (urlObj.hostname === currentHost || urlObj.hostname === n8nHost || \n' +
+        '          urlObj.hostname === "www.talosprimes.com" || urlObj.hostname === "talosprimes.com" ||\n' +
+        '          urlObj.hostname.indexOf(".talosprimes.com") === urlObj.hostname.length - 17) {\n' +
+        '        if (urlObj.pathname.indexOf("/rest") === 0 || urlObj.pathname.indexOf("/assets") === 0) return true;\n' +
+        '        return url.indexOf("/") === 0 || urlObj.hostname === currentHost;\n' +
+        '      }\n' +
+        '      return url.indexOf("/") === 0;\n' +
+        '    } catch(e) {\n' +
+        '      return url.indexOf("/rest") === 0 || url.indexOf("/assets") === 0 || url.indexOf("/") === 0;\n' +
+        '    }\n' +
+        '  }\n' +
+        '  \n' +
+        '  function toProxyUrl(url) {\n' +
+        '    try {\n' +
+        '      if (url.indexOf("/") === 0) return proxyBase + url;\n' +
+        '      var urlObj = new URL(url, window.location.href);\n' +
+        '      return proxyBase + urlObj.pathname + urlObj.search;\n' +
+        '    } catch(e) { return url; }\n' +
+        '  }\n' +
+        '  \n' +
+        '  var originalFetch = window.fetch;\n' +
+        '  window.fetch = function(url, options) {\n' +
+        '    options = options || {};\n' +
+        '    if (typeof url === "string" && shouldProxy(url)) {\n' +
+        '      var proxyUrl = toProxyUrl(url);\n' +
+        '      var modifiedOptions = {\n' +
+        '        credentials: "include",\n' +
+        '        headers: options.headers || {}\n' +
+        '      };\n' +
+        '      for (var key in options) {\n' +
+        '        if (key !== "headers" && key !== "credentials") modifiedOptions[key] = options[key];\n' +
+        '      }\n' +
+        '      if (window.__N8N_AUTH_TOKEN__) {\n' +
+        '        modifiedOptions.headers["Authorization"] = "Bearer " + window.__N8N_AUTH_TOKEN__;\n' +
+        '        modifiedOptions.headers["X-Supabase-Auth-Token"] = window.__N8N_AUTH_TOKEN__;\n' +
+        '      }\n' +
+        '      return originalFetch.call(this, proxyUrl, modifiedOptions);\n' +
+        '    }\n' +
+        '    return originalFetch.call(this, url, options);\n' +
+        '  };\n' +
+        '  \n' +
+        '  var originalOpen = XMLHttpRequest.prototype.open;\n' +
+        '  var originalSend = XMLHttpRequest.prototype.send;\n' +
+        '  var originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;\n' +
+        '  XMLHttpRequest.prototype.open = function(method, url) {\n' +
+        '    var args = Array.prototype.slice.call(arguments, 2);\n' +
+        '    if (typeof url === "string" && shouldProxy(url)) {\n' +
+        '      this._n8nProxyUrl = toProxyUrl(url);\n' +
+        '      return originalOpen.apply(this, [method, this._n8nProxyUrl].concat(args));\n' +
+        '    }\n' +
+        '    return originalOpen.apply(this, arguments);\n' +
+        '  };\n' +
+        '  XMLHttpRequest.prototype.setRequestHeader = function(header, value) {\n' +
+        '    if (!this._n8nHeaders) this._n8nHeaders = {};\n' +
+        '    this._n8nHeaders[header] = value;\n' +
+        '    return originalSetRequestHeader.call(this, header, value);\n' +
+        '  };\n' +
+        '  XMLHttpRequest.prototype.send = function() {\n' +
+        '    var args = Array.prototype.slice.call(arguments);\n' +
+        '    if (this._n8nProxyUrl) {\n' +
+        '      this.withCredentials = true;\n' +
+        '      if (window.__N8N_AUTH_TOKEN__) {\n' +
+        '        var existingAuth = (this._n8nHeaders && this._n8nHeaders["Authorization"]) || \n' +
+        '                          (this._n8nHeaders && this._n8nHeaders["authorization"]);\n' +
+        '        if (!existingAuth) {\n' +
+        '          this.setRequestHeader("Authorization", "Bearer " + window.__N8N_AUTH_TOKEN__);\n' +
+        '          this.setRequestHeader("X-Supabase-Auth-Token", window.__N8N_AUTH_TOKEN__);\n' +
+        '        }\n' +
+        '      }\n' +
+        '      delete this._n8nProxyUrl;\n' +
+        '      delete this._n8nHeaders;\n' +
+        '    }\n' +
+        '    return originalSend.apply(this, args);\n' +
+        '  };\n' +
+        '})();\n' +
+        '</script>\n'
   
   // Fonction pour déterminer si une URL doit être proxifiée
   function shouldProxy(url) {
