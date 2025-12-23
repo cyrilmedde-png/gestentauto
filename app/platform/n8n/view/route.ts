@@ -130,6 +130,7 @@ export async function GET(request: NextRequest) {
     // Script d'interception pour proxy les requêtes N8N
     // DOIT être dans <head> pour être exécuté avant que N8N ne charge
     (function() {
+      console.log('[N8N Proxy] Script d'interception chargé dans view');
       const proxyBase = '${proxyUrl}';
       const n8nUrl = '${N8N_URL}';
       const n8nHost = new URL(n8nUrl).hostname;
@@ -227,6 +228,7 @@ export async function GET(request: NextRequest) {
         options = options || {};
         if (typeof url === 'string' && shouldProxy(url)) {
           const proxyUrl = toProxyUrl(url);
+          console.log('[N8N Proxy View] Intercepting fetch:', url, '->', proxyUrl);
           const modifiedOptions = {
             ...options,
             credentials: 'include',
@@ -252,6 +254,7 @@ export async function GET(request: NextRequest) {
         const args = Array.prototype.slice.call(arguments, 2);
         if (typeof url === 'string' && shouldProxy(url)) {
           this._n8nProxyUrl = toProxyUrl(url);
+          console.log('[N8N Proxy View] Intercepting XHR:', url, '->', this._n8nProxyUrl);
           return originalOpen.apply(this, [method, this._n8nProxyUrl].concat(args));
         }
         return originalOpen.apply(this, arguments);
