@@ -67,6 +67,9 @@ export async function GET(
 
   const n8nUrl = `${N8N_URL}/assets/${assetPath}`
   
+  // Extraire tous les cookies de la requête (N8N ne lira que ceux qu'il reconnaît)
+  const requestCookies = request.headers.get('cookie') || ''
+  
   console.log('[N8N /assets] Proxying asset:', {
     assetPath,
     n8nUrl,
@@ -80,7 +83,7 @@ export async function GET(
         'User-Agent': request.headers.get('user-agent') || 'TalosPrime-Platform',
         'Accept': request.headers.get('accept') || '*/*',
       },
-    })
+    }, requestCookies || undefined)
 
     const contentType = response.headers.get('content-type') || 'application/octet-stream'
     const data = await response.arrayBuffer()

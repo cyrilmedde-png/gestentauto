@@ -166,10 +166,14 @@ export function getN8NAuthHeaders(): { Authorization: string } | null {
 
 /**
  * Proxie une requête vers N8N avec gestion d'erreurs améliorée
+ * @param url - URL N8N cible
+ * @param options - Options de requête (peut inclure cookies pour la session N8N)
+ * @param cookies - Cookies de session N8N à transmettre (optionnel)
  */
 export async function proxyN8NRequest(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  cookies?: string
 ): Promise<Response> {
   const configCheck = checkN8NConfig()
   if (!configCheck.valid) {
@@ -181,14 +185,22 @@ export async function proxyN8NRequest(
     throw new Error('Impossible de créer les en-têtes d\'authentification N8N')
   }
 
+  // Construire les headers avec les cookies de session N8N si fournis
+  const headers: HeadersInit = {
+    ...authHeaders,
+    'User-Agent': 'TalosPrime-Platform',
+    ...options.headers,
+  }
+
+  // Ajouter les cookies de session N8N si fournis
+  if (cookies) {
+    headers['Cookie'] = cookies
+  }
+
   try {
     const response = await fetch(url, {
       ...options,
-      headers: {
-        ...authHeaders,
-        'User-Agent': 'TalosPrime-Platform',
-        ...options.headers,
-      },
+      headers,
     })
 
     return response

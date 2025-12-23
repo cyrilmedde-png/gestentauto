@@ -82,6 +82,9 @@ export async function GET(
     .replace(/&$/, '')
   const n8nUrl = `${N8N_URL}${n8nPath}${queryString ? `?${queryString}` : ''}`
   
+  // Extraire les cookies de session N8N de la requête
+  const requestCookies = request.headers.get('cookie') || ''
+  
   try {
     const response = await proxyN8NRequest(n8nUrl, {
       method: 'GET',
@@ -90,7 +93,7 @@ export async function GET(
         'Accept': request.headers.get('accept') || '*/*',
         'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9',
       },
-    })
+    }, requestCookies || undefined)
 
     const contentType = response.headers.get('content-type') || 'application/octet-stream'
     
@@ -387,6 +390,9 @@ export async function POST(
   
   const body = await request.text()
   
+  // Extraire les cookies de session N8N de la requête
+  const requestCookies = request.headers.get('cookie') || ''
+  
   try {
     const response = await proxyN8NRequest(n8nUrl, {
       method: 'POST',
@@ -395,7 +401,7 @@ export async function POST(
         'User-Agent': request.headers.get('user-agent') || 'TalosPrime-Platform',
       },
       body: body,
-    })
+    }, requestCookies || undefined)
 
     const contentType = response.headers.get('content-type') || 'application/json'
     const data = await response.text()

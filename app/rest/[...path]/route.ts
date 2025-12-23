@@ -89,6 +89,9 @@ export async function GET(
     console.log('[N8N /rest/login GET] Request URL:', request.url)
   }
   
+  // Extraire tous les cookies de la requête (N8N ne lira que ceux qu'il reconnaît)
+  const requestCookies = request.headers.get('cookie') || ''
+
   try {
     const response = await proxyN8NRequest(n8nUrl, {
       method: 'GET',
@@ -97,7 +100,7 @@ export async function GET(
         'Accept': request.headers.get('accept') || 'application/json',
         'Content-Type': request.headers.get('content-type') || 'application/json',
       },
-    })
+    }, requestCookies || undefined)
     
     // Log la réponse pour /rest/login
     if (restPath === 'login') {
@@ -288,10 +291,14 @@ async function handleRestRequest(
   
   const body = await request.text()
   
+  // Extraire tous les cookies de la requête (N8N ne lira que ceux qu'il reconnaît)
+  const requestCookies = request.headers.get('cookie') || ''
+  
   // Log pour déboguer /rest/login
   if (restPath === 'login') {
     console.log(`[N8N /rest/login ${method}] Proxying to:`, n8nUrl)
     console.log(`[N8N /rest/login ${method}] Body length:`, body.length)
+    console.log(`[N8N /rest/login ${method}] Cookies:`, requestCookies ? 'present' : 'none')
   }
   
   try {
@@ -303,7 +310,7 @@ async function handleRestRequest(
         'Accept': request.headers.get('accept') || 'application/json',
       },
       body: body,
-    })
+    }, requestCookies || undefined)
     
     // Log la réponse pour /rest/login
     if (restPath === 'login') {
