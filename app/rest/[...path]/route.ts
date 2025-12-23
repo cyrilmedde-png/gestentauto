@@ -25,20 +25,31 @@ export async function GET(
   if (!isLoginRoute) {
     // Pour les autres routes REST, vérifier que l'utilisateur est authentifié
     // Utiliser uniquement la session Supabase (pas de n8n_userId)
-    const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
+    const { isAuthenticated, error, userId } = await verifyAuthenticatedUser(request)
     
     if (!isAuthenticated || error) {
       console.error('[N8N /rest] Auth failed:', {
         isAuthenticated,
         error,
+        userId,
         restPath,
         hasCookies: !!request.headers.get('cookie'),
+        cookieHeader: request.headers.get('cookie')?.substring(0, 100) + '...',
+        hasAuthHeader: !!request.headers.get('authorization'),
+        hasXAuthToken: !!request.headers.get('x-supabase-auth-token'),
+        url: request.url,
       })
       return NextResponse.json(
         { error: 'Unauthorized - Authentication required', details: error },
-        { status: 403 }
+        { status: 401 }
       )
     }
+    
+    console.log('[N8N /rest] Auth successful:', {
+      userId,
+      restPath,
+      hasCookies: !!request.headers.get('cookie'),
+    })
   } else {
     // Pour /rest/login, on permet l'accès sans aucune vérification
     // N8N gère sa propre authentification via cette route

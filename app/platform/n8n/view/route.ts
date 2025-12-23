@@ -195,6 +195,159 @@ export async function GET(request: NextRequest) {
   console.warn('[N8N View] No JWT token available - will rely on cookies only');
 </script>
 `
+
+  // Script d'interception pour capturer les requêtes /rest/* et /assets/* depuis l'iframe
+  const interceptScript = `
+<script>
+// SCRIPT D'INTERCEPTION POUR /rest/* et /assets/*
+// Ce script intercepte les requêtes depuis l'iframe N8N et les redirige vers le proxy
+(function() {
+  console.log('[N8N View] 🚀 Script d\'interception chargé pour /rest/* et /assets/*');
+  
+  const proxyBase = '${baseUrl}/api/platform/n8n/proxy';
+  
+  // Fonction pour déterminer si une URL doit être proxifiée
+  function shouldProxy(url) {
+    // Toujours proxifier /rest/* et /assets/*
+    if (url.includes('/rest/') || url.includes('/assets/')) {
+      return true;
+    }
+    // Ne pas proxifier les URLs déjà proxy
+    if (url.includes('/api/platform/n8n/proxy')) {
+      return false;
+    }
+    // Proxifier les URLs relatives
+    return url.startsWith('/');
+  }
+  
+  // Fonction pour convertir une URL en URL proxy
+  function toProxyUrl(url) {
+    if (url.startsWith('/')) {
+      return proxyBase + url;
+    }
+    try {
+      const urlObj = new URL(url, window.location.href);
+      const path = urlObj.pathname + urlObj.search;
+      return proxyBase + path;
+    } catch {
+      return url;
+    }
+  }
+  
+  // Intercepter fetch
+  const originalFetch = window.fetch;
+  window.fetch = function(url, options = {}) {
+    if (typeof url === 'string' && shouldProxy(url)) {
+      const proxyUrl = toProxyUrl(url);
+      console.log('[N8N View] Intercepting fetch:', url, '->', proxyUrl);
+      const modifiedOptions = {
+        ...options,
+        credentials: 'include',
+        headers: {
+          ...(options.headers || {}),
+          ...(window.__N8N_AUTH_TOKEN__ ? {
+            'Authorization': 'Bearer ' + window.__N8N_AUTH_TOKEN__,
+            'X-Supabase-Auth-Token': window.__N8N_AUTH_TOKEN__
+          } : {}),
+        },
+      };
+      return originalFetch.call(this, proxyUrl, modifiedOptions);
+    }
+    return originalFetch.call(this, url, options);
+  };
+  
+  // Intercepter XMLHttpRequest
+  const originalOpen = XMLHttpRequest.prototype.open;
+  const originalSend = XMLHttpRequest.prototype.send;
+  const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+  
+  XMLHttpRequest.prototype.open = function(method, url, ...args) {
+    if (typeof url === 'string' && shouldProxy(url)) {
+      const proxyUrl = toProxyUrl(url);
+      console.log('[N8N View] Intercepting XHR:', url, '->', proxyUrl);
+      this._n8nProxyUrl = proxyUrl;
+      return originalOpen.call(this, method, proxyUrl, ...args);
+    }
+    return originalOpen.call(this, method, url, ...args);
+  };
+  
+  XMLHttpRequest.prototype.setRequestHeader = function(header, value) {
+    if (!this._n8nHeaders) {
+      this._n8nHeaders = {};
+    }
+    this._n8nHeaders[header] = value;
+    return originalSetRequestHeader.call(this, header, value);
+  };
+  
+  XMLHttpRequest.prototype.send = function(...args) {
+    if (this._n8nProxyUrl) {
+      this.withCredentials = true;
+      if (window.__N8N_AUTH_TOKEN__) {
+        const existingAuth = this._n8nHeaders?.['Authorization'] || this._n8nHeaders?.['authorization'];
+        if (!existingAuth) {
+          this.setRequestHeader('Authorization', 'Bearer ' + window.__N8N_AUTH_TOKEN__);
+          this.setRequestHeader('X-Supabase-Auth-Token', window.__N8N_AUTH_TOKEN__);
+        }
+      }
+      delete this._n8nProxyUrl;
+      delete this._n8nHeaders;
+    }
+    return originalSend.apply(this, args);
+  };
+  
+  // Intercepter aussi les requêtes depuis l'iframe une fois qu'elle est chargée
+  window.addEventListener('load', function() {
+    const iframe = document.getElementById('n8n-iframe');
+    if (iframe && iframe.contentWindow) {
+      try {
+        // Injecter le script dans l'iframe si possible (même origine)
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        if (iframeDoc) {
+          const script = iframeDoc.createElement('script');
+          script.textContent = \`
+            (function() {
+              console.log('[N8N Iframe] Script d\'interception injecté dans l\'iframe');
+              const proxyBase = '${baseUrl}/api/platform/n8n/proxy';
+              function shouldProxy(url) {
+                return url.includes('/rest/') || url.includes('/assets/') || url.startsWith('/');
+              }
+              function toProxyUrl(url) {
+                if (url.startsWith('/')) return proxyBase + url;
+                try {
+                  const urlObj = new URL(url, window.location.href);
+                  return proxyBase + urlObj.pathname + urlObj.search;
+                } catch { return url; }
+              }
+              const originalFetch = window.fetch;
+              window.fetch = function(url, options = {}) {
+                if (typeof url === 'string' && shouldProxy(url)) {
+                  const proxyUrl = toProxyUrl(url);
+                  return originalFetch.call(this, proxyUrl, {
+                    ...options,
+                    credentials: 'include',
+                    headers: {
+                      ...(options.headers || {}),
+                      ...(window.__N8N_AUTH_TOKEN__ ? {
+                        'Authorization': 'Bearer ' + window.__N8N_AUTH_TOKEN__,
+                        'X-Supabase-Auth-Token': window.__N8N_AUTH_TOKEN__
+                      } : {}),
+                    },
+                  });
+                }
+                return originalFetch.call(this, url, options);
+              };
+            })();
+          \`;
+          iframeDoc.head.appendChild(script);
+        }
+      } catch (e) {
+        console.warn('[N8N View] Impossible d\'injecter le script dans l\'iframe (cross-origin):', e);
+      }
+    }
+  });
+})();
+</script>
+`
   
   const html = `
 <!DOCTYPE html>
@@ -205,6 +358,7 @@ export async function GET(request: NextRequest) {
   <title>N8N - Automatisation</title>
   <base href="${fullProxyBaseUrl}/">
   ${tokenScript}
+  ${interceptScript}
   <style>
     * {
       margin: 0;
