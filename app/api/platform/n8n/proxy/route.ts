@@ -61,6 +61,12 @@ export async function GET(request: NextRequest) {
       const proxyBase = `/api/platform/n8n/proxy`
       const n8nHost = new URL(N8N_URL).hostname
       
+      // Récupérer le token JWT depuis les cookies/headers
+      const authToken = request.headers.get('authorization')?.replace('Bearer ', '') ||
+                       request.headers.get('x-supabase-auth-token') ||
+                       request.cookies.get('sb-access-token')?.value ||
+                       ''
+      
       // Remplacer les URLs par des URLs proxy
       let modifiedHtml = htmlData.replace(
         /(src|href|action)=["']([^"']+)["']/g,
@@ -94,6 +100,97 @@ export async function GET(request: NextRequest) {
           return match
         }
       )
+      
+      // Injecter le script d'interception
+      const interceptionScript = `
+<script>
+(function() {
+  const proxyBase = '${baseUrl}${proxyBase}';
+  const n8nHost = '${n8nHost}';
+  const authToken = '${authToken}';
+  
+  function shouldProxy(url) {
+    if (!url || typeof url !== 'string') return false;
+    if (url.startsWith('/rest/') || url.startsWith('/assets/') || url.startsWith('/types/') || url.startsWith('/api/')) return true;
+    try {
+      const urlObj = new URL(url, window.location.origin);
+      return urlObj.hostname === n8nHost || urlObj.hostname.endsWith('.talosprimes.com');
+    } catch { return false; }
+  }
+  
+  function toProxyUrl(url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      try {
+        const urlObj = new URL(url);
+        return proxyBase + (urlObj.pathname || '/') + (urlObj.search || '');
+      } catch {
+        const match = url.match(/https?:\\/\\/[^\\/]+(\\/.*)/);
+        return match ? proxyBase + match[1] : proxyBase + url;
+      }
+    }
+    return proxyBase + (url.startsWith('/') ? url : '/' + url);
+  }
+  
+  const originalFetch = window.fetch;
+  window.fetch = function(url, options) {
+    options = options || {};
+    if (typeof url === 'string' && shouldProxy(url)) {
+      const proxyUrl = toProxyUrl(url);
+      const modifiedOptions = { ...options, credentials: 'include', headers: { ...(options.headers || {}) } };
+      if (authToken) {
+        modifiedOptions.headers['Authorization'] = 'Bearer ' + authToken;
+        modifiedOptions.headers['X-Supabase-Auth-Token'] = authToken;
+      }
+      return originalFetch.call(this, proxyUrl, modifiedOptions);
+    }
+    return originalFetch.call(this, url, options);
+  };
+  
+  const originalOpen = XMLHttpRequest.prototype.open;
+  const originalSend = XMLHttpRequest.prototype.send;
+  const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+  
+  XMLHttpRequest.prototype.open = function(method, url) {
+    const args = Array.prototype.slice.call(arguments, 2);
+    if (typeof url === 'string' && shouldProxy(url)) {
+      this._n8nProxyUrl = toProxyUrl(url);
+      return originalOpen.apply(this, [method, this._n8nProxyUrl].concat(args));
+    }
+    return originalOpen.apply(this, arguments);
+  };
+  
+  XMLHttpRequest.prototype.setRequestHeader = function(header, value) {
+    if (!this._n8nHeaders) this._n8nHeaders = {};
+    this._n8nHeaders[header] = value;
+    return originalSetRequestHeader.call(this, header, value);
+  };
+  
+  XMLHttpRequest.prototype.send = function() {
+    if (this._n8nProxyUrl) {
+      this.withCredentials = true;
+      if (authToken) {
+        const existingAuth = (this._n8nHeaders && this._n8nHeaders['Authorization']) || 
+                            (this._n8nHeaders && this._n8nHeaders['authorization']);
+        if (!existingAuth) {
+          this.setRequestHeader('Authorization', 'Bearer ' + authToken);
+          this.setRequestHeader('X-Supabase-Auth-Token', authToken);
+        }
+      }
+      delete this._n8nProxyUrl;
+      delete this._n8nHeaders;
+    }
+    return originalSend.apply(this, arguments);
+  };
+})();
+</script>`
+      
+      if (modifiedHtml.includes('</body>')) {
+        modifiedHtml = modifiedHtml.replace('</body>', interceptionScript + '</body>')
+      } else if (modifiedHtml.includes('</html>')) {
+        modifiedHtml = modifiedHtml.replace('</html>', interceptionScript + '</html>')
+      } else {
+        modifiedHtml += interceptionScript
+      }
       
       return new NextResponse(modifiedHtml, {
         status: response.status,

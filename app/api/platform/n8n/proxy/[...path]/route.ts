@@ -117,6 +117,12 @@ export async function GET(
       const proxyBase = `/api/platform/n8n/proxy`
       const n8nHost = new URL(N8N_URL).hostname
       
+      // Récupérer le token JWT depuis les cookies/headers pour l'injecter dans le script
+      const authToken = request.headers.get('authorization')?.replace('Bearer ', '') ||
+                       request.headers.get('x-supabase-auth-token') ||
+                       request.cookies.get('sb-access-token')?.value ||
+                       ''
+      
       // Remplacer les URLs par des URLs proxy
       let modifiedHtml = htmlData.replace(
         /(src|href|action)=["']([^"']+)["']/g,
@@ -150,6 +156,121 @@ export async function GET(
           return match
         }
       )
+      
+      // Injecter le script d'interception dans le HTML (avant </body> ou avant </html>)
+      const interceptionScript = `
+<script>
+(function() {
+  const proxyBase = '${baseUrl}${proxyBase}';
+  const n8nHost = '${n8nHost}';
+  const authToken = '${authToken}';
+  
+  function shouldProxy(url) {
+    if (!url || typeof url !== 'string') return false;
+    
+    // URLs relatives
+    if (url.startsWith('/rest/') || 
+        url.startsWith('/assets/') || 
+        url.startsWith('/types/') ||
+        url.startsWith('/api/')) {
+      return true;
+    }
+    
+    // URLs absolues vers n8n.talosprimes.com
+    try {
+      const urlObj = new URL(url, window.location.origin);
+      return urlObj.hostname === n8nHost || 
+             urlObj.hostname.endsWith('.talosprimes.com');
+    } catch {
+      return false;
+    }
+  }
+  
+  function toProxyUrl(url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      try {
+        const urlObj = new URL(url);
+        const path = urlObj.pathname || '/';
+        const search = urlObj.search || '';
+        return proxyBase + path + search;
+      } catch {
+        const match = url.match(/https?:\\/\\/[^\\/]+(\\/.*)/);
+        if (match) return proxyBase + match[1];
+        return proxyBase + url;
+      }
+    }
+    return proxyBase + (url.startsWith('/') ? url : '/' + url);
+  }
+  
+  // Intercepter fetch
+  const originalFetch = window.fetch;
+  window.fetch = function(url, options) {
+    options = options || {};
+    if (typeof url === 'string' && shouldProxy(url)) {
+      const proxyUrl = toProxyUrl(url);
+      const modifiedOptions = {
+        ...options,
+        credentials: 'include',
+        headers: {
+          ...(options.headers || {}),
+        },
+      };
+      if (authToken) {
+        modifiedOptions.headers['Authorization'] = 'Bearer ' + authToken;
+        modifiedOptions.headers['X-Supabase-Auth-Token'] = authToken;
+      }
+      return originalFetch.call(this, proxyUrl, modifiedOptions);
+    }
+    return originalFetch.call(this, url, options);
+  };
+  
+  // Intercepter XMLHttpRequest
+  const originalOpen = XMLHttpRequest.prototype.open;
+  const originalSend = XMLHttpRequest.prototype.send;
+  const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+  
+  XMLHttpRequest.prototype.open = function(method, url) {
+    const args = Array.prototype.slice.call(arguments, 2);
+    if (typeof url === 'string' && shouldProxy(url)) {
+      this._n8nProxyUrl = toProxyUrl(url);
+      return originalOpen.apply(this, [method, this._n8nProxyUrl].concat(args));
+    }
+    return originalOpen.apply(this, arguments);
+  };
+  
+  XMLHttpRequest.prototype.setRequestHeader = function(header, value) {
+    if (!this._n8nHeaders) this._n8nHeaders = {};
+    this._n8nHeaders[header] = value;
+    return originalSetRequestHeader.call(this, header, value);
+  };
+  
+  XMLHttpRequest.prototype.send = function() {
+    if (this._n8nProxyUrl) {
+      this.withCredentials = true;
+      if (authToken) {
+        const existingAuth = (this._n8nHeaders && this._n8nHeaders['Authorization']) || 
+                            (this._n8nHeaders && this._n8nHeaders['authorization']);
+        if (!existingAuth) {
+          this.setRequestHeader('Authorization', 'Bearer ' + authToken);
+          this.setRequestHeader('X-Supabase-Auth-Token', authToken);
+        }
+      }
+      delete this._n8nProxyUrl;
+      delete this._n8nHeaders;
+    }
+    return originalSend.apply(this, arguments);
+  };
+})();
+</script>`
+      
+      // Injecter le script avant </body> ou avant </html>
+      if (modifiedHtml.includes('</body>')) {
+        modifiedHtml = modifiedHtml.replace('</body>', interceptionScript + '</body>')
+      } else if (modifiedHtml.includes('</html>')) {
+        modifiedHtml = modifiedHtml.replace('</html>', interceptionScript + '</html>')
+      } else {
+        modifiedHtml += interceptionScript
+      }
       
       return new NextResponse(modifiedHtml, {
         status: response.status,

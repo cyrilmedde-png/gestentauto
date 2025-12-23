@@ -143,14 +143,23 @@ export async function GET(request: NextRequest) {
       
       function shouldProxy(url) {
         if (!url || typeof url !== 'string') return false;
+        
+        // URLs relatives (commencent par /)
+        if (url.startsWith('/rest/') || 
+            url.startsWith('/assets/') || 
+            url.startsWith('/types/') ||
+            url.startsWith('/api/')) {
+          return true;
+        }
+        
+        // URLs absolues - vérifier si c'est vers n8n.talosprimes.com
         try {
           const urlObj = new URL(url, window.location.origin);
-          return urlObj.origin === new URL(n8nUrl).origin || 
-                 url.startsWith('/rest/') || 
-                 url.startsWith('/assets/') ||
-                 url.startsWith('/api/');
+          const n8nHost = new URL(n8nUrl).hostname;
+          return urlObj.hostname === n8nHost || 
+                 urlObj.hostname.endsWith('.talosprimes.com');
         } catch {
-          return url.startsWith('/rest/') || url.startsWith('/assets/');
+          return false;
         }
       }
       
@@ -158,11 +167,19 @@ export async function GET(request: NextRequest) {
         if (url.startsWith('http://') || url.startsWith('https://')) {
           try {
             const urlObj = new URL(url);
-            return proxyBase + urlObj.pathname + urlObj.search;
+            const path = urlObj.pathname || '/';
+            const search = urlObj.search || '';
+            return proxyBase + path + search;
           } catch {
+            // Si l'URL est invalide, essayer de l'utiliser telle quelle
+            const match = url.match(/https?:\/\/[^\/]+(\/.*)/);
+            if (match) {
+              return proxyBase + match[1];
+            }
             return proxyBase + url;
           }
         }
+        // URLs relatives
         return proxyBase + (url.startsWith('/') ? url : '/' + url);
       }
       
