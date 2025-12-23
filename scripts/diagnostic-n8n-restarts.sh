@@ -16,6 +16,11 @@ NC='\033[0m' # No Color
 N8N_DIR="/var/n8n"
 N8N_USER="n8n"
 
+# Fonction pour vérifier si une commande existe
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
 # Fonctions utilitaires
 log_info() {
     echo -e "${BLUE}ℹ️  $1${NC}"
@@ -99,6 +104,20 @@ if [ -d "$N8N_DIR/logs" ]; then
         fi
     fi
     
+    # IMPORTANT: Analyser le fichier n8n.log (logs N8N natifs)
+    if [ -f "$N8N_DIR/logs/n8n.log" ]; then
+        log_info "Analyse du fichier n8n.log (logs N8N natifs - $(du -h "$N8N_DIR/logs/n8n.log" | cut -f1)):"
+        if [ -s "$N8N_DIR/logs/n8n.log" ]; then
+            log_info "Dernières erreurs dans n8n.log:"
+            tail -200 "$N8N_DIR/logs/n8n.log" | grep -i "error\|fail\|exception\|crash\|fatal\|uncaught" | tail -30 || log_info "Aucune erreur trouvée dans les dernières lignes"
+            
+            log_info "Dernières lignes de n8n.log (pour contexte):"
+            tail -50 "$N8N_DIR/logs/n8n.log" || true
+        else
+            log_warning "Fichier n8n.log existe mais est vide"
+        fi
+    fi
+    
     # Chercher d'autres fichiers de logs
     log_info "Autres fichiers de logs N8N:"
     find "$N8N_DIR/logs" -type f -name "*.log" 2>/dev/null | head -10 || true
@@ -167,7 +186,19 @@ stat -c "%U:%G %n" "$N8N_DIR" 2>/dev/null || stat -f "%Su:%Sg %N" "$N8N_DIR" 2>/
 log_section "8. PROCESSUS N8N"
 
 log_info "Processus N8N en cours:"
-ps aux | grep -i n8n | grep -v grep || log_warning "Aucun processus N8N trouvé"
+N8N_PROCESSES=$(ps aux | grep -i n8n | grep -v grep || true)
+if [ -n "$N8N_PROCESSES" ]; then
+    echo "$N8N_PROCESSES"
+    N8N_COUNT=$(echo "$N8N_PROCESSES" | wc -l)
+    if [ "$N8N_COUNT" -gt 3 ]; then
+        log_error "⚠️  ATTENTION: Plusieurs instances de N8N détectées ($N8N_COUNT processus)"
+        log_warning "Cela peut causer des conflits de port et des redémarrages"
+        log_info "Instances détectées:"
+        echo "$N8N_PROCESSES" | grep -E "node.*n8n|PM2.*n8n" || true
+    fi
+else
+    log_warning "Aucun processus N8N trouvé"
+fi
 
 log_info "Processus Node.js:"
 ps aux | grep -i node | grep -v grep | head -10 || true
@@ -211,12 +242,19 @@ if [[ $REPLY =~ ^[Oo]$ ]]; then
     echo ""
     
     cd "$N8N_DIR" || exit 1
-    timeout 10 n8n start 2>&1 || {
+    log_info "Démarrage avec timeout de 30 secondes (N8N peut prendre du temps à démarrer)..."
+    timeout 30 n8n start 2>&1 || {
         EXIT_CODE=$?
         echo ""
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        log_error "N8N s'est arrêté avec le code: $EXIT_CODE"
-        log_info "Les messages ci-dessus devraient indiquer la cause"
+        if [ "$EXIT_CODE" -eq 124 ]; then
+            log_warning "N8N a pris plus de 30 secondes à démarrer (timeout)"
+            log_info "Cela peut être normal si N8N charge beaucoup de données"
+            log_info "Vérifiez les logs ci-dessus pour voir s'il y a des erreurs avant le timeout"
+        else
+            log_error "N8N s'est arrêté avec le code: $EXIT_CODE"
+            log_info "Les messages ci-dessus devraient indiquer la cause"
+        fi
     }
     
     log_info "Redémarrage de N8N dans PM2..."
@@ -273,6 +311,15 @@ echo ""
 # Vérifier les causes probables
 ISSUES_FOUND=0
 
+# Vérifier les instances multiples
+N8N_PROCESS_COUNT=$(ps aux | grep -i "node.*n8n" | grep -v grep | wc -l)
+if [ "$N8N_PROCESS_COUNT" -gt 1 ]; then
+    ((ISSUES_FOUND++))
+    log_error "⚠️  PROBLÈME CRITIQUE: Plusieurs instances N8N détectées ($N8N_PROCESS_COUNT)"
+    log_warning "Cela cause des conflits de port et des redémarrages constants"
+    log_info "Arrêtez les instances en double avant de redémarrer PM2"
+fi
+
 if dmesg 2>/dev/null | grep -i "out of memory\|oom" | grep -q n8n; then
     ((ISSUES_FOUND++))
     log_error "Problème de mémoire détecté (OOM killer)"
@@ -307,24 +354,31 @@ echo "  ACTIONS RECOMMANDÉES"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-echo "1. Si problème de mémoire:"
+echo "1. Si plusieurs instances N8N détectées:"
+echo "   - Arrêter toutes les instances: pkill -f 'node.*n8n'"
+echo "   - Vérifier les processus: ps aux | grep n8n"
+echo "   - Redémarrer uniquement via PM2: pm2 restart n8n"
+echo ""
+
+echo "2. Si problème de mémoire:"
 echo "   - Augmenter la mémoire disponible"
 echo "   - Réduire la consommation mémoire d'autres services"
 echo "   - Configurer un swap si nécessaire"
 echo ""
 
-echo "2. Si problème de base de données:"
+echo "3. Si problème de base de données:"
 echo "   - Vérifier que la base de données est accessible"
 echo "   - Vérifier les credentials dans $N8N_DIR/.env"
 echo "   - Tester la connexion manuellement"
 echo ""
 
-echo "3. Si problème de configuration:"
+echo "4. Si problème de configuration:"
 echo "   - Vérifier toutes les variables d'environnement dans $N8N_DIR/.env"
 echo "   - Vérifier la documentation N8N pour les variables requises"
 echo ""
 
-echo "4. Pour plus de détails:"
+echo "5. Pour plus de détails:"
+echo "   - Analyser le fichier n8n.log: tail -100 $N8N_DIR/logs/n8n.log"
 echo "   - Exécuter: n8n start (dans $N8N_DIR) pour voir les erreurs en direct"
 echo "   - Vérifier: pm2 logs n8n --lines 200"
 echo ""
