@@ -16,8 +16,39 @@ cd /var/www/talosprime || {
 echo "🧹 Nettoyage des dépendances existantes..."
 rm -rf node_modules package-lock.json .next
 
-echo "📦 Réinstallation complète des dépendances..."
-npm install
+echo "📦 Réinstallation complète des dépendances (y compris devDependencies)..."
+# IMPORTANT: Ne pas utiliser --production car on a besoin de tailwindcss, postcss, etc. pour le build
+npm install --include=dev
+
+# Vérifier que tailwindcss est bien installé
+if [ ! -d "node_modules/tailwindcss" ]; then
+  echo "⚠️  tailwindcss non trouvé, réinstallation forcée..."
+  npm install tailwindcss postcss autoprefixer --save-dev
+fi
+
+# Vérifier l'installation
+echo ""
+echo "🔍 Vérification des dépendances critiques..."
+if [ -d "node_modules/tailwindcss" ]; then
+  echo "✅ tailwindcss installé"
+else
+  echo "❌ tailwindcss manquant!"
+  exit 1
+fi
+
+if [ -d "node_modules/postcss" ]; then
+  echo "✅ postcss installé"
+else
+  echo "❌ postcss manquant!"
+  exit 1
+fi
+
+if [ -d "node_modules/next" ]; then
+  echo "✅ next installé"
+else
+  echo "❌ next manquant!"
+  exit 1
+fi
 
 echo "✅ Dépendances réinstallées avec succès!"
 

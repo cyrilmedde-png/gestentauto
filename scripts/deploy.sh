@@ -48,11 +48,23 @@ echo "✅ Dernières modifications récupérées avec succès"
     echo "🧹 Nettoyage des dépendances existantes..."
     rm -rf node_modules package-lock.json .next || true
     
-    echo "📦 Installation des dépendances..."
-    npm install || {
+    echo "📦 Installation des dépendances (y compris devDependencies pour le build)..."
+    # IMPORTANT: Ne pas utiliser --production car on a besoin de tailwindcss, postcss, etc. pour le build
+    npm install --include=dev || {
       echo "❌ Erreur lors de l'installation des dépendances"
       exit 1
     }
+    
+    # Vérifier que tailwindcss est bien installé
+    if [ ! -d "node_modules/tailwindcss" ]; then
+      echo "⚠️  tailwindcss non trouvé, réinstallation forcée..."
+      npm install tailwindcss postcss autoprefixer --save-dev || {
+        echo "❌ Erreur lors de l'installation de tailwindcss"
+        exit 1
+      }
+    fi
+    
+    echo "✅ Dépendances installées et vérifiées"
 
     echo "🔨 Construction de l'application..."
     npm run build || {
