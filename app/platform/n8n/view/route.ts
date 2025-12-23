@@ -210,15 +210,22 @@ export async function GET(request: NextRequest) {
   
   // Fonction pour déterminer si une URL doit être proxifiée
   function shouldProxy(url) {
-    // Toujours proxifier /rest/* et /assets/*
-    if (url.includes('/rest/') || url.includes('/assets/')) {
-      return true;
-    }
-    // Ne pas proxifier les URLs déjà proxy
+    // Si c'est déjà une URL proxy, ne pas la proxifier à nouveau
     if (url.includes('/api/platform/n8n/proxy')) {
       return false;
     }
-    // Proxifier les URLs relatives
+    
+    // Toujours proxifier /rest/* et /assets/* (même avec URLs absolues)
+    if (url.includes('/rest/') || url.includes('/assets/')) {
+      return true;
+    }
+    
+    // Proxifier les URLs relatives qui commencent par /rest ou /assets
+    if (url.startsWith('/rest') || url.startsWith('/assets')) {
+      return true;
+    }
+    
+    // Proxifier toutes les URLs relatives
     return url.startsWith('/');
   }
   
@@ -306,8 +313,8 @@ export async function GET(request: NextRequest) {
         const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
         if (iframeDoc) {
           const script = iframeDoc.createElement('script');
-          // Utiliser JSON.stringify pour échapper correctement la valeur
-          const proxyBaseValue = ${JSON.stringify(baseUrl + '/api/platform/n8n/proxy')};
+          // CORRECTION: Calculer la valeur AVANT de l'utiliser (évite l'interpolation de template string)
+          const proxyBaseValue = baseUrl + '/api/platform/n8n/proxy';
           script.textContent = 
             '(function() {' +
             '  console.log("[N8N Iframe] Script d\\'interception injecté dans l\\'iframe");' +

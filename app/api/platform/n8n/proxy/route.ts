@@ -156,8 +156,13 @@ export async function GET(request: NextRequest) {
       return false;
     }
     
-    // Toujours proxifier /rest/* et /assets/*
+    // Toujours proxifier /rest/* et /assets/* (même avec URLs absolues)
     if (url.includes('/rest/') || url.includes('/assets/')) {
+      return true;
+    }
+    
+    // Proxifier les URLs relatives qui commencent par /rest ou /assets
+    if (url.startsWith('/rest') || url.startsWith('/assets')) {
       return true;
     }
     
@@ -165,15 +170,24 @@ export async function GET(request: NextRequest) {
       const urlObj = new URL(url, window.location.href);
       const currentHost = window.location.hostname;
       
-      return urlObj.hostname === currentHost || 
-             urlObj.hostname === n8nHost || 
-             urlObj.hostname === 'www.talosprimes.com' || 
-             urlObj.hostname === 'talosprimes.com' ||
-             urlObj.hostname.endsWith('.talosprimes.com') ||
-             url.startsWith('/');
-    } catch {
-      // Si l'URL est invalide, proxifier si elle commence par /
+      // Proxifier si c'est le même domaine ou un sous-domaine talosprimes.com
+      if (urlObj.hostname === currentHost || 
+          urlObj.hostname === n8nHost || 
+          urlObj.hostname === 'www.talosprimes.com' || 
+          urlObj.hostname === 'talosprimes.com' ||
+          urlObj.hostname.endsWith('.talosprimes.com')) {
+        // Vérifier aussi le chemin
+        if (urlObj.pathname.startsWith('/rest') || urlObj.pathname.startsWith('/assets')) {
+          return true;
+        }
+        // Proxifier toutes les URLs du même domaine
+        return url.startsWith('/') || urlObj.hostname === currentHost;
+      }
+      
       return url.startsWith('/');
+    } catch {
+      // Si l'URL est invalide, proxifier si elle commence par /rest ou /assets
+      return url.startsWith('/rest') || url.startsWith('/assets') || url.startsWith('/');
     }
   }
   
