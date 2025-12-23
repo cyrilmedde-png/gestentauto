@@ -240,7 +240,10 @@ export async function GET(request: NextRequest) {
 </script>`
       
       // Injecter le script dans <head> en priorité pour qu'il soit chargé avant les requêtes
-      if (modifiedHtml.includes('</head>')) {
+      // Utiliser une regex pour trouver la première balise <head> et injecter juste après
+      if (modifiedHtml.includes('<head>')) {
+        modifiedHtml = modifiedHtml.replace('<head>', '<head>' + interceptionScript)
+      } else if (modifiedHtml.includes('</head>')) {
         modifiedHtml = modifiedHtml.replace('</head>', interceptionScript + '</head>')
       } else if (modifiedHtml.includes('</body>')) {
         modifiedHtml = modifiedHtml.replace('</body>', interceptionScript + '</body>')

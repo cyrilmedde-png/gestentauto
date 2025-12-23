@@ -195,14 +195,6 @@ export async function GET(
   function shouldProxy(url) {
     if (!url || typeof url !== 'string') return false;
     
-    // Ne pas proxifier les domaines externes
-    try {
-      const urlObj = new URL(url, window.location.origin);
-      if (externalDomains.some(domain => urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain))) {
-        return false;
-      }
-    } catch {}
-    
     // URLs relatives vers N8N (inclut /rest/telemetry/...)
     if (url.startsWith('/rest/') || 
         url.startsWith('/assets/') || 
@@ -211,12 +203,32 @@ export async function GET(
       return true;
     }
     
-    // URLs absolues vers n8n.talosprimes.com uniquement
+    // URLs absolues - vérifier si c'est vers n8n.talosprimes.com
     try {
       const urlObj = new URL(url, window.location.origin);
-      return urlObj.hostname === n8nHost || 
-             (urlObj.hostname.endsWith('.talosprimes.com') && !externalDomains.some(d => urlObj.hostname.includes(d)));
+      const hostname = urlObj.hostname;
+      
+      // Ne pas proxifier les domaines externes
+      if (externalDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
+        return false;
+      }
+      
+      // Proxifier toutes les URLs vers n8n.talosprimes.com
+      if (hostname === n8nHost || hostname === 'n8n.talosprimes.com') {
+        return true;
+      }
+      
+      // Proxifier les sous-domaines talosprimes.com sauf les domaines externes
+      if (hostname.endsWith('.talosprimes.com')) {
+        return !externalDomains.some(d => hostname.includes(d));
+      }
+      
+      return false;
     } catch {
+      // Si l'URL est invalide, vérifier si elle contient n8n.talosprimes.com
+      if (url.includes('n8n.talosprimes.com')) {
+        return true;
+      }
       return false;
     }
   }
@@ -306,7 +318,10 @@ export async function GET(
 </script>`
       
       // Injecter le script dans <head> en priorité pour qu'il soit chargé avant les requêtes
-      if (modifiedHtml.includes('</head>')) {
+      // Utiliser une regex pour trouver la première balise <head> et injecter juste après
+      if (modifiedHtml.includes('<head>')) {
+        modifiedHtml = modifiedHtml.replace('<head>', '<head>' + interceptionScript)
+      } else if (modifiedHtml.includes('</head>')) {
         modifiedHtml = modifiedHtml.replace('</head>', interceptionScript + '</head>')
       } else if (modifiedHtml.includes('</body>')) {
         modifiedHtml = modifiedHtml.replace('</body>', interceptionScript + '</body>')
