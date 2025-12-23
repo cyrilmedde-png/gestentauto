@@ -151,7 +151,17 @@ else
     warn "curl n'est pas installé. Impossible de vérifier l'application."
 fi
 
-# 9. Résumé
+# 9. Vérifier la configuration WebSocket Nginx
+info "Vérification de la configuration WebSocket Nginx..."
+if [ -f "scripts/setup-websocket-proxy.sh" ]; then
+    warn "IMPORTANT: Les WebSockets nécessitent une configuration Nginx."
+    warn "Exécutez: ./scripts/setup-websocket-proxy.sh"
+    warn "Ou suivez: docs/CONFIGURER_WEBSOCKETS_N8N.md"
+else
+    warn "Script setup-websocket-proxy.sh non trouvé. Vérifiez la configuration WebSocket manuellement."
+fi
+
+# 10. Résumé
 echo ""
 echo "=========================================="
 info "Mise à jour terminée!"
@@ -159,13 +169,18 @@ echo "=========================================="
 echo ""
 echo "Prochaines étapes:"
 echo "1. Videz le cache de votre navigateur (Ctrl+Shift+Delete)"
-echo "2. Accédez à https://www.talosprimes.com/platform/n8n"
-echo "3. Vérifiez la console du navigateur pour les erreurs"
+echo "2. Configurez Nginx pour WebSockets: ./scripts/setup-websocket-proxy.sh"
+echo "3. Accédez à https://www.talosprimes.com/platform/n8n"
+echo "4. Ouvrez la console du navigateur (F12)"
+echo "5. Vérifiez les logs [N8N Proxy] pour voir quelles requêtes sont interceptées"
 echo ""
 echo "Pour voir les logs en temps réel:"
 echo "  pm2 logs $PM2_NAME"
 echo ""
 echo "Pour redémarrer manuellement:"
 echo "  pm2 restart $PM2_NAME"
+echo ""
+echo "Documentation complète:"
+echo "  docs/RESOLUTION_ERREURS_N8N_FINAL.md"
 echo ""
 
