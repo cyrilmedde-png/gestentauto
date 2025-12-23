@@ -17,27 +17,46 @@ export async function GET(
   // Utiliser uniquement la session Supabase pour identifier l'utilisateur
   // verifyAuthenticatedUser récupérera automatiquement l'utilisateur depuis la session
   
+  // Attendre les params (Next.js 16)
+  const resolvedParams = await params
+  
+  // Construire le chemin N8N depuis les paramètres de route
+  const n8nPath = resolvedParams.path && resolvedParams.path.length > 0 
+    ? `/${resolvedParams.path.join('/')}` 
+    : '/'
+  
+  // Pour /rest/login, on permet l'accès SANS vérification d'authentification
+  // N8N gère sa propre authentification via cette route
+  const isRestLogin = n8nPath === '/rest/login' || n8nPath.startsWith('/rest/login')
+  
   // Log pour déboguer
   console.log('[N8N Proxy Catch-all] Request:', {
     url: request.url,
     hasCookies: !!request.headers.get('cookie'),
-    path: (await params).path,
+    path: resolvedParams.path,
+    n8nPath,
+    isRestLogin,
   })
   
-  // Vérifier que l'utilisateur est authentifié (plateforme ou client)
-  const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
-  
-  if (!isAuthenticated || error) {
-    console.error('[N8N Proxy Catch-all] Auth failed:', {
-      isAuthenticated,
-      error,
-      hasCookies: !!request.headers.get('cookie'),
-      url: request.url,
-    })
-    return NextResponse.json(
-      { error: 'Unauthorized - Authentication required', details: error },
-      { status: 403 }
-    )
+  // Vérifier que l'utilisateur est authentifié (plateforme ou client) SAUF pour /rest/login
+  if (!isRestLogin) {
+    const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
+    
+    if (!isAuthenticated || error) {
+      console.error('[N8N Proxy Catch-all] Auth failed:', {
+        isAuthenticated,
+        error,
+        hasCookies: !!request.headers.get('cookie'),
+        url: request.url,
+        n8nPath,
+      })
+      return NextResponse.json(
+        { error: 'Unauthorized - Authentication required', details: error },
+        { status: 401 }
+      )
+    }
+  } else {
+    console.log('[N8N Proxy Catch-all] Allowing /rest/login WITHOUT auth check - N8N will handle authentication')
   }
 
   // Vérifier la configuration N8N
@@ -54,14 +73,6 @@ export async function GET(
     )
   }
 
-  // Attendre les params (Next.js 16)
-  const resolvedParams = await params
-
-  // Construire le chemin N8N depuis les paramètres de route
-  const n8nPath = resolvedParams.path && resolvedParams.path.length > 0 
-    ? `/${resolvedParams.path.join('/')}` 
-    : '/'
-  
   // Récupérer les query params de l'URL (pour les passer à N8N, mais sans userId)
   const { searchParams } = new URL(request.url)
   
