@@ -50,27 +50,33 @@ export async function verifyAuthenticatedUser(
               persistSession: false,
               autoRefreshToken: false,
             },
-            global: {
-              headers: {
-                Authorization: `Bearer ${jwtToken}`,
-              },
-            },
           })
           
-          // Vérifier le token en appelant getUser avec le token
-          const { data: { user }, error: tokenError } = await tempClient.auth.getUser(jwtToken)
+          // CORRECTION : Utiliser setSession pour définir le token, puis getUser() sans paramètre
+          // getUser(token) n'est pas la bonne méthode - il faut d'abord définir la session
+          const { data: sessionData, error: sessionError } = await tempClient.auth.setSession({
+            access_token: jwtToken,
+            refresh_token: '', // Pas nécessaire pour la validation seule
+          })
           
-          if (!tokenError && user) {
-            console.log('[verifyAuthenticatedUser] ✅ User authenticated via JWT token:', {
-              userId: user.id,
-              email: user.email,
-            })
-            return {
-              isAuthenticated: true,
-              userId: user.id,
-            }
+          if (sessionError) {
+            console.warn('[verifyAuthenticatedUser] ⚠️ Error setting session with JWT token, falling back to cookies:', sessionError?.message)
           } else {
-            console.warn('[verifyAuthenticatedUser] ⚠️ JWT token invalid, falling back to cookies:', tokenError?.message)
+            // Maintenant appeler getUser() sans paramètre - il utilisera la session définie
+            const { data: { user }, error: tokenError } = await tempClient.auth.getUser()
+            
+            if (!tokenError && user) {
+              console.log('[verifyAuthenticatedUser] ✅ User authenticated via JWT token:', {
+                userId: user.id,
+                email: user.email,
+              })
+              return {
+                isAuthenticated: true,
+                userId: user.id,
+              }
+            } else {
+              console.warn('[verifyAuthenticatedUser] ⚠️ JWT token invalid after setSession, falling back to cookies:', tokenError?.message)
+            }
           }
         }
       } catch (tokenErr) {

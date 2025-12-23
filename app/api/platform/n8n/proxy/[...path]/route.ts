@@ -7,7 +7,7 @@ const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
 /**
  * Route API proxy catch-all pour N8N avec authentification automatique
  * Capture tous les chemins : /api/platform/n8n/proxy/assets/... /api/platform/n8n/proxy/api/... etc.
- * Accessible uniquement aux utilisateurs de la plateforme
+ * Accessible à tous les utilisateurs authentifiés (plateforme et clients)
  */
 export async function GET(
   request: NextRequest,
