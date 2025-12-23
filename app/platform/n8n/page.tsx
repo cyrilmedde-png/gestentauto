@@ -1,7 +1,7 @@
 'use client'
 
 import { MainLayout } from '@/components/layout/MainLayout'
-import { ProtectedPlatformRoute } from '@/components/auth/ProtectedPlatformRoute'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
 
@@ -70,19 +70,19 @@ export default function N8NPage() {
 
   if (loading) {
     return (
-      <ProtectedPlatformRoute>
+      <ProtectedRoute>
         <MainLayout>
           <div className="flex items-center justify-center h-screen">
             <div className="text-muted-foreground">Chargement de N8N...</div>
           </div>
         </MainLayout>
-      </ProtectedPlatformRoute>
+      </ProtectedRoute>
     )
   }
 
   if (error || connectionStatus === 'error') {
     return (
-      <ProtectedPlatformRoute>
+      <ProtectedRoute>
         <MainLayout>
           <div className="flex items-center justify-center h-screen">
             <div className="max-w-md p-6 bg-destructive/10 border border-destructive/20 rounded-lg">
@@ -105,12 +105,12 @@ export default function N8NPage() {
             </div>
           </div>
         </MainLayout>
-      </ProtectedPlatformRoute>
+      </ProtectedRoute>
     )
   }
 
   return (
-    <ProtectedPlatformRoute>
+    <ProtectedRoute>
       <MainLayout>
         <div className="h-screen flex flex-col">
           {/* Header */}
@@ -142,7 +142,7 @@ export default function N8NPage() {
           </div>
         </div>
       </MainLayout>
-    </ProtectedPlatformRoute>
+    </ProtectedRoute>
   )
 }
 
