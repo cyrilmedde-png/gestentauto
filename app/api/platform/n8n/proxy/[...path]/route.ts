@@ -189,26 +189,42 @@ export async function GET(
     }
   }
   
-  // Intercepter fetch
+  // Intercepter fetch - FORCER credentials: 'include' pour envoyer les cookies
   const originalFetch = window.fetch;
   window.fetch = function(url, options = {}) {
     if (typeof url === 'string' && shouldProxy(url)) {
       const proxyUrl = toProxyUrl(url);
       console.log('[N8N Proxy] Intercepting fetch:', url, '->', proxyUrl);
-      return originalFetch.call(this, proxyUrl, options);
+      // FORCER credentials: 'include' pour envoyer les cookies de session Supabase
+      const modifiedOptions = {
+        ...options,
+        credentials: 'include',  // ✅ Toujours inclure les cookies
+      };
+      return originalFetch.call(this, proxyUrl, modifiedOptions);
     }
     return originalFetch.call(this, url, options);
   };
   
-  // Intercepter XMLHttpRequest
+  // Intercepter XMLHttpRequest - FORCER withCredentials pour envoyer les cookies
   const originalOpen = XMLHttpRequest.prototype.open;
+  const originalSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function(method, url, ...args) {
     if (typeof url === 'string' && shouldProxy(url)) {
       const proxyUrl = toProxyUrl(url);
       console.log('[N8N Proxy] Intercepting XHR:', url, '->', proxyUrl);
+      // Marquer cette requête pour ajouter withCredentials dans send
+      this._n8nProxyUrl = proxyUrl;
       return originalOpen.call(this, method, proxyUrl, ...args);
     }
     return originalOpen.call(this, method, url, ...args);
+  };
+  // Intercepter send pour ajouter withCredentials
+  XMLHttpRequest.prototype.send = function(...args) {
+    if (this._n8nProxyUrl) {
+      this.withCredentials = true;  // ✅ Forcer l'envoi des cookies
+      delete this._n8nProxyUrl;
+    }
+    return originalSend.apply(this, args);
   };
 })();
 </script>
