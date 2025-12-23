@@ -148,22 +148,42 @@ export async function GET(request: NextRequest) {
   function shouldProxy(url) {
     if (!url || typeof url !== 'string') return false;
     
-    // Ne pas proxifier les domaines externes
+    // URLs relatives vers N8N (inclut /rest/telemetry/...)
+    if (url.startsWith('/rest/') || 
+        url.startsWith('/assets/') || 
+        url.startsWith('/types/') ||
+        url.startsWith('/api/')) {
+      return true;
+    }
+    
+    // URLs absolues - vérifier si c'est vers n8n.talosprimes.com
     try {
       const urlObj = new URL(url, window.location.origin);
-      if (externalDomains.some(domain => urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain))) {
+      const hostname = urlObj.hostname;
+      
+      // Ne pas proxifier les domaines externes
+      if (externalDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
         return false;
       }
-    } catch {}
-    
-    // URLs relatives vers N8N
-    if (url.startsWith('/rest/') || url.startsWith('/assets/') || url.startsWith('/types/') || url.startsWith('/api/')) return true;
-    
-    // URLs absolues vers n8n.talosprimes.com uniquement
-    try {
-      const urlObj = new URL(url, window.location.origin);
-      return urlObj.hostname === n8nHost || (urlObj.hostname.endsWith('.talosprimes.com') && !externalDomains.some(d => urlObj.hostname.includes(d)));
-    } catch { return false; }
+      
+      // Proxifier toutes les URLs vers n8n.talosprimes.com
+      if (hostname === n8nHost || hostname === 'n8n.talosprimes.com') {
+        return true;
+      }
+      
+      // Proxifier les sous-domaines talosprimes.com sauf les domaines externes
+      if (hostname.endsWith('.talosprimes.com')) {
+        return !externalDomains.some(d => hostname.includes(d));
+      }
+      
+      return false;
+    } catch {
+      // Si l'URL est invalide, vérifier si elle contient n8n.talosprimes.com
+      if (url.includes('n8n.talosprimes.com')) {
+        return true;
+      }
+      return false;
+    }
   }
   
   function toProxyUrl(url) {
