@@ -149,7 +149,9 @@ export async function GET(request: NextRequest) {
         const urlObj = new URL(url);
         return proxyBase + (urlObj.pathname || '/') + (urlObj.search || '');
       } catch {
-        const match = url.match(/https?:\\/\\/[^\\/]+(\\/.*)/);
+        // Regex pour extraire le chemin depuis l'URL (échappement correct pour template string)
+        const urlPattern = /https?:\/\/[^\/]+(\/.*)/;
+        const match = url.match(urlPattern);
         return match ? proxyBase + match[1] : proxyBase + url;
       }
     }

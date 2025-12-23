@@ -215,8 +215,9 @@ export async function GET(
         const search = urlObj.search || '';
         return proxyBase + path + search;
       } catch {
-        // Regex pour extraire le chemin depuis l'URL
-        const match = url.match(/https?:\\/\\/[^\\/]+(\\/.*)/);
+        // Regex pour extraire le chemin depuis l'URL (échappement correct pour template string)
+        const urlPattern = /https?:\/\/[^\/]+(\/.*)/;
+        const match = url.match(urlPattern);
         if (match) return proxyBase + match[1];
         return proxyBase + url;
       }
