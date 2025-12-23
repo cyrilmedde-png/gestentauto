@@ -5,6 +5,7 @@ DO $$
 DECLARE
   target_company_id UUID := '17a58a60-f13a-4a22-998f-f04f20089cbc';
   current_platform_id UUID;
+  rec RECORD;
 BEGIN
   -- Vérifier le platform_company_id actuel
   SELECT (value#>>'{}')::UUID INTO current_platform_id
