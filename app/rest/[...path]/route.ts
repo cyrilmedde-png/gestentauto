@@ -273,6 +273,7 @@ async function handleRestRequest(
       headers: {
         'Content-Type': contentType,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
+        ...getCorsHeaders(request.headers.get('origin')),
       },
     })
     
