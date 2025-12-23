@@ -196,8 +196,20 @@ if command_exists lsof; then
         log_warning "⚠️  Le port $N8N_PORT est toujours utilisé par Docker"
         log_info "Vérification des conteneurs Docker..."
         if command_exists docker; then
-            docker ps | grep -i n8n || log_info "Aucun conteneur N8N trouvé"
-            log_warning "Options:"
+            DOCKER_N8N=$(docker ps | grep -i n8n || true)
+            if [ -n "$DOCKER_N8N" ]; then
+                log_warning "Conteneur Docker N8N trouvé:"
+                echo "$DOCKER_N8N"
+                CONTAINER_ID=$(echo "$DOCKER_N8N" | awk '{print $1}' | head -1)
+                if [ -n "$CONTAINER_ID" ] && [ "$CONTAINER_ID" != "CONTAINER" ]; then
+                    log_info "Arrêt du conteneur Docker N8N ($CONTAINER_ID)..."
+                    docker stop "$CONTAINER_ID" 2>/dev/null && log_success "Conteneur Docker arrêté" || log_warning "Impossible d'arrêter le conteneur"
+                    sleep 2
+                fi
+            else
+                log_info "Aucun conteneur N8N trouvé"
+            fi
+            log_warning "Options si le port est toujours utilisé:"
             log_warning "  1. Arrêter le conteneur Docker N8N: docker stop <container_id>"
             log_warning "  2. Changer le port N8N dans .env: N8N_PORT=<autre_port>"
         fi
