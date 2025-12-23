@@ -1,56 +1,26 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
-// Singleton pour éviter de créer plusieurs instances
-let supabaseInstance: SupabaseClient | null = null
-
-function createSupabaseClient(): SupabaseClient {
-  // Si l'instance existe déjà, la retourner
-  if (supabaseInstance) {
-    return supabaseInstance
-  }
-
+/**
+ * Client Supabase côté client utilisant @supabase/ssr
+ * CRITIQUE : Utilise createBrowserClient pour synchroniser les cookies HTTP
+ * Cela permet aux API routes de lire les cookies de session
+ */
+export function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!supabaseUrl) {
-    console.error('NEXT_PUBLIC_SUPABASE_URL is not set in environment variables')
-    // Retourner un client mock pour éviter de bloquer l'application
-    supabaseInstance = createClient('https://placeholder.supabase.co', 'placeholder-key', {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-    })
-    return supabaseInstance
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables')
   }
 
-  if (!supabaseAnonKey) {
-    console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY is not set in environment variables')
-    // Retourner un client mock pour éviter de bloquer l'application
-    supabaseInstance = createClient(supabaseUrl, 'placeholder-key', {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-    })
-    return supabaseInstance
-  }
-
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    },
-  })
-  
-  return supabaseInstance
+  // Utiliser createBrowserClient de @supabase/ssr pour gérer les cookies HTTP
+  // Cela synchronise automatiquement localStorage avec les cookies HTTP
+  return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }
 
-// Client Supabase côté client (créé uniquement côté client pour éviter les erreurs au build)
+// Client Supabase singleton pour éviter de créer plusieurs instances
+let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null
+
 export const supabase = typeof window !== 'undefined' 
-  ? createSupabaseClient()
-  : ({} as ReturnType<typeof createClient>)
+  ? (supabaseInstance || (supabaseInstance = createClient()))
+  : ({} as ReturnType<typeof createBrowserClient>)
