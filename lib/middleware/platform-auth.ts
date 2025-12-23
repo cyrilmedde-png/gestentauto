@@ -12,13 +12,26 @@ export async function verifyAuthenticatedUser(
   request: NextRequest
 ): Promise<{ isAuthenticated: boolean; error?: string; userId?: string }> {
   try {
+    // Log pour déboguer
+    const cookieHeader = request.headers.get('cookie') || ''
+    console.log('[verifyAuthenticatedUser] Checking authentication...', {
+      hasCookies: !!cookieHeader,
+      cookieLength: cookieHeader.length,
+      cookiePreview: cookieHeader.substring(0, 200) + (cookieHeader.length > 200 ? '...' : ''),
+      url: request.url,
+    })
+    
     const supabase = await createServerClient(request)
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
       console.log('[verifyAuthenticatedUser] ❌ User not authenticated:', {
         error: authError?.message,
+        errorCode: authError?.status,
+        errorName: authError?.name,
         hasUser: !!user,
+        hasCookies: !!cookieHeader,
+        cookieKeys: cookieHeader ? cookieHeader.split(';').map(c => c.split('=')[0].trim()).filter(Boolean) : [],
       })
       return {
         isAuthenticated: false,

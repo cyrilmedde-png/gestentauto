@@ -29,6 +29,10 @@ export default function N8NPage() {
       
       const response = await fetch('/api/platform/n8n/health', {
         method: 'GET',
+        credentials: 'include', // Inclure les cookies de session
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
       
       const data = await response.json()
