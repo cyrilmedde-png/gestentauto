@@ -106,20 +106,40 @@ export async function GET(request: NextRequest) {
         }
       )
       
+      // Échapper correctement les caractères spéciaux
+      const escapedProxyBase = baseUrl + proxyBase
+      const escapedN8nHost = n8nHost
+      const escapedAuthToken = authToken.replace(/'/g, "\\'").replace(/\\/g, "\\\\")
+      
       // Injecter le script d'interception
       const interceptionScript = `
 <script>
 (function() {
-  const proxyBase = '${baseUrl}${proxyBase}';
-  const n8nHost = '${n8nHost}';
-  const authToken = '${authToken}';
+  const proxyBase = '${escapedProxyBase}';
+  const n8nHost = '${escapedN8nHost}';
+  const authToken = '${escapedAuthToken}';
+  
+  // Domaines externes à ne PAS proxifier
+  const externalDomains = ['api.github.com', 'github.com', 'cdn.jsdelivr.net', 'unpkg.com'];
   
   function shouldProxy(url) {
     if (!url || typeof url !== 'string') return false;
-    if (url.startsWith('/rest/') || url.startsWith('/assets/') || url.startsWith('/types/') || url.startsWith('/api/')) return true;
+    
+    // Ne pas proxifier les domaines externes
     try {
       const urlObj = new URL(url, window.location.origin);
-      return urlObj.hostname === n8nHost || urlObj.hostname.endsWith('.talosprimes.com');
+      if (externalDomains.some(domain => urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain))) {
+        return false;
+      }
+    } catch {}
+    
+    // URLs relatives vers N8N
+    if (url.startsWith('/rest/') || url.startsWith('/assets/') || url.startsWith('/types/') || url.startsWith('/api/')) return true;
+    
+    // URLs absolues vers n8n.talosprimes.com uniquement
+    try {
+      const urlObj = new URL(url, window.location.origin);
+      return urlObj.hostname === n8nHost || (urlObj.hostname.endsWith('.talosprimes.com') && !externalDomains.some(d => urlObj.hostname.includes(d)));
     } catch { return false; }
   }
   
@@ -135,6 +155,11 @@ export async function GET(request: NextRequest) {
     }
     return proxyBase + (url.startsWith('/') ? url : '/' + url);
   }
+  
+  // Intercepter WebSocket (Note: Next.js ne supporte pas les WebSockets nativement)
+  // Les WebSockets doivent être proxifiés via Nginx directement vers N8N
+  // Pour l'instant, on laisse les WebSockets se connecter directement à N8N
+  // TODO: Configurer Nginx pour proxifier wss://www.talosprimes.com/rest/push vers wss://n8n.talosprimes.com/rest/push
   
   const originalFetch = window.fetch;
   window.fetch = function(url, options) {
