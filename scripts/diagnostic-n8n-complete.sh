@@ -378,15 +378,68 @@ fi
 # ============================================
 log_section "8. LOGS D'ERREURS"
 
-# Logs N8N
-if pm2 logs n8n --lines 0 --nostream 2>/dev/null | grep -i "error\|fail\|exception" | tail -10 | grep -q .; then
-    log_warning "Erreurs trouvées dans les logs N8N (dernières 10):"
-    pm2 logs n8n --lines 100 --nostream 2>/dev/null | grep -i "error\|fail\|exception" | tail -10 || true
-elif sudo -u "$N8N_USER" pm2 logs n8n --lines 0 --nostream 2>/dev/null | grep -i "error\|fail\|exception" | tail -10 | grep -q .; then
-    log_warning "Erreurs trouvées dans les logs N8N (dernières 10):"
-    sudo -u "$N8N_USER" pm2 logs n8n --lines 100 --nostream 2>/dev/null | grep -i "error\|fail\|exception" | tail -10 || true
-else
-    log_success "Aucune erreur récente dans les logs N8N"
+# Logs N8N - Vérifier plusieurs sources
+log_info "Vérification des logs N8N (plusieurs sources)..."
+
+# 1. Logs PM2 stderr
+HAS_PM2_ERR=false
+if pm2 logs n8n --err --lines 0 --nostream 2>/dev/null | grep -v "^$" | grep -q .; then
+    HAS_PM2_ERR=true
+    log_warning "Erreurs trouvées dans les logs PM2 stderr:"
+    pm2 logs n8n --err --lines 50 --nostream 2>/dev/null | tail -20 || true
+fi
+
+# 2. Logs PM2 stdout (peut contenir les erreurs aussi)
+HAS_PM2_OUT=false
+if pm2 logs n8n --out --lines 0 --nostream 2>/dev/null | grep -i "error\|fail\|exception\|crash\|fatal" | tail -10 | grep -q .; then
+    HAS_PM2_OUT=true
+    log_warning "Erreurs trouvées dans les logs PM2 stdout:"
+    pm2 logs n8n --out --lines 100 --nostream 2>/dev/null | grep -i "error\|fail\|exception\|crash\|fatal" | tail -20 || true
+fi
+
+# 3. Logs fichiers directs
+if [ -f "$N8N_DIR/logs/pm2-error.log" ]; then
+    if [ -s "$N8N_DIR/logs/pm2-error.log" ]; then
+        log_warning "Contenu du fichier pm2-error.log:"
+        tail -30 "$N8N_DIR/logs/pm2-error.log" || true
+    else
+        log_info "Fichier pm2-error.log existe mais est vide"
+    fi
+fi
+
+if [ -f "$N8N_DIR/logs/pm2-out.log" ]; then
+    if tail -100 "$N8N_DIR/logs/pm2-out.log" 2>/dev/null | grep -i "error\|fail\|exception\|crash\|fatal" | grep -q .; then
+        log_warning "Erreurs trouvées dans pm2-out.log:"
+        tail -100 "$N8N_DIR/logs/pm2-out.log" | grep -i "error\|fail\|exception\|crash\|fatal" | tail -20 || true
+    fi
+fi
+
+# 4. Logs système (journalctl)
+if command_exists journalctl; then
+    if journalctl | grep -i n8n 2>/dev/null | tail -20 | grep -q .; then
+        log_info "Dernières entrées système pour N8N:"
+        journalctl | grep -i n8n 2>/dev/null | tail -10 || true
+    fi
+fi
+
+# Résumé
+if [ "$HAS_PM2_ERR" = false ] && [ "$HAS_PM2_OUT" = false ]; then
+    if [ -n "$RESTARTS" ] && [ "$RESTARTS" -gt 10 ]; then
+        log_error "⚠️  PROBLÈME: N8N redémarre ($RESTARTS fois) mais aucun log d'erreur trouvé"
+        log_info "Causes possibles:"
+        log_info "  - N8N crash avant de pouvoir écrire dans les logs"
+        log_info "  - Problème de configuration (port, base de données, etc.)"
+        log_info "  - Problème de permissions"
+        log_info "  - Problème de mémoire (OOM killer)"
+        log_info ""
+        log_info "Vérifications supplémentaires:"
+        log_info "  - Vérifier la mémoire: free -h"
+        log_info "  - Vérifier les processus: ps aux | grep n8n"
+        log_info "  - Vérifier les ports: ss -tlnp | grep 5678"
+        log_info "  - Vérifier les permissions: ls -la $N8N_DIR"
+    else
+        log_success "Aucune erreur récente dans les logs N8N"
+    fi
 fi
 
 # Logs Next.js (si PM2 - chercher talosprime aussi)
