@@ -98,18 +98,21 @@ export async function verifyAuthenticatedUser(
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      console.error('[verifyAuthenticatedUser] ❌ User not authenticated:', {
-        error: authError?.message,
-        errorCode: authError?.status,
-        errorName: authError?.name,
-        errorStatus: authError?.status,
-        hasUser: !!user,
-        hasCookies: !!cookieHeader,
-        cookieKeys: cookieKeys,
-        url: request.url,
-        method: request.method,
-        hasJwtToken: !!jwtToken,
-      })
+      // Ne pas logger d'erreurs pendant le build
+      if (!isBuildTime) {
+        console.error('[verifyAuthenticatedUser] ❌ User not authenticated:', {
+          error: authError?.message,
+          errorCode: authError?.status,
+          errorName: authError?.name,
+          errorStatus: authError?.status,
+          hasUser: !!user,
+          hasCookies: !!cookieHeader,
+          cookieKeys: cookieKeys,
+          url: request.url,
+          method: request.method,
+          hasJwtToken: !!jwtToken,
+        })
+      }
       
       // Si on a un token JWT mais que getUser() échoue, essayer de créer un client avec le token directement
       if (jwtToken && authError) {
