@@ -100,37 +100,60 @@ export async function GET(
       },
     }, requestCookies || undefined)
     
-    // Log la réponse pour /rest/login
-    if (restPath === 'login') {
-      console.log('[N8N /rest/login GET] Response status:', response.status)
-      console.log('[N8N /rest/login GET] Response statusText:', response.statusText)
-      const responseHeaders = Object.fromEntries(response.headers.entries())
-      console.log('[N8N /rest/login GET] Response headers:', responseHeaders)
-      console.log('[N8N /rest/login GET] Set-Cookie headers:', response.headers.getSetCookie())
+    // Pour /rest/login GET, un 401 est normal (pas de session active)
+    // Transformer 401 en 200 pour éviter les erreurs console
+    if (restPath === 'login' && response.status === 401) {
+      const contentType = response.headers.get('content-type') || 'application/json'
+      const data = await response.text()
       
-      // Si 401, c'est peut-être normal (pas de session active)
-      if (response.status === 401) {
-        console.log('[N8N /rest/login GET] 401 is normal if no active session - N8N will POST to create session')
+      const nextResponse = new NextResponse(data, {
+        status: 200, // Transformer 401 en 200 pour éviter les erreurs console
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      })
+      
+      // Transmettre les cookies Set-Cookie de N8N si présents
+      const setCookieHeaders = response.headers.getSetCookie()
+      if (setCookieHeaders && setCookieHeaders.length > 0) {
+        setCookieHeaders.forEach(cookie => {
+          const [nameValue] = cookie.split(';')
+          const [name, ...valueParts] = nameValue.split('=')
+          if (name && valueParts.length > 0) {
+            const value = valueParts.join('=')
+            const options: any = {}
+            if (cookie.includes('HttpOnly')) options.httpOnly = true
+            if (cookie.includes('Secure')) options.secure = true
+            if (cookie.includes('SameSite=None')) options.sameSite = 'none'
+            if (cookie.includes('SameSite=Lax')) options.sameSite = 'lax'
+            if (cookie.includes('SameSite=Strict')) options.sameSite = 'strict'
+            const maxAgeMatch = cookie.match(/Max-Age=(\d+)/)
+            if (maxAgeMatch) options.maxAge = parseInt(maxAgeMatch[1])
+            const pathMatch = cookie.match(/Path=([^;]+)/)
+            if (pathMatch) options.path = pathMatch[1]
+            const domainMatch = cookie.match(/Domain=([^;]+)/)
+            if (domainMatch) options.domain = domainMatch[1]
+            
+            nextResponse.cookies.set(name.trim(), value, options)
+          }
+        })
       }
+      
+      return nextResponse
     }
 
     const contentType = response.headers.get('content-type') || 'application/json'
     const data = await response.text()
 
-    // Pour /rest/login, transmettre les cookies de session N8N
+    // Transmettre les cookies Set-Cookie de N8N pour la session
     const responseHeaders: HeadersInit = {
       'Content-Type': contentType,
       'Cache-Control': 'no-cache, no-store, must-revalidate',
     }
     
-    // Transmettre les cookies Set-Cookie de N8N pour la session
     const setCookieHeaders = response.headers.getSetCookie()
     if (setCookieHeaders && setCookieHeaders.length > 0) {
-      // Les cookies de N8N doivent être transmis pour maintenir la session
-      setCookieHeaders.forEach((cookie, index) => {
-        responseHeaders[`Set-Cookie-${index}`] = cookie
-      })
-      // Utiliser Set-Cookie directement (Next.js le gère)
       const nextResponse = new NextResponse(data, {
         status: response.status,
         headers: responseHeaders,
@@ -140,7 +163,6 @@ export async function GET(
         const [name, ...valueParts] = nameValue.split('=')
         if (name && valueParts.length > 0) {
           const value = valueParts.join('=')
-          // Extraire les options du cookie
           const options: any = {}
           if (cookie.includes('HttpOnly')) options.httpOnly = true
           if (cookie.includes('Secure')) options.secure = true
@@ -151,6 +173,8 @@ export async function GET(
           if (maxAgeMatch) options.maxAge = parseInt(maxAgeMatch[1])
           const pathMatch = cookie.match(/Path=([^;]+)/)
           if (pathMatch) options.path = pathMatch[1]
+          const domainMatch = cookie.match(/Domain=([^;]+)/)
+          if (domainMatch) options.domain = domainMatch[1]
           
           nextResponse.cookies.set(name.trim(), value, options)
         }

@@ -29,14 +29,14 @@ export async function GET(
   // N8N gère sa propre authentification via cette route
   const isRestLogin = n8nPath === '/rest/login' || n8nPath.startsWith('/rest/login')
   
-  // Log pour déboguer
-  console.log('[N8N Proxy Catch-all] Request:', {
-    url: request.url,
-    hasCookies: !!request.headers.get('cookie'),
-    path: resolvedParams.path,
-    n8nPath,
-    isRestLogin,
-  })
+  // Log minimal pour /rest/login (éviter le bruit)
+  if (!isRestLogin) {
+    console.log('[N8N Proxy Catch-all] Request:', {
+      url: request.url,
+      hasCookies: !!request.headers.get('cookie'),
+      n8nPath,
+    })
+  }
   
   // Vérifier que l'utilisateur est un admin plateforme SAUF pour /rest/login
   if (!isRestLogin) {
@@ -55,8 +55,6 @@ export async function GET(
         { status: 403 }
       )
     }
-  } else {
-    console.log('[N8N Proxy Catch-all] Allowing /rest/login WITHOUT auth check - N8N will handle authentication')
   }
 
   // Vérifier la configuration N8N
@@ -94,6 +92,50 @@ export async function GET(
         'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9',
       },
     }, requestCookies || undefined)
+
+    // Pour /rest/login GET, un 401 est normal (pas de session active)
+    // N8N attend un POST avec credentials pour créer la session
+    // Transformer 401 en 200 pour éviter les erreurs console
+    if (isRestLogin && response.status === 401) {
+      const contentType = response.headers.get('content-type') || 'application/json'
+      const data = await response.text()
+      
+      const nextResponse = new NextResponse(data, {
+        status: 200, // Transformer 401 en 200 pour éviter les erreurs console
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      })
+      
+      // Transmettre les cookies Set-Cookie de N8N si présents
+      const setCookieHeaders = response.headers.getSetCookie()
+      if (setCookieHeaders && setCookieHeaders.length > 0) {
+        setCookieHeaders.forEach(cookie => {
+          const [nameValue] = cookie.split(';')
+          const [name, ...valueParts] = nameValue.split('=')
+          if (name && valueParts.length > 0) {
+            const value = valueParts.join('=')
+            const options: any = {}
+            if (cookie.includes('HttpOnly')) options.httpOnly = true
+            if (cookie.includes('Secure')) options.secure = true
+            if (cookie.includes('SameSite=None')) options.sameSite = 'none'
+            if (cookie.includes('SameSite=Lax')) options.sameSite = 'lax'
+            if (cookie.includes('SameSite=Strict')) options.sameSite = 'strict'
+            const maxAgeMatch = cookie.match(/Max-Age=(\d+)/)
+            if (maxAgeMatch) options.maxAge = parseInt(maxAgeMatch[1])
+            const pathMatch = cookie.match(/Path=([^;]+)/)
+            if (pathMatch) options.path = pathMatch[1]
+            const domainMatch = cookie.match(/Domain=([^;]+)/)
+            if (domainMatch) options.domain = domainMatch[1]
+            
+            nextResponse.cookies.set(name.trim(), value, options)
+          }
+        })
+      }
+      
+      return nextResponse
+    }
 
     const contentType = response.headers.get('content-type') || 'application/octet-stream'
     
