@@ -134,16 +134,28 @@ export async function GET(request: NextRequest) {
       const n8nUrl = '${N8N_URL}';
       const n8nHost = new URL(n8nUrl).hostname;
       
-      // Domaines externes à ne PAS proxifier (doivent être exclus AVANT toute vérification)
-      const externalDomains = ['api.github.com', 'github.com', 'cdn.jsdelivr.net', 'unpkg.com'];
+      // Domaines externes à ne PAS proxifier (liste exhaustive)
+      const externalDomains = [
+        'api.github.com', 
+        'github.com', 
+        'githubusercontent.com',
+        'cdn.jsdelivr.net', 
+        'unpkg.com',
+        'googleapis.com',
+        'gstatic.com',
+        'google.com',
+        'cloudflare.com',
+        'jsdelivr.net'
+      ];
       
       function shouldProxy(url) {
         if (!url || typeof url !== 'string') return false;
         
         // EXCLUSION PRIORITAIRE : Ne JAMAIS proxifier les domaines externes
         // Vérifier d'abord par string pour éviter les erreurs de parsing
+        const urlLower = url.toLowerCase();
         for (const domain of externalDomains) {
-          if (url.includes(domain)) {
+          if (urlLower.includes(domain.toLowerCase())) {
             return false;
           }
         }
