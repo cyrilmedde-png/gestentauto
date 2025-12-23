@@ -67,8 +67,8 @@ export async function GET(request: NextRequest) {
     <p style="color: #888; font-size: 12px;">${error || 'Non autorisé'}</p>
     <div class="debug">
       <strong>Debug info:</strong><br>
-      UserId: ${userId || 'Non fourni'}<br>
-      Error: ${error || 'Aucune erreur détaillée'}
+      Error: ${error || 'Aucune erreur détaillée'}<br>
+      <small>L'authentification utilise la session Supabase (pas de userId dans l'URL)</small>
     </div>
   </div>
 </body>
