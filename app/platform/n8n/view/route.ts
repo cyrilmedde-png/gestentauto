@@ -140,14 +140,6 @@ export async function GET(request: NextRequest) {
       function shouldProxy(url) {
         if (!url || typeof url !== 'string') return false;
         
-        // Ne pas proxifier les domaines externes
-        try {
-          const urlObj = new URL(url, window.location.origin);
-          if (externalDomains.some(domain => urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain))) {
-            return false;
-          }
-        } catch {}
-        
         // URLs relatives vers N8N (inclut /rest/telemetry/...)
         if (url.startsWith('/rest/') || 
             url.startsWith('/assets/') || 
@@ -156,11 +148,36 @@ export async function GET(request: NextRequest) {
           return true;
         }
         
-        // URLs absolues vers n8n.talosprimes.com uniquement
+        // URLs absolues - vérifier d'abord par string pour éviter les erreurs de parsing
+        if (url.includes('n8n.talosprimes.com')) {
+          // Vérifier que ce n'est pas un domaine externe
+          if (url.includes('api.github.com') || url.includes('github.com') || 
+              url.includes('cdn.jsdelivr.net') || url.includes('unpkg.com')) {
+            return false;
+          }
+          return true;
+        }
+        
         try {
           const urlObj = new URL(url, window.location.origin);
-          return urlObj.hostname === n8nHost || 
-                 (urlObj.hostname.endsWith('.talosprimes.com') && !externalDomains.some(d => urlObj.hostname.includes(d)));
+          const hostname = urlObj.hostname;
+          
+          // Ne pas proxifier les domaines externes
+          if (externalDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
+            return false;
+          }
+          
+          // Proxifier toutes les URLs vers n8n.talosprimes.com
+          if (hostname === n8nHost || hostname === 'n8n.talosprimes.com') {
+            return true;
+          }
+          
+          // Proxifier les sous-domaines talosprimes.com sauf les domaines externes
+          if (hostname.endsWith('.talosprimes.com')) {
+            return !externalDomains.some(d => hostname.includes(d));
+          }
+          
+          return false;
         } catch {
           return false;
         }
@@ -174,11 +191,22 @@ export async function GET(request: NextRequest) {
             const search = urlObj.search || '';
             return proxyBase + path + search;
           } catch {
-            // Regex pour extraire le chemin depuis l'URL
-            const urlPattern = /https?:\\/\\/[^\\/]+(\\/.*)/;
-            const match = url.match(urlPattern);
-            if (match) {
-              return proxyBase + match[1];
+            // Utiliser new RegExp() au lieu d'une regex littérale pour éviter les problèmes d'échappement
+            try {
+              const urlPattern = new RegExp('https?:\\/\\/[^\\/]+(\\/.*)');
+              const match = url.match(urlPattern);
+              if (match) {
+                return proxyBase + match[1];
+              }
+            } catch (regexError) {
+              // Si la regex échoue, essayer d'extraire le chemin manuellement
+              const httpsIndex = url.indexOf('://');
+              if (httpsIndex !== -1) {
+                const pathStart = url.indexOf('/', httpsIndex + 3);
+                if (pathStart !== -1) {
+                  return proxyBase + url.substring(pathStart);
+                }
+              }
             }
             return proxyBase + url;
           }

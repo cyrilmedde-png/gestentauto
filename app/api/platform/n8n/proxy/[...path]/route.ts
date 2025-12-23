@@ -203,7 +203,16 @@ export async function GET(
       return true;
     }
     
-    // URLs absolues - vérifier si c'est vers n8n.talosprimes.com
+    // URLs absolues - vérifier d'abord par string pour éviter les erreurs de parsing
+    if (url.includes('n8n.talosprimes.com')) {
+      // Vérifier que ce n'est pas un domaine externe
+      if (url.includes('api.github.com') || url.includes('github.com') || 
+          url.includes('cdn.jsdelivr.net') || url.includes('unpkg.com')) {
+        return false;
+      }
+      return true;
+    }
+    
     try {
       const urlObj = new URL(url, window.location.origin);
       const hostname = urlObj.hostname;
@@ -225,10 +234,6 @@ export async function GET(
       
       return false;
     } catch {
-      // Si l'URL est invalide, vérifier si elle contient n8n.talosprimes.com
-      if (url.includes('n8n.talosprimes.com')) {
-        return true;
-      }
       return false;
     }
   }
@@ -241,10 +246,21 @@ export async function GET(
         const search = urlObj.search || '';
         return proxyBase + path + search;
       } catch {
-        // Regex pour extraire le chemin depuis l'URL (échappement correct pour template string)
-        const urlPattern = /https?:\/\/[^\/]+(\/.*)/;
-        const match = url.match(urlPattern);
-        if (match) return proxyBase + match[1];
+        // Utiliser new RegExp() pour éviter les problèmes d'échappement dans template string
+        try {
+          const urlPattern = new RegExp('https?:\\/\\/[^\\/]+(\\/.*)');
+          const match = url.match(urlPattern);
+          if (match) return proxyBase + match[1];
+        } catch (regexError) {
+          // Fallback: extraire le chemin manuellement
+          const httpsIndex = url.indexOf('://');
+          if (httpsIndex !== -1) {
+            const pathStart = url.indexOf('/', httpsIndex + 3);
+            if (pathStart !== -1) {
+              return proxyBase + url.substring(pathStart);
+            }
+          }
+        }
         return proxyBase + url;
       }
     }
@@ -317,18 +333,19 @@ export async function GET(
 })();
 </script>`
       
-      // Injecter le script dans <head> en priorité pour qu'il soit chargé avant les requêtes
-      // Utiliser une regex pour trouver la première balise <head> et injecter juste après
+      // Injecter le script IMMÉDIATEMENT après <head> pour qu'il soit exécuté en premier
+      // Utiliser replace avec une fonction pour éviter les problèmes de remplacement multiple
       if (modifiedHtml.includes('<head>')) {
-        modifiedHtml = modifiedHtml.replace('<head>', '<head>' + interceptionScript)
+        modifiedHtml = modifiedHtml.replace(/<head>/i, '<head>' + interceptionScript);
       } else if (modifiedHtml.includes('</head>')) {
-        modifiedHtml = modifiedHtml.replace('</head>', interceptionScript + '</head>')
+        modifiedHtml = modifiedHtml.replace('</head>', interceptionScript + '</head>');
       } else if (modifiedHtml.includes('</body>')) {
-        modifiedHtml = modifiedHtml.replace('</body>', interceptionScript + '</body>')
+        modifiedHtml = modifiedHtml.replace('</body>', interceptionScript + '</body>');
       } else if (modifiedHtml.includes('</html>')) {
-        modifiedHtml = modifiedHtml.replace('</html>', interceptionScript + '</html>')
+        modifiedHtml = modifiedHtml.replace('</html>', interceptionScript + '</html>');
       } else {
-        modifiedHtml += interceptionScript
+        // Si aucune balise trouvée, injecter au début du HTML
+        modifiedHtml = interceptionScript + modifiedHtml;
       }
       
       return new NextResponse(modifiedHtml, {

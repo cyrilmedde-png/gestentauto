@@ -192,10 +192,22 @@ export async function GET(request: NextRequest) {
         const urlObj = new URL(url);
         return proxyBase + (urlObj.pathname || '/') + (urlObj.search || '');
       } catch {
-        // Regex pour extraire le chemin depuis l'URL (échappement correct pour template string)
-        const urlPattern = /https?:\/\/[^\/]+(\/.*)/;
-        const match = url.match(urlPattern);
-        return match ? proxyBase + match[1] : proxyBase + url;
+        // Utiliser new RegExp() pour éviter les problèmes d'échappement dans template string
+        try {
+          const urlPattern = new RegExp('https?:\\/\\/[^\\/]+(\\/.*)');
+          const match = url.match(urlPattern);
+          if (match) return proxyBase + match[1];
+        } catch (regexError) {
+          // Fallback: extraire le chemin manuellement
+          const httpsIndex = url.indexOf('://');
+          if (httpsIndex !== -1) {
+            const pathStart = url.indexOf('/', httpsIndex + 3);
+            if (pathStart !== -1) {
+              return proxyBase + url.substring(pathStart);
+            }
+          }
+        }
+        return proxyBase + url;
       }
     }
     return proxyBase + (url.startsWith('/') ? url : '/' + url);
