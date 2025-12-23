@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     const html = `
 <!DOCTYPE html>
 <html lang="fr">
-<head>
+  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>N8N - Automatisation</title>
@@ -123,28 +123,32 @@ export async function GET(request: NextRequest) {
       border: none;
     }
   </style>
-</head>
-<body>
-  <iframe
-    id="n8n-iframe"
-    src="${proxyUrl}"
-    title="N8N - Automatisation"
-    allow="clipboard-read; clipboard-write"
-  ></iframe>
-  
   <script>
     // Injecter le token JWT pour l'authentification SSO
     ${jwtToken ? `window.__N8N_AUTH_TOKEN__ = '${jwtToken}';` : ''}
     
     // Script d'interception pour proxy les requêtes N8N
+    // DOIT être dans <head> pour être exécuté avant que N8N ne charge
     (function() {
       const proxyBase = '${proxyUrl}';
       const n8nUrl = '${N8N_URL}';
+      const n8nHost = new URL(n8nUrl).hostname;
+      
+      // Domaines externes à ne PAS proxifier
+      const externalDomains = ['api.github.com', 'github.com', 'cdn.jsdelivr.net', 'unpkg.com'];
       
       function shouldProxy(url) {
         if (!url || typeof url !== 'string') return false;
         
-        // URLs relatives (commencent par /)
+        // Ne pas proxifier les domaines externes
+        try {
+          const urlObj = new URL(url, window.location.origin);
+          if (externalDomains.some(domain => urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain))) {
+            return false;
+          }
+        } catch {}
+        
+        // URLs relatives vers N8N (inclut /rest/telemetry/...)
         if (url.startsWith('/rest/') || 
             url.startsWith('/assets/') || 
             url.startsWith('/types/') ||
@@ -152,12 +156,11 @@ export async function GET(request: NextRequest) {
           return true;
         }
         
-        // URLs absolues - vérifier si c'est vers n8n.talosprimes.com
+        // URLs absolues vers n8n.talosprimes.com uniquement
         try {
           const urlObj = new URL(url, window.location.origin);
-          const n8nHost = new URL(n8nUrl).hostname;
           return urlObj.hostname === n8nHost || 
-                 urlObj.hostname.endsWith('.talosprimes.com');
+                 (urlObj.hostname.endsWith('.talosprimes.com') && !externalDomains.some(d => urlObj.hostname.includes(d)));
         } catch {
           return false;
         }
@@ -171,8 +174,9 @@ export async function GET(request: NextRequest) {
             const search = urlObj.search || '';
             return proxyBase + path + search;
           } catch {
-            // Si l'URL est invalide, essayer de l'utiliser telle quelle
-            const match = url.match(/https?:\/\/[^\/]+(\/.*)/);
+            // Regex pour extraire le chemin depuis l'URL
+            const urlPattern = /https?:\\/\\/[^\\/]+(\\/.*)/;
+            const match = url.match(urlPattern);
             if (match) {
               return proxyBase + match[1];
             }
@@ -243,6 +247,14 @@ export async function GET(request: NextRequest) {
       };
     })();
   </script>
+</head>
+<body>
+  <iframe
+    id="n8n-iframe"
+    src="${proxyUrl}"
+    title="N8N - Automatisation"
+    allow="clipboard-read; clipboard-write"
+  ></iframe>
 </body>
 </html>`
 
