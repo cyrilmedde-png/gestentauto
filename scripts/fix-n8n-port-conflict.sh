@@ -17,6 +17,11 @@ N8N_DIR="/var/n8n"
 N8N_USER="n8n"
 N8N_PORT=5678
 
+# Fonction pour vérifier si une commande existe
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
 # Fonctions utilitaires
 log_info() {
     echo -e "${BLUE}ℹ️  $1${NC}"
@@ -101,15 +106,16 @@ else
     log_info "Aucune instance PM2 (n8n) à arrêter"
 fi
 
-# Arrêter l'instance cursor
+# Arrêter l'instance cursor (plus agressif - arrêter tous les processus cursor liés à n8n)
 log_info "Arrêt de l'instance cursor..."
-if ps aux | grep -i "cursor.*n8n" | grep -v grep | grep -q .; then
-    CURSOR_PIDS=$(ps aux | grep -i "cursor.*n8n" | grep -v grep | awk '{print $2}')
+CURSOR_PIDS=$(ps aux | grep -i "cursor.*n8n\|n8n.*cursor" | grep -v grep | awk '{print $2}' || true)
+if [ -n "$CURSOR_PIDS" ]; then
+    log_info "Processus cursor N8N trouvés: $CURSOR_PIDS"
     for pid in $CURSOR_PIDS; do
         log_info "Arrêt du processus cursor N8N (PID: $pid)..."
         kill -TERM "$pid" 2>/dev/null || true
     done
-    sleep 2
+    sleep 3
     # Tuer les processus qui n'ont pas répondu
     for pid in $CURSOR_PIDS; do
         if ps -p "$pid" > /dev/null 2>&1; then
@@ -117,6 +123,15 @@ if ps aux | grep -i "cursor.*n8n" | grep -v grep | grep -q .; then
             kill -9 "$pid" 2>/dev/null || true
         fi
     done
+    
+    # Vérifier si PM2 cursor gère N8N
+    if [ -d "/home/cursor/.pm2" ]; then
+        log_info "Arrêt de N8N dans PM2 cursor..."
+        sudo -u cursor pm2 stop n8n 2>/dev/null || true
+        sudo -u cursor pm2 delete n8n 2>/dev/null || true
+    fi
+    
+    sleep 2
     log_success "Instance cursor arrêtée"
 else
     log_info "Aucune instance cursor à arrêter"
@@ -190,11 +205,31 @@ log_success "PM2 nettoyé"
 log_section "4. VÉRIFICATION FINALE"
 
 log_info "Processus N8N restants:"
-REMAINING=$(ps aux | grep -i "node.*n8n" | grep -v grep || true)
+REMAINING=$(ps aux | grep -i "node.*n8n" | grep -v grep | grep -v "pm2 logs" || true)
 if [ -n "$REMAINING" ]; then
     log_warning "Processus N8N encore actifs:"
     echo "$REMAINING"
-    log_warning "Ces processus doivent être arrêtés manuellement"
+    
+    # Essayer d'arrêter les processus cursor restants
+    CURSOR_REMAINING=$(echo "$REMAINING" | grep cursor | awk '{print $2}' || true)
+    if [ -n "$CURSOR_REMAINING" ]; then
+        log_warning "Arrêt forcé des processus cursor restants..."
+        for pid in $CURSOR_REMAINING; do
+            kill -9 "$pid" 2>/dev/null || true
+        done
+        sleep 2
+        log_info "Vérification après arrêt forcé..."
+        REMAINING_AFTER=$(ps aux | grep -i "node.*n8n" | grep -v grep | grep -v "pm2 logs" || true)
+        if [ -n "$REMAINING_AFTER" ]; then
+            log_warning "Processus toujours actifs après arrêt forcé:"
+            echo "$REMAINING_AFTER"
+            log_warning "Ces processus doivent être arrêtés manuellement"
+        else
+            log_success "Tous les processus ont été arrêtés"
+        fi
+    else
+        log_warning "Ces processus doivent être arrêtés manuellement"
+    fi
 else
     log_success "Aucun processus N8N restant"
 fi
