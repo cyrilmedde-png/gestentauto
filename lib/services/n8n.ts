@@ -186,16 +186,34 @@ export async function proxyN8NRequest(
   }
 
   // Construire les headers avec les cookies de session N8N si fournis
-  const headers: HeadersInit = {
+  // Utiliser Record<string, string> pour pouvoir indexer
+  const headersRecord: Record<string, string> = {
     ...authHeaders,
     'User-Agent': 'TalosPrime-Platform',
-    ...options.headers,
+  }
+
+  // Ajouter les headers existants si c'est un objet Record
+  if (options.headers) {
+    if (options.headers instanceof Headers) {
+      options.headers.forEach((value, key) => {
+        headersRecord[key] = value
+      })
+    } else if (Array.isArray(options.headers)) {
+      options.headers.forEach(([key, value]) => {
+        headersRecord[key] = value
+      })
+    } else {
+      Object.assign(headersRecord, options.headers)
+    }
   }
 
   // Ajouter les cookies de session N8N si fournis
   if (cookies) {
-    headers['Cookie'] = cookies
+    headersRecord['Cookie'] = cookies
   }
+
+  // Convertir en HeadersInit
+  const headers: HeadersInit = headersRecord
 
   try {
     const response = await fetch(url, {
