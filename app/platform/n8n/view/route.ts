@@ -11,7 +11,7 @@ const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
 export async function GET(request: NextRequest) {
   // NE PAS récupérer userId depuis query params
   // Utiliser uniquement la session Supabase pour identifier l'utilisateur
-  // verifyPlatformUser récupérera automatiquement l'utilisateur depuis la session
+  // verifyAuthenticatedUser récupérera automatiquement l'utilisateur depuis la session
   
   try {
     // Log pour debug

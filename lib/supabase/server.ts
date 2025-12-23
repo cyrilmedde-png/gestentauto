@@ -21,13 +21,36 @@ export async function createServerClient(request?: NextRequest) {
       cookies: {
         get(name: string) {
           const cookieHeader = request.headers.get('cookie') || ''
-          const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-            const [key, ...valueParts] = cookie.trim().split('=')
-            if (key && valueParts.length > 0) {
-              acc[key] = decodeURIComponent(valueParts.join('='))
+          // Améliorer le parsing pour gérer les valeurs avec '=' (comme les JWT)
+          const cookies: Record<string, string> = {}
+          cookieHeader.split(';').forEach(cookie => {
+            const trimmed = cookie.trim()
+            const equalIndex = trimmed.indexOf('=')
+            if (equalIndex > 0) {
+              const key = trimmed.substring(0, equalIndex).trim()
+              const value = trimmed.substring(equalIndex + 1).trim()
+              if (key && value) {
+                try {
+                  cookies[key] = decodeURIComponent(value)
+                } catch {
+                  // Si decodeURIComponent échoue, utiliser la valeur brute
+                  cookies[key] = value
+                }
+              }
             }
-            return acc
-          }, {} as Record<string, string>)
+          })
+          
+          // Log pour déboguer (seulement en développement ou si cookie auth recherché)
+          if (name.includes('auth') || name.includes('token') || name.includes('supabase')) {
+            console.log('[createServerClient] Cookie lookup:', {
+              requestedName: name,
+              found: !!cookies[name],
+              allCookieKeys: Object.keys(cookies),
+              cookiePreview: cookies[name] ? cookies[name].substring(0, 50) + '...' : 'not found',
+              cookieHeaderLength: cookieHeader.length,
+            })
+          }
+          
           return cookies[name] || undefined
         },
         set() {
