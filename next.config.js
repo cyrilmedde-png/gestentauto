@@ -2,7 +2,20 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost', 'www.talosprimes.com', 'talosprimes.com'],
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.talosprimes.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'talosprimes.com',
+      },
+    ],
     unoptimized: false,
   },
 }
