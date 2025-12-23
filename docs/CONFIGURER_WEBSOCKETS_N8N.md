@@ -56,5 +56,26 @@ sudo systemctl reload nginx  # Recharger Nginx
 
 ## Alternative : Script d'automatisation
 
-Un script `scripts/setup-websocket-proxy.sh` peut être créé pour automatiser cette configuration.
+Un script `scripts/setup-websocket-proxy.sh` est disponible pour automatiser cette configuration.
+
+### Utilisation du script
+
+```bash
+cd /var/www/talosprime
+sudo ./scripts/setup-websocket-proxy.sh
+```
+
+Le script :
+- Détecte automatiquement le fichier de configuration Nginx
+- Lit les credentials N8N depuis `.env.production`
+- Génère les credentials Base64
+- Ajoute la configuration WebSocket
+- Teste la configuration
+- Recharge Nginx
+
+### Si les credentials ne sont pas dans .env.production
+
+Le script vous demandera de les saisir manuellement :
+- N8N Basic Auth Username
+- N8N Basic Auth Password
 
