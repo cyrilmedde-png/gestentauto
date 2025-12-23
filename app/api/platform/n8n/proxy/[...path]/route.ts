@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
 import { checkN8NConfig, proxyN8NRequest } from '@/lib/services/n8n'
+import { createServerClient } from '@/lib/supabase/server'
 
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
 
@@ -117,11 +118,15 @@ export async function GET(
       const proxyBase = `/api/platform/n8n/proxy`
       const n8nHost = new URL(N8N_URL).hostname
       
-      // Récupérer le token JWT depuis les cookies/headers pour l'injecter dans le script
-      const authToken = request.headers.get('authorization')?.replace('Bearer ', '') ||
-                       request.headers.get('x-supabase-auth-token') ||
-                       request.cookies.get('sb-access-token')?.value ||
-                       ''
+      // Récupérer le token JWT depuis la session Supabase
+      let authToken = ''
+      try {
+        const supabase = await createServerClient(request)
+        const { data: { session } } = await supabase.auth.getSession()
+        authToken = session?.access_token || ''
+      } catch (error) {
+        console.warn('[N8N Proxy] Failed to get session token:', error)
+      }
       
       // Remplacer les URLs par des URLs proxy
       let modifiedHtml = htmlData.replace(
