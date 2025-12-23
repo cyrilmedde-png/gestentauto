@@ -20,11 +20,38 @@ export async function GET(request: NextRequest) {
     // 4. Vérifier les headers d'auth N8N
     const n8nAuthHeaders = getN8NAuthHeaders()
     
-    // 5. Récupérer les headers de la requête
+    // 5. Récupérer les headers de la requête et analyser les cookies
+    const cookieHeader = request.headers.get('cookie') || ''
+    const cookieKeys: string[] = []
+    if (cookieHeader) {
+      cookieHeader.split(';').forEach(cookie => {
+        const trimmed = cookie.trim()
+        const equalIndex = trimmed.indexOf('=')
+        if (equalIndex > 0) {
+          const key = trimmed.substring(0, equalIndex).trim()
+          if (key) cookieKeys.push(key)
+        }
+      })
+    }
+    
+    // Chercher les cookies Supabase spécifiques
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    const supabaseProjectRef = supabaseUrl.match(/https?:\/\/([^.]+)\.supabase\.co/)?.[1] || ''
+    const supabaseCookieNames = supabaseProjectRef 
+      ? [
+          `sb-${supabaseProjectRef}-auth-token`,
+          `sb-${supabaseProjectRef}-auth-token-code-verifier`,
+        ]
+      : []
+    
     const requestHeaders = {
-      cookie: request.headers.get('cookie') ? 'PRESENT' : 'MISSING',
+      cookie: cookieHeader ? 'PRESENT (length: ' + cookieHeader.length + ')' : 'MISSING',
       authorization: request.headers.get('authorization') ? 'PRESENT' : 'MISSING',
       'x-supabase-auth-token': request.headers.get('x-supabase-auth-token') ? 'PRESENT' : 'MISSING',
+      cookieKeys: cookieKeys,
+      supabaseCookieNames: supabaseCookieNames,
+      hasSupabaseCookies: supabaseCookieNames.some(name => cookieKeys.includes(name)),
+      allCookies: cookieKeys,
     }
     
     return NextResponse.json({
@@ -46,6 +73,12 @@ export async function GET(request: NextRequest) {
         userId: auth.userId,
         error: auth.error,
         requestHeaders,
+        debug: {
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || 'NOT SET',
+          supabaseProjectRef: supabaseProjectRef || 'NOT FOUND',
+          cookieHeaderLength: cookieHeader.length,
+          cookieCount: cookieKeys.length,
+        },
       },
       n8nAuth: {
         hasHeaders: !!n8nAuthHeaders,
