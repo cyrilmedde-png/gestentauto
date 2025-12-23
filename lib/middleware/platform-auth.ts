@@ -141,13 +141,16 @@ export async function verifyPlatformUser(
     // Récupérer les données utilisateur
     const { data: userData, error: userError } = await adminSupabase
       .from('users')
-      .select('company_id')
+      .select('company_id, email')
       .eq('id', finalUserId)
       .single()
     
     console.log('[verifyPlatformUser] User data fetch result:', {
       hasUserData: !!userData,
+      userId: finalUserId,
+      userEmail: userData?.email,
       userCompanyId: userData?.company_id,
+      userCompanyIdType: typeof userData?.company_id,
       error: userError?.message,
       errorCode: userError?.code,
     })
@@ -351,16 +354,20 @@ export async function verifyPlatformUser(
     }
 
     // Normaliser le company_id de l'utilisateur
-    const userCompanyIdValue = String(userData.company_id).trim().toLowerCase()
+    const userCompanyIdValue = String(userData.company_id || '').trim().toLowerCase()
 
     // Comparaison directe : user.company_id === platform_company_id
-    console.log('[verifyPlatformUser] Platform check (direct from settings):', {
+    console.log('[verifyPlatformUser] 🔍 Platform check (direct from settings):', {
       userId: finalUserId,
+      userEmail: userData.email,
       userCompanyId: userData.company_id,
       userCompanyIdValue: userCompanyIdValue,
       platformCompanyIdValue: platformCompanyIdValue,
       rawPlatformValue: platformSetting.value,
+      platformValueType: typeof platformSetting.value,
       match: platformCompanyIdValue === userCompanyIdValue,
+      userCompanyIdLength: userCompanyIdValue.length,
+      platformCompanyIdLength: platformCompanyIdValue.length,
     })
 
     const isPlatform = platformCompanyIdValue === userCompanyIdValue
