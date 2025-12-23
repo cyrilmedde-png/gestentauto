@@ -98,3 +98,4 @@ WHERE u.email = 'groupemclem@gmail.com'
    OR u.id = '178e64c6-6058-4503-937e-85b4d70d8152'::uuid;
 
 
+

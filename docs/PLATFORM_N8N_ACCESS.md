@@ -151,3 +151,4 @@ ORDER BY pna.created_at DESC;
 
 Si vous aviez déjà des utilisateurs plateforme qui accédaient à N8N via la vérification par `company_id`, ils continueront de fonctionner grâce au fallback (MÉTHODE 2). Pour une meilleure gestion, ajoutez-les dans `platform_n8n_access`.
 
+

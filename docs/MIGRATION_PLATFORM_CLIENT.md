@@ -146,3 +146,4 @@ pm2 restart all
 - `docs/ARCHITECTURE_PLATEFORME_CLIENT.md` : Architecture complète
 - `docs/CORRECTION_ARCHITECTURE_PLATEFORME.md` : Guide de correction précédent
 
+

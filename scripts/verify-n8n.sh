@@ -84,3 +84,4 @@ fi
 echo ""
 echo "✅ Vérification terminée"
 
+

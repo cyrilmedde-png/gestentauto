@@ -150,3 +150,4 @@ CREATE POLICY "Users can insert settings in their company"
 -- devront avoir des politiques spécifiques qui excluent la plateforme pour ces données
 -- Ces politiques seront créées quand ces modules seront implémentés
 
+

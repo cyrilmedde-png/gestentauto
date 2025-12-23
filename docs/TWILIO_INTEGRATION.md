@@ -273,3 +273,4 @@ Accédez au dashboard : [https://console.twilio.com](https://console.twilio.com)
 - [ ] Implémenter un système de templates SMS réutilisables
 - [ ] Gérer les cas d'erreur spécifiques (numéro invalide, compte suspendu, etc.)
 
+

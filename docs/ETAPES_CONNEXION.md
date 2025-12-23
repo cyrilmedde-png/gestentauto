@@ -48,3 +48,4 @@ Après avoir exécuté les deux scripts :
 3. Vérifiez les logs de la console du navigateur et copiez l'erreur exacte
 
 
+

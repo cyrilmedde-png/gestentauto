@@ -57,3 +57,4 @@ COMMENT ON COLUMN platform_n8n_access.is_platform_admin IS 'Indique si l''utilis
 COMMENT ON COLUMN platform_n8n_access.has_n8n_access IS 'Indique si l''utilisateur a accès à N8N (peut être désactivé sans supprimer l''enregistrement)';
 COMMENT ON COLUMN platform_n8n_access.access_level IS 'Niveau d''accès : admin (plein accès), editor (modification), viewer (lecture seule)';
 
+

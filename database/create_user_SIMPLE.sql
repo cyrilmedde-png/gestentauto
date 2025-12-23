@@ -35,3 +35,4 @@ LEFT JOIN companies c ON u.company_id = c.id
 WHERE u.email = 'groupemclem@gmail.com';
 
 
+

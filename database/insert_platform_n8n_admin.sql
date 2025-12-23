@@ -76,3 +76,4 @@ LEFT JOIN users u ON pna.user_id = u.id
 LEFT JOIN companies c ON pna.company_id = c.id
 ORDER BY pna.created_at DESC;
 
+

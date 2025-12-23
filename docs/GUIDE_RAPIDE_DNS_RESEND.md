@@ -64,3 +64,4 @@ Une fois votre domaine vérifié, remettez :
 RESEND_FROM_EMAIL=info@noreply.talosprime.fr
 ```
 
+

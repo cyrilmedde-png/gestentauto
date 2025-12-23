@@ -98,3 +98,4 @@ Après ces corrections :
 - `docs/GUIDE_MIGRATION_SQL.md` : Guide d'exécution des scripts SQL
 - `database/diagnostic_tables.sql` : Script de diagnostic
 
+

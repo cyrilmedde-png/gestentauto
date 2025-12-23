@@ -213,3 +213,4 @@ SELECT COUNT(*) FROM leads;
 3. **Les routes API plateforme bypassent les RLS** - Elles doivent filtrer manuellement
 4. **Les routes API client respectent les RLS** - Filtrage automatique par `company_id`
 
+

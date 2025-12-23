@@ -159,3 +159,4 @@ CREATE POLICY "Platform can manage all trials"
   USING (true)
   WITH CHECK (true);
 
+

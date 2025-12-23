@@ -238,3 +238,4 @@ BEGIN
   RAISE NOTICE '⚠️  IMPORTANT : Mettre à jour le code pour utiliser les nouveaux noms de tables !';
 END $$;
 
+

@@ -243,3 +243,4 @@ Les erreurs d'envoi sont loguées dans la console de l'application avec :
 - [ ] Support multilingue (FR, EN, etc.)
 - [ ] Templates éditable depuis l'interface admin
 
+

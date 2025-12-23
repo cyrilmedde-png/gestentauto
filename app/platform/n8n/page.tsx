@@ -55,8 +55,9 @@ export default function N8NPage() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Vérifier l'origine pour la sécurité
-      const n8nOrigin = process.env.NEXT_PUBLIC_N8N_URL || 'https://n8n.talosprimes.com'
-      if (event.origin !== n8nOrigin && !event.origin.includes('talosprimes.com')) {
+      // L'iframe N8N est servie via notre proxy, donc l'origine sera notre domaine
+      if (!event.origin.includes('talosprimes.com') && !event.origin.includes('localhost')) {
+        console.warn('[N8N] Message from unexpected origin:', event.origin)
         return
       }
       

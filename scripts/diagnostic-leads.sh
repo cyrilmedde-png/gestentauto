@@ -76,3 +76,4 @@ echo "   2. Si le code n'est pas à jour : git pull origin main"
 echo "   3. Si erreur de build : npm run build"
 echo "   4. Redémarrer : pm2 restart talosprime"
 
+

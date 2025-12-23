@@ -59,3 +59,4 @@ Une fois que l'application fonctionne :
 2. Continuer avec le système de permissions et modules
 3. Rendre le Sidebar dynamique
 
+

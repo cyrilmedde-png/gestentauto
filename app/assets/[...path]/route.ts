@@ -12,22 +12,17 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  // Récupérer l'ID utilisateur depuis les cookies (n8n_userId ou session)
-  const cookieHeader = request.headers.get('cookie') || ''
-  const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-    const [key, ...valueParts] = cookie.trim().split('=')
-    if (key && valueParts.length > 0) {
-      acc[key.trim()] = decodeURIComponent(valueParts.join('='))
-    }
-    return acc
-  }, {} as Record<string, string>)
-  
-  const userId = cookies['n8n_userId'] || request.headers.get('X-User-Id')
-  
   // Vérifier que l'utilisateur est authentifié (plateforme ou client)
+  // Utiliser uniquement la session Supabase (pas de n8n_userId)
   const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
   
   if (!isAuthenticated || error) {
+    console.error('[N8N /assets] Auth failed:', {
+      isAuthenticated,
+      error,
+      hasCookies: !!request.headers.get('cookie'),
+      url: request.url,
+    })
     return NextResponse.json(
       { error: 'Unauthorized - Authentication required', details: error },
       { status: 403 }

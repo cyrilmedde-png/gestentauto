@@ -227,3 +227,4 @@ curl -X POST http://localhost:3000/api/platform/leads/{LEAD_ID}/trial/start
 - [ ] Dashboard plateforme pour suivre les leads
 - [ ] Statistiques d'onboarding
 
+

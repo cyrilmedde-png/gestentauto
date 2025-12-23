@@ -110,3 +110,4 @@ Après ces actions :
 - ✅ L'erreur 500 sur `/api/platform/leads` disparaît
 - ✅ Les leads s'affichent correctement (ou liste vide)
 
+

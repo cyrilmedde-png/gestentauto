@@ -221,3 +221,4 @@ curl http://localhost:3000/api/platform/users?company_id=xxx
 - Le frontend peut continuer à fonctionner sans modification
 - Migration progressive recommandée vers les nouvelles routes
 
+

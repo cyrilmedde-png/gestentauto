@@ -49,3 +49,4 @@ LEFT JOIN users u ON u.company_id = c.id
 GROUP BY c.id, c.name
 ORDER BY user_count DESC, c.created_at DESC;
 
+

@@ -275,3 +275,4 @@ BEGIN
   RAISE NOTICE 'RLS activé sur toutes les tables client.';
 END $$;
 
+

@@ -162,3 +162,4 @@ Les routes suivantes doivent être protégées (à faire) :
 - `database/fix_rls_leads_platform.sql` : Script SQL de correction
 - `lib/middleware/platform-auth.ts` : Middleware de vérification
 
+

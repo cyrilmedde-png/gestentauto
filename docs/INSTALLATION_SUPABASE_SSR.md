@@ -33,3 +33,4 @@ npm install
 - ✅ Code plus simple et maintenable
 - ✅ Utilise la méthode recommandée par Supabase pour Next.js
 
+

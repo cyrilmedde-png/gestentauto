@@ -81,3 +81,4 @@ Le script marque la plateforme avec :
 - Le script met à jour l'entreprise existante automatiquement
 - Vérifier avec la requête SELECT à la fin du script
 
+

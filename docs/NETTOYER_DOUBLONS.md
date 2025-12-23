@@ -67,3 +67,4 @@ Pour éviter les doublons à l'avenir :
 - Vérifiez toujours avant de réexécuter des scripts SQL
 - Utilisez des transactions pour les opérations critiques
 
+

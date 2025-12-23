@@ -269,3 +269,4 @@ Accédez au dashboard : [https://resend.com/emails](https://resend.com/emails)
 - [ ] Créer un système de logs d'emails dans la base de données
 - [ ] Ajouter des webhooks Resend pour le suivi des événements (bounce, ouvert, cliqué)
 
+

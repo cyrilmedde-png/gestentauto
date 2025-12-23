@@ -19,40 +19,21 @@ export async function GET(
     : ''
   
   // Pour /rest/login, on permet l'accès sans vérification stricte (N8N gère sa propre auth)
-  // Mais on vérifie quand même que la requête vient d'un utilisateur authentifié de la plateforme
+  // Mais on vérifie quand même que la requête vient d'un utilisateur authentifié
   const isLoginRoute = restPath === 'login'
   
   if (!isLoginRoute) {
-    // Pour les autres routes REST, vérifier que l'utilisateur est de la plateforme
-    const cookieHeader = request.headers.get('cookie') || ''
-    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-      const [key, ...valueParts] = cookie.trim().split('=')
-      if (key && valueParts.length > 0) {
-        acc[key.trim()] = decodeURIComponent(valueParts.join('='))
-      }
-      return acc
-    }, {} as Record<string, string>)
-    
-    let userId = cookies['n8n_userId'] || cookies['n8n_userid'] || request.headers.get('X-User-Id')
-    
-    // Nettoyer le userId de manière robuste
-    if (userId) {
-      const originalUserId = userId
-      // Nettoyer les query params, fragments et caractères invalides
-      userId = userId.split('?')[0].split('&')[0].split('#')[0].trim()
-      // Vérifier format UUID basique
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
-        console.error('[N8N /rest] Invalid UUID format:', { original: originalUserId, cleaned: userId })
-        userId = null
-      } else if (originalUserId !== userId) {
-        console.log('[N8N /rest] Cleaned userId:', { original: originalUserId, cleaned: userId })
-      }
-    }
-    
-    // Vérifier que l'utilisateur est authentifié (plateforme ou client)
+    // Pour les autres routes REST, vérifier que l'utilisateur est authentifié
+    // Utiliser uniquement la session Supabase (pas de n8n_userId)
     const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
     
     if (!isAuthenticated || error) {
+      console.error('[N8N /rest] Auth failed:', {
+        isAuthenticated,
+        error,
+        restPath,
+        hasCookies: !!request.headers.get('cookie'),
+      })
       return NextResponse.json(
         { error: 'Unauthorized - Authentication required', details: error },
         { status: 403 }
@@ -223,36 +204,17 @@ async function handleRestRequest(
   const isLoginRoute = restPath === 'login'
   
   if (!isLoginRoute) {
-    // Pour les autres routes REST, vérifier que l'utilisateur est de la plateforme
-    const cookieHeader = request.headers.get('cookie') || ''
-    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-      const [key, ...valueParts] = cookie.trim().split('=')
-      if (key && valueParts.length > 0) {
-        acc[key.trim()] = decodeURIComponent(valueParts.join('='))
-      }
-      return acc
-    }, {} as Record<string, string>)
-    
-    let userId = cookies['n8n_userId'] || cookies['n8n_userid'] || request.headers.get('X-User-Id')
-    
-    // Nettoyer le userId de manière robuste
-    if (userId) {
-      const originalUserId = userId
-      // Nettoyer les query params, fragments et caractères invalides
-      userId = userId.split('?')[0].split('&')[0].split('#')[0].trim()
-      // Vérifier format UUID basique
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
-        console.error('[N8N /rest] Invalid UUID format:', { original: originalUserId, cleaned: userId })
-        userId = null
-      } else if (originalUserId !== userId) {
-        console.log('[N8N /rest] Cleaned userId:', { original: originalUserId, cleaned: userId })
-      }
-    }
-    
-    // Vérifier que l'utilisateur est authentifié (plateforme ou client)
+    // Pour les autres routes REST, vérifier que l'utilisateur est authentifié
+    // Utiliser uniquement la session Supabase (pas de n8n_userId)
     const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
     
     if (!isAuthenticated || error) {
+      console.error(`[N8N /rest ${method}] Auth failed:`, {
+        isAuthenticated,
+        error,
+        restPath,
+        hasCookies: !!request.headers.get('cookie'),
+      })
       return NextResponse.json(
         { error: 'Unauthorized - Authentication required', details: error },
         { status: 403 }
@@ -262,7 +224,7 @@ async function handleRestRequest(
     // Pour /rest/login, on permet l'accès sans aucune vérification
     // N8N gère sa propre authentification via cette route
     // Le fait que la requête passe par notre proxy est déjà une garantie de sécurité
-    console.log('[N8N /rest/login] Allowing login request - N8N will handle authentication')
+    console.log(`[N8N /rest/login ${method}] Allowing login request - N8N will handle authentication`)
     // On laisse passer directement - N8N gérera l'authentification
   }
 

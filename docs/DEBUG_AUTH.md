@@ -52,3 +52,4 @@ Si RLS bloque l'accès :
    - Vérifier que l'entrée existe dans `public.users`
 
 
+

@@ -167,3 +167,4 @@ Une fois les scripts SQL exécutés :
 - Documentation complète : `docs/MIGRATION_PLATFORM_CLIENT.md`
 - Architecture : `docs/ARCHITECTURE_PLATEFORME_CLIENT.md`
 
+

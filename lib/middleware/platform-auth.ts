@@ -14,34 +14,60 @@ export async function verifyAuthenticatedUser(
   try {
     // Log pour déboguer
     const cookieHeader = request.headers.get('cookie') || ''
-    console.log('[verifyAuthenticatedUser] Checking authentication...', {
+    const cookieKeys = cookieHeader 
+      ? cookieHeader.split(';').map(c => {
+          const equalIndex = c.indexOf('=')
+          return equalIndex > 0 ? c.substring(0, equalIndex).trim() : c.trim()
+        }).filter(Boolean)
+      : []
+    
+    console.log('[verifyAuthenticatedUser] 🔍 Checking authentication...', {
+      url: request.url,
       hasCookies: !!cookieHeader,
       cookieLength: cookieHeader.length,
-      cookiePreview: cookieHeader.substring(0, 200) + (cookieHeader.length > 200 ? '...' : ''),
-      url: request.url,
+      cookieKeys: cookieKeys,
+      hasAuthCookie: cookieKeys.some(k => k.includes('auth') || k.includes('supabase')),
+      method: request.method,
     })
     
     const supabase = await createServerClient(request)
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      console.log('[verifyAuthenticatedUser] ❌ User not authenticated:', {
+      console.error('[verifyAuthenticatedUser] ❌ User not authenticated:', {
         error: authError?.message,
         errorCode: authError?.status,
         errorName: authError?.name,
+        errorStatus: authError?.status,
         hasUser: !!user,
         hasCookies: !!cookieHeader,
-        cookieKeys: cookieHeader ? cookieHeader.split(';').map(c => c.split('=')[0].trim()).filter(Boolean) : [],
+        cookieKeys: cookieKeys,
+        url: request.url,
+        method: request.method,
       })
+      
+      // Message d'erreur plus détaillé
+      let errorMessage = 'Not authenticated. Please log in.'
+      if (authError) {
+        if (authError.message.includes('JWT') || authError.message.includes('token')) {
+          errorMessage = 'Session expired or invalid. Please log in again.'
+        } else if (authError.message.includes('cookie')) {
+          errorMessage = 'Session cookie missing. Please log in.'
+        } else {
+          errorMessage = `Authentication error: ${authError.message}`
+        }
+      }
+      
       return {
         isAuthenticated: false,
-        error: authError?.message || 'Not authenticated. Please log in.',
+        error: errorMessage,
       }
     }
     
     console.log('[verifyAuthenticatedUser] ✅ User authenticated:', {
       userId: user.id,
       email: user.email,
+      url: request.url,
     })
     
     return {
@@ -49,7 +75,12 @@ export async function verifyAuthenticatedUser(
       userId: user.id,
     }
   } catch (error) {
-    console.error('[verifyAuthenticatedUser] ❌ Error:', error)
+    console.error('[verifyAuthenticatedUser] ❌ Exception:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      url: request.url,
+      method: request.method,
+    })
     return {
       isAuthenticated: false,
       error: error instanceof Error ? error.message : 'Authentication error',

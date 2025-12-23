@@ -108,3 +108,4 @@ BEGIN
   RAISE NOTICE '   - Les clients ne peuvent pas voir les leads';
 END $$;
 
+

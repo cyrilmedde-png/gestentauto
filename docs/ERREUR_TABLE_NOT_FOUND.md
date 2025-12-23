@@ -54,3 +54,4 @@ Une fois les scripts SQL exécutés :
 2. Vérifier que `/api/platform/leads` fonctionne
 3. Supprimer le code de fallback (optionnel, pour nettoyer)
 
+

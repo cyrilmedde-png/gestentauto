@@ -84,3 +84,4 @@ Les erreurs possibles :
 - **"User not found"** → Vérifier que l'utilisateur existe dans la table `users`
 - **"Platform not configured"** → Vérifier que `platform_company_id` est défini dans les settings
 
+

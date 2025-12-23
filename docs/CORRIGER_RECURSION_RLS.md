@@ -38,3 +38,4 @@ Après avoir exécuté le script, vous devriez pouvoir :
 La fonction `public.user_company_id()` utilise `SECURITY DEFINER`, ce qui signifie qu'elle s'exécute avec les privilèges du propriétaire de la fonction, contournant ainsi RLS. Cela permet d'obtenir le `company_id` sans créer de récursion.
 
 
+
