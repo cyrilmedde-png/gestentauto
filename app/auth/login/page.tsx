@@ -67,12 +67,9 @@ export default function LoginPage() {
         console.log('✅ Utilisateur trouvé dans la table users:', userData)
         
         // Vérifier si l'utilisateur est plateforme ou client
+        // Plus besoin de X-User-Id, la route utilise maintenant la session
         try {
-          const checkResponse = await fetch('/api/auth/check-user-type', {
-            headers: {
-              'X-User-Id': userData.id,
-            },
-          })
+          const checkResponse = await fetch('/api/auth/check-user-type')
           if (checkResponse.ok) {
             const { isPlatform } = await checkResponse.json()
             if (isPlatform) {
