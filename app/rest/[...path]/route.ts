@@ -290,7 +290,6 @@ async function handleRestRequest(
     // Pour /rest/login, on permet l'accès SANS aucune vérification d'authentification
     // N8N gère sa propre authentification via cette route
     // IMPORTANT: Ne pas vérifier l'authentification pour /rest/login car c'est la route de connexion N8N
-    console.log(`[N8N /rest/login ${method}] Allowing login request WITHOUT auth check - N8N will handle authentication`)
   }
 
   // Vérifier la configuration N8N
@@ -316,13 +315,6 @@ async function handleRestRequest(
   // Extraire tous les cookies de la requête (N8N ne lira que ceux qu'il reconnaît)
   const requestCookies = request.headers.get('cookie') || ''
   
-  // Log pour déboguer /rest/login
-  if (restPath === 'login') {
-    console.log(`[N8N /rest/login ${method}] Proxying to:`, n8nUrl)
-    console.log(`[N8N /rest/login ${method}] Body length:`, body.length)
-    console.log(`[N8N /rest/login ${method}] Cookies:`, requestCookies ? 'present' : 'none')
-  }
-  
   try {
     const response = await proxyN8NRequest(n8nUrl, {
       method: method,
@@ -333,12 +325,6 @@ async function handleRestRequest(
       },
       body: body,
     }, requestCookies || undefined)
-    
-    // Log la réponse pour /rest/login
-    if (restPath === 'login') {
-      console.log(`[N8N /rest/login ${method}] Response status:`, response.status)
-      console.log(`[N8N /rest/login ${method}] Response headers:`, Object.fromEntries(response.headers.entries()))
-    }
 
     const contentType = response.headers.get('content-type') || 'application/json'
     const data = await response.text()

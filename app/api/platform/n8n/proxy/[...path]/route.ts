@@ -412,8 +412,6 @@ export async function POST(
         { status: 403 }
       )
     }
-  } else {
-    console.log('[N8N Proxy Catch-all POST] Allowing /rest/login WITHOUT auth check - N8N will handle authentication')
   }
 
   // Vérifier la configuration N8N
