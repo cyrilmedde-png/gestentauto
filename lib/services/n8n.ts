@@ -111,10 +111,13 @@ export async function testN8NConnection(timeout: number = 5000): Promise<N8NConn
         }
       }
 
-      if (error.message.includes('ECONNREFUSED') || error.message.includes('ENOTFOUND')) {
+      const msg = error.message
+      const msgLower = msg.toLowerCase()
+      
+      if (msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND')) {
         return {
           connected: false,
-          error: `Impossible de se connecter à N8N: ${error.message}. Vérifiez que N8N est démarré et que l'URL est correcte.`,
+          error: `Impossible de se connecter à N8N: ${msg}. Vérifiez que N8N est démarré et que l'URL est correcte.`,
           details: {
             url: N8N_URL,
             hasAuth: true,
@@ -124,10 +127,10 @@ export async function testN8NConnection(timeout: number = 5000): Promise<N8NConn
       }
 
       // Gérer les erreurs SSL/TLS
-      if (error.message.includes('certificate') || error.message.includes('SSL') || error.message.includes('TLS')) {
+      if (msgLower.includes('certificate') || msgLower.includes('ssl') || msgLower.includes('tls')) {
         return {
           connected: false,
-          error: `Erreur SSL lors de la connexion à N8N: ${error.message}. Vérifiez le certificat SSL de N8N.`,
+          error: `Erreur SSL lors de la connexion à N8N: ${msg}. Vérifiez le certificat SSL de N8N.`,
           details: {
             url: N8N_URL,
             hasAuth: true,
@@ -137,9 +140,9 @@ export async function testN8NConnection(timeout: number = 5000): Promise<N8NConn
       }
 
       // Améliorer le message d'erreur pour "fetch failed"
-      let errorMessage = error.message
-      if (error.message === 'fetch failed' || error.message.includes('fetch failed')) {
-        errorMessage = `Impossible de se connecter à N8N (${N8N_URL}). Vérifiez que N8N est démarré et accessible. Erreur réseau: ${error.message}`
+      let errorMessage = msg
+      if (msg === 'fetch failed' || msg.includes('fetch failed')) {
+        errorMessage = `Impossible de se connecter à N8N (${N8N_URL}). Vérifiez que N8N est démarré et accessible. Erreur réseau: ${msg}`
       }
 
       return {
