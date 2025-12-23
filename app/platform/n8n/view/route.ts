@@ -197,14 +197,16 @@ export async function GET(request: NextRequest) {
 `
 
   // Script d'interception pour capturer les requêtes /rest/* et /assets/* depuis l'iframe
+  // Utiliser JSON.stringify pour échapper correctement baseUrl
+  const proxyBaseValue = baseUrl + '/api/platform/n8n/proxy'
   const interceptScript = `
 <script>
 // SCRIPT D'INTERCEPTION POUR /rest/* et /assets/*
 // Ce script intercepte les requêtes depuis l'iframe N8N et les redirige vers le proxy
 (function() {
-  console.log('[N8N View] 🚀 Script d\'interception chargé pour /rest/* et /assets/*');
+  console.log('[N8N View] 🚀 Script d\\'interception chargé pour /rest/* et /assets/*');
   
-  const proxyBase = '${baseUrl}/api/platform/n8n/proxy';
+  const proxyBase = ${JSON.stringify(proxyBaseValue)};
   
   // Fonction pour déterminer si une URL doit être proxifiée
   function shouldProxy(url) {
@@ -304,44 +306,45 @@ export async function GET(request: NextRequest) {
         const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
         if (iframeDoc) {
           const script = iframeDoc.createElement('script');
-          script.textContent = \`
-            (function() {
-              console.log('[N8N Iframe] Script d\'interception injecté dans l\'iframe');
-              const proxyBase = '${baseUrl}/api/platform/n8n/proxy';
-              function shouldProxy(url) {
-                return url.includes('/rest/') || url.includes('/assets/') || url.startsWith('/');
-              }
-              function toProxyUrl(url) {
-                if (url.startsWith('/')) return proxyBase + url;
-                try {
-                  const urlObj = new URL(url, window.location.href);
-                  return proxyBase + urlObj.pathname + urlObj.search;
-                } catch { return url; }
-              }
-              const originalFetch = window.fetch;
-              window.fetch = function(url, options = {}) {
-                if (typeof url === 'string' && shouldProxy(url)) {
-                  const proxyUrl = toProxyUrl(url);
-                  return originalFetch.call(this, proxyUrl, {
-                    ...options,
-                    credentials: 'include',
-                    headers: {
-                      ...(options.headers || {}),
-                      ...(window.__N8N_AUTH_TOKEN__ ? {
-                        'Authorization': 'Bearer ' + window.__N8N_AUTH_TOKEN__,
-                        'X-Supabase-Auth-Token': window.__N8N_AUTH_TOKEN__
-                      } : {}),
-                    },
-                  });
-                }
-                return originalFetch.call(this, url, options);
-              };
-            })();
-          \`;
+          // Utiliser JSON.stringify pour échapper correctement la valeur
+          const proxyBaseValue = ${JSON.stringify(baseUrl + '/api/platform/n8n/proxy')};
+          script.textContent = 
+            '(function() {' +
+            '  console.log("[N8N Iframe] Script d\\'interception injecté dans l\\'iframe");' +
+            '  const proxyBase = ' + JSON.stringify(proxyBaseValue) + ';' +
+            '  function shouldProxy(url) {' +
+            '    return url.includes("/rest/") || url.includes("/assets/") || url.startsWith("/");' +
+            '  }' +
+            '  function toProxyUrl(url) {' +
+            '    if (url.startsWith("/")) return proxyBase + url;' +
+            '    try {' +
+            '      const urlObj = new URL(url, window.location.href);' +
+            '      return proxyBase + urlObj.pathname + urlObj.search;' +
+            '    } catch { return url; }' +
+            '  }' +
+            '  const originalFetch = window.fetch;' +
+            '  window.fetch = function(url, options = {}) {' +
+            '    if (typeof url === "string" && shouldProxy(url)) {' +
+            '      const proxyUrl = toProxyUrl(url);' +
+            '      return originalFetch.call(this, proxyUrl, {' +
+            '        ...options,' +
+            '        credentials: "include",' +
+            '        headers: {' +
+            '          ...(options.headers || {}),' +
+            '          ...(window.__N8N_AUTH_TOKEN__ ? {' +
+            '            "Authorization": "Bearer " + window.__N8N_AUTH_TOKEN__,' +
+            '            "X-Supabase-Auth-Token": window.__N8N_AUTH_TOKEN__' +
+            '          } : {}),' +
+            '        },' +
+            '      });' +
+            '    }' +
+            '    return originalFetch.call(this, url, options);' +
+            '  };' +
+            '})();';
           iframeDoc.head.appendChild(script);
         }
       } catch (e) {
-        console.warn('[N8N View] Impossible d\'injecter le script dans l\'iframe (cross-origin):', e);
+        console.warn('[N8N View] Impossible d\\'injecter le script dans l\\'iframe (cross-origin):', e);
       }
     }
   });
