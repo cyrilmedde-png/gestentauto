@@ -54,7 +54,10 @@ export async function GET(
       } else {
         return NextResponse.json(
           { error: 'Unauthorized - Platform admin access required', details: error },
-          { status: 403 }
+          { 
+            status: 403,
+            headers: getCorsHeaders(request.headers.get('origin')),
+          }
         )
       }
     }
@@ -64,7 +67,10 @@ export async function GET(
   if (!configCheck.valid) {
     return NextResponse.json(
       { error: 'Configuration N8N invalide', details: configCheck.error },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: getCorsHeaders(request.headers.get('origin')),
+      }
     )
   }
 
