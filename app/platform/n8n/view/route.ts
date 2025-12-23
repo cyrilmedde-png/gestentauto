@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAuthenticatedUser } from '@/lib/middleware/platform-auth'
 import { checkN8NConfig, testN8NConnection } from '@/lib/services/n8n'
+import { createServerClient } from '@/lib/supabase/server'
 
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
 
@@ -19,9 +20,9 @@ export async function GET(request: NextRequest) {
     console.log('[N8N View] Using session-based authentication (no userId in URL)')
     
     // Vérifier que l'utilisateur est authentifié (plateforme ou client)
-    const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
+    const { isAuthenticated, error, userId } = await verifyAuthenticatedUser(request)
     
-    console.log('[N8N View] Auth result:', { isAuthenticated, error })
+    console.log('[N8N View] Auth result:', { isAuthenticated, error, userId })
     
     if (!isAuthenticated || error) {
       // Si l'authentification échoue, retourner une page HTML avec erreur détaillée
@@ -152,6 +153,22 @@ export async function GET(request: NextRequest) {
     // On continue quand même car cela peut être un problème temporaire
   }
 
+  // Récupérer le token JWT depuis la session Supabase pour le passer dans les headers
+  // Cela contourne le problème SameSite des cookies dans les iframes
+  let jwtToken: string | null = null
+  try {
+    const supabase = await createServerClient(request)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) {
+      jwtToken = session.access_token
+      console.log('[N8N View] ✅ JWT token retrieved from session')
+    } else {
+      console.warn('[N8N View] ⚠️ No JWT token in session')
+    }
+  } catch (tokenError) {
+    console.error('[N8N View] ❌ Error retrieving JWT token:', tokenError)
+  }
+
   // Créer une page HTML qui charge N8N via le proxy
   // Le base href pointe vers le proxy, les cookies de session seront utilisés pour l'auth
   const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
@@ -166,6 +183,19 @@ export async function GET(request: NextRequest) {
   // Ne pas passer userId dans l'URL - utiliser uniquement la session Supabase
   const iframeSrc = proxyBaseUrl
   
+  // Script pour injecter le token JWT dans les requêtes (si disponible)
+  const tokenScript = jwtToken ? `
+<script>
+  // Stocker le token JWT pour l'utiliser dans les requêtes proxy
+  window.__N8N_AUTH_TOKEN__ = ${JSON.stringify(jwtToken)};
+  console.log('[N8N View] JWT token stored for proxy requests');
+</script>
+` : `
+<script>
+  console.warn('[N8N View] No JWT token available - will rely on cookies only');
+</script>
+`
+  
   const html = `
 <!DOCTYPE html>
 <html lang="fr">
@@ -174,6 +204,7 @@ export async function GET(request: NextRequest) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>N8N - Automatisation</title>
   <base href="${fullProxyBaseUrl}/">
+  ${tokenScript}
   <style>
     * {
       margin: 0;

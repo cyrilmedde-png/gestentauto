@@ -189,40 +189,67 @@ export async function GET(
     }
   }
   
-  // Intercepter fetch - FORCER credentials: 'include' pour envoyer les cookies
+  // Intercepter fetch - FORCER credentials: 'include' et ajouter token JWT si disponible
   const originalFetch = window.fetch;
   window.fetch = function(url, options = {}) {
     if (typeof url === 'string' && shouldProxy(url)) {
       const proxyUrl = toProxyUrl(url);
       console.log('[N8N Proxy] Intercepting fetch:', url, '->', proxyUrl);
       // FORCER credentials: 'include' pour envoyer les cookies de session Supabase
+      // ET ajouter le token JWT dans les headers si disponible (contourne SameSite)
       const modifiedOptions = {
         ...options,
         credentials: 'include',  // ✅ Toujours inclure les cookies
+        headers: {
+          ...(options.headers || {}),
+          // Ajouter le token JWT si disponible (depuis window.__N8N_AUTH_TOKEN__)
+          ...(window.__N8N_AUTH_TOKEN__ ? {
+            'Authorization': 'Bearer ' + window.__N8N_AUTH_TOKEN__,
+            'X-Supabase-Auth-Token': window.__N8N_AUTH_TOKEN__
+          } : {}),
+        },
       };
       return originalFetch.call(this, proxyUrl, modifiedOptions);
     }
     return originalFetch.call(this, url, options);
   };
   
-  // Intercepter XMLHttpRequest - FORCER withCredentials pour envoyer les cookies
+  // Intercepter XMLHttpRequest - FORCER withCredentials et ajouter token JWT si disponible
   const originalOpen = XMLHttpRequest.prototype.open;
   const originalSend = XMLHttpRequest.prototype.send;
+  const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
   XMLHttpRequest.prototype.open = function(method, url, ...args) {
     if (typeof url === 'string' && shouldProxy(url)) {
       const proxyUrl = toProxyUrl(url);
       console.log('[N8N Proxy] Intercepting XHR:', url, '->', proxyUrl);
-      // Marquer cette requête pour ajouter withCredentials dans send
+      // Marquer cette requête pour ajouter withCredentials et token dans send
       this._n8nProxyUrl = proxyUrl;
       return originalOpen.call(this, method, proxyUrl, ...args);
     }
     return originalOpen.call(this, method, url, ...args);
   };
-  // Intercepter send pour ajouter withCredentials
+  // Intercepter setRequestHeader pour capturer les headers existants
+  XMLHttpRequest.prototype.setRequestHeader = function(header, value) {
+    if (!this._n8nHeaders) {
+      this._n8nHeaders = {};
+    }
+    this._n8nHeaders[header] = value;
+    return originalSetRequestHeader.call(this, header, value);
+  };
+  // Intercepter send pour ajouter withCredentials et token JWT
   XMLHttpRequest.prototype.send = function(...args) {
     if (this._n8nProxyUrl) {
       this.withCredentials = true;  // ✅ Forcer l'envoi des cookies
+      // Ajouter le token JWT si disponible
+      if (window.__N8N_AUTH_TOKEN__) {
+        const existingAuth = this._n8nHeaders?.['Authorization'] || this._n8nHeaders?.['authorization'];
+        if (!existingAuth) {
+          this.setRequestHeader('Authorization', 'Bearer ' + window.__N8N_AUTH_TOKEN__);
+          this.setRequestHeader('X-Supabase-Auth-Token', window.__N8N_AUTH_TOKEN__);
+        }
+      }
       delete this._n8nProxyUrl;
+      delete this._n8nHeaders;
     }
     return originalSend.apply(this, args);
   };

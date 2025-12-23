@@ -14,6 +14,10 @@ export async function verifyAuthenticatedUser(
   try {
     // Log pour déboguer
     const cookieHeader = request.headers.get('cookie') || ''
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization') || ''
+    const tokenHeader = request.headers.get('x-supabase-auth-token') || request.headers.get('X-Supabase-Auth-Token') || ''
+    const jwtToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (tokenHeader || null)
+    
     const cookieKeys = cookieHeader 
       ? cookieHeader.split(';').map(c => {
           const equalIndex = c.indexOf('=')
@@ -27,9 +31,54 @@ export async function verifyAuthenticatedUser(
       cookieLength: cookieHeader.length,
       cookieKeys: cookieKeys,
       hasAuthCookie: cookieKeys.some(k => k.includes('auth') || k.includes('supabase')),
+      hasJwtToken: !!jwtToken,
       method: request.method,
     })
     
+    // Si un token JWT est fourni dans les headers, l'utiliser directement
+    if (jwtToken) {
+      console.log('[verifyAuthenticatedUser] 🔑 JWT token found in headers, validating it...')
+      try {
+        // Créer un client Supabase temporaire avec le token JWT
+        const { createClient } = await import('@supabase/supabase-js')
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        
+        if (supabaseUrl && supabaseAnonKey) {
+          const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+            auth: {
+              persistSession: false,
+              autoRefreshToken: false,
+            },
+            global: {
+              headers: {
+                Authorization: `Bearer ${jwtToken}`,
+              },
+            },
+          })
+          
+          // Vérifier le token en appelant getUser avec le token
+          const { data: { user }, error: tokenError } = await tempClient.auth.getUser(jwtToken)
+          
+          if (!tokenError && user) {
+            console.log('[verifyAuthenticatedUser] ✅ User authenticated via JWT token:', {
+              userId: user.id,
+              email: user.email,
+            })
+            return {
+              isAuthenticated: true,
+              userId: user.id,
+            }
+          } else {
+            console.warn('[verifyAuthenticatedUser] ⚠️ JWT token invalid, falling back to cookies:', tokenError?.message)
+          }
+        }
+      } catch (tokenErr) {
+        console.warn('[verifyAuthenticatedUser] ⚠️ Error validating JWT token, falling back to cookies:', tokenErr)
+      }
+    }
+    
+    // Fallback : utiliser les cookies (méthode normale)
     const supabase = await createServerClient(request)
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
