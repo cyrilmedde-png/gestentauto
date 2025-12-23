@@ -39,44 +39,44 @@ export async function verifyAuthenticatedUser(
     if (jwtToken) {
       console.log('[verifyAuthenticatedUser] 🔑 JWT token found in headers, validating it...')
       try {
-        // Créer un client Supabase temporaire avec le token JWT
+        // Créer un client Supabase temporaire avec le token JWT dans les headers
         const { createClient } = await import('@supabase/supabase-js')
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
         const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         
         if (supabaseUrl && supabaseAnonKey) {
+          // CORRECTION : Utiliser le token dans les headers globaux au lieu de setSession
+          // setSession nécessite un refresh_token valide, ce qui cause des échecs
           const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
             auth: {
               persistSession: false,
               autoRefreshToken: false,
             },
+            global: {
+              headers: {
+                Authorization: `Bearer ${jwtToken}`,
+              },
+            },
           })
           
-          // CORRECTION : Utiliser setSession pour définir le token, puis getUser() sans paramètre
-          // getUser(token) n'est pas la bonne méthode - il faut d'abord définir la session
-          const { data: sessionData, error: sessionError } = await tempClient.auth.setSession({
-            access_token: jwtToken,
-            refresh_token: '', // Pas nécessaire pour la validation seule
-          })
+          // Appeler getUser() - Supabase devrait utiliser le header Authorization
+          const { data: { user }, error: tokenError } = await tempClient.auth.getUser()
           
-          if (sessionError) {
-            console.warn('[verifyAuthenticatedUser] ⚠️ Error setting session with JWT token, falling back to cookies:', sessionError?.message)
-          } else {
-            // Maintenant appeler getUser() sans paramètre - il utilisera la session définie
-            const { data: { user }, error: tokenError } = await tempClient.auth.getUser()
-            
-            if (!tokenError && user) {
-              console.log('[verifyAuthenticatedUser] ✅ User authenticated via JWT token:', {
-                userId: user.id,
-                email: user.email,
-              })
-              return {
-                isAuthenticated: true,
-                userId: user.id,
-              }
-            } else {
-              console.warn('[verifyAuthenticatedUser] ⚠️ JWT token invalid after setSession, falling back to cookies:', tokenError?.message)
+          if (!tokenError && user) {
+            console.log('[verifyAuthenticatedUser] ✅ User authenticated via JWT token:', {
+              userId: user.id,
+              email: user.email,
+            })
+            return {
+              isAuthenticated: true,
+              userId: user.id,
             }
+          } else {
+            console.warn('[verifyAuthenticatedUser] ⚠️ JWT token invalid, falling back to cookies:', {
+              error: tokenError?.message,
+              errorCode: tokenError?.status,
+              errorName: tokenError?.name,
+            })
           }
         }
       } catch (tokenErr) {
