@@ -234,7 +234,10 @@ async function handleRestRequest(
       } else {
         return NextResponse.json(
           { error: 'Unauthorized - Platform admin access required', details: error },
-          { status: 403 }
+          { 
+            status: 403,
+            headers: getCorsHeaders(request.headers.get('origin')),
+          }
         )
       }
     }
@@ -244,7 +247,10 @@ async function handleRestRequest(
   if (!configCheck.valid) {
     return NextResponse.json(
       { error: 'Configuration N8N invalide', details: configCheck.error },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: getCorsHeaders(request.headers.get('origin')),
+      }
     )
   }
 
@@ -311,7 +317,10 @@ async function handleRestRequest(
         error: 'Échec de la connexion à N8N',
         details: error instanceof Error ? error.message : 'Erreur inconnue',
       },
-      { status: 503 }
+      { 
+        status: 503,
+        headers: getCorsHeaders(request.headers.get('origin')),
+      }
     )
   }
 }
