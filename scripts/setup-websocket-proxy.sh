@@ -129,13 +129,29 @@ WEBSOCKET_CONFIG="
         proxy_ssl_server_name on;
     }"
 
-# Trouver où insérer la configuration (avant le dernier '}')
-# On cherche le dernier bloc location ou server
-if grep -q "location / {" "$CONFIG_FILE"; then
-    # Insérer après le dernier location
+# Trouver où insérer la configuration dans le bloc server pour www.talosprimes.com
+# Chercher le bloc server pour www.talosprimes.com
+if grep -q "server_name.*www.talosprimes.com" "$CONFIG_FILE"; then
+    # Insérer dans le bloc server pour www.talosprimes.com
+    # Chercher la dernière location dans ce bloc server et insérer après
+    if grep -A 50 "server_name.*www.talosprimes.com" "$CONFIG_FILE" | grep -q "location / {"; then
+        # Insérer après location / dans le bloc www.talosprimes.com
+        sed -i "/server_name.*www.talosprimes.com/,/^}/ {
+            /location \/ {/a\\
+${WEBSOCKET_CONFIG}
+        }" "$CONFIG_FILE"
+    else
+        # Insérer avant le dernier } du bloc server
+        sed -i "/server_name.*www.talosprimes.com/,/^}/ {
+            /^}/i\\
+${WEBSOCKET_CONFIG}
+        }" "$CONFIG_FILE"
+    fi
+elif grep -q "location / {" "$CONFIG_FILE"; then
+    # Fallback: Insérer après location / si pas de bloc spécifique
     sed -i "/location \/ {/a\\${WEBSOCKET_CONFIG}" "$CONFIG_FILE"
 else
-    # Insérer avant le dernier '}'
+    # Fallback: Insérer avant le dernier '}'
     sed -i "$ s/}/${WEBSOCKET_CONFIG}\n}/" "$CONFIG_FILE"
 fi
 
