@@ -145,27 +145,49 @@ elif sudo -u "$N8N_USER" pm2 list 2>/dev/null | grep -q "n8n"; then
 fi
 
 if [ "$N8N_IN_PM2" = true ]; then
-    # Vérifier le statut
-    N8N_STATUS=$(pm2 jlist 2>/dev/null | grep -A 10 '"name":"n8n"' | grep '"pm2_env":{"status"' | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+    # Vérifier le statut avec pm2 describe (plus fiable que JSON)
+    PM2_DESCRIBE=$(pm2 describe n8n 2>/dev/null || sudo -u "$N8N_USER" pm2 describe n8n 2>/dev/null || echo "")
     
-    if [ -z "$N8N_STATUS" ] || [ "$N8N_STATUS" = "unknown" ]; then
-        # Essayer avec l'utilisateur n8n
-        N8N_STATUS=$(sudo -u "$N8N_USER" pm2 jlist 2>/dev/null | grep -A 10 '"name":"n8n"' | grep '"pm2_env":{"status"' | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+    if echo "$PM2_DESCRIBE" | grep -q "status.*online"; then
+        N8N_STATUS="online"
+        log_success "N8N est en ligne"
+        
+        # Vérifier les redémarrages (critique)
+        RESTARTS=$(echo "$PM2_DESCRIBE" | grep "restarts" | grep -oE "[0-9]+" | head -1 || echo "0")
+        UPTIME=$(echo "$PM2_DESCRIBE" | grep "uptime" | grep -oE "[0-9]+[smhd]" | head -1 || echo "")
+        
+        if [ -n "$RESTARTS" ] && [ "$RESTARTS" -gt 100 ]; then
+            log_error "⚠️  ATTENTION: N8N a redémarré $RESTARTS fois (problème critique !)"
+            log_warning "Uptime actuel: $UPTIME - N8N redémarre constamment"
+            log_info "Vérifiez les logs d'erreur pour identifier la cause:"
+            log_info "  pm2 logs n8n --err --lines 50"
+        elif [ -n "$RESTARTS" ] && [ "$RESTARTS" -gt 10 ]; then
+            log_warning "N8N a redémarré $RESTARTS fois (uptime: $UPTIME)"
+        else
+            log_info "Redémarrages: $RESTARTS, Uptime: $UPTIME"
+        fi
+    else
+        log_error "N8N n'est pas en ligne"
+        N8N_STATUS="offline"
+        RESTARTS="0"
     fi
     
-    if [ "$N8N_STATUS" = "online" ]; then
-        log_success "N8N est en ligne (status: $N8N_STATUS)"
+    # Afficher les logs d'erreur si beaucoup de redémarrages
+    if [ -n "$RESTARTS" ] && [ "$RESTARTS" -gt 10 ]; then
+        log_info "Logs d'erreur N8N (dernières 30 lignes):"
+        pm2 logs n8n --err --lines 30 --nostream 2>/dev/null || sudo -u "$N8N_USER" pm2 logs n8n --err --lines 30 --nostream 2>/dev/null || true
     else
-        log_error "N8N n'est pas en ligne (status: $N8N_STATUS)"
         log_info "Logs N8N (dernières 20 lignes):"
         pm2 logs n8n --lines 20 --nostream 2>/dev/null || sudo -u "$N8N_USER" pm2 logs n8n --lines 20 --nostream 2>/dev/null || true
     fi
     
     # Afficher les infos PM2
     log_info "Informations PM2 N8N:"
-    pm2 describe n8n 2>/dev/null | head -20 || sudo -u "$N8N_USER" pm2 describe n8n 2>/dev/null | head -20 || true
+    echo "$PM2_DESCRIBE" | head -20 || true
 else
     log_error "N8N n'est pas présent dans PM2"
+    N8N_STATUS="not_found"
+    RESTARTS="0"
 fi
 
 # ============================================
@@ -449,8 +471,15 @@ if [ ! -f "$NEXTJS_DIR/.env.production" ]; then
     ((ERRORS++))
 fi
 
-if ! pm2 list 2>/dev/null | grep -q "n8n.*online" && ! sudo -u "$N8N_USER" pm2 list 2>/dev/null | grep -q "n8n.*online"; then
+# Vérifier si N8N est en ligne ET n'a pas trop de redémarrages
+if [ "$N8N_STATUS" != "online" ]; then
     ((ERRORS++))
+elif [ -n "$RESTARTS" ] && [ "$RESTARTS" -gt 100 ]; then
+    ((ERRORS++))
+    log_error "N8N redémarre constamment ($RESTARTS restarts) - problème critique"
+elif [ -n "$RESTARTS" ] && [ "$RESTARTS" -gt 10 ]; then
+    ((WARNINGS++))
+    log_warning "N8N a redémarré $RESTARTS fois - vérifiez les logs"
 fi
 
 if [ "$DOMAIN_STATUS" != "200" ] && [ "$DOMAIN_STATUS" != "401" ]; then
@@ -476,8 +505,12 @@ if [ ! -f "$NEXTJS_DIR/.env.production" ]; then
     echo "1. Créer le fichier .env.production avec les variables N8N"
 fi
 
-if ! pm2 list 2>/dev/null | grep -q "n8n.*online" && ! sudo -u "$N8N_USER" pm2 list 2>/dev/null | grep -q "n8n.*online"; then
+if [ "$N8N_STATUS" != "online" ]; then
     echo "2. Démarrer N8N: pm2 start n8n --name n8n (ou sudo -u $N8N_USER pm2 start n8n --name n8n)"
+elif [ -n "$RESTARTS" ] && [ "$RESTARTS" -gt 100 ]; then
+    echo "2. ⚠️  URGENT: N8N redémarre constamment ($RESTARTS restarts) - vérifiez les logs:"
+    echo "   pm2 logs n8n --err --lines 50"
+    echo "   Vérifiez la configuration N8N et les variables d'environnement"
 fi
 
 if [ "$DOMAIN_STATUS" != "200" ] && [ "$DOMAIN_STATUS" != "401" ]; then
