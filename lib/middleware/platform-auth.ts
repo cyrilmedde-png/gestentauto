@@ -12,7 +12,14 @@ export async function verifyAuthenticatedUser(
   request: NextRequest
 ): Promise<{ isAuthenticated: boolean; error?: string; userId?: string }> {
   try {
-    // Log pour déboguer
+    // Vérifier si on est en mode build (pas de session pendant le build)
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
+                        process.env.NODE_ENV === 'production' && 
+                        !request.headers.get('cookie') && 
+                        !request.headers.get('authorization') &&
+                        !request.headers.get('x-supabase-auth-token')
+    
+    // Log pour déboguer (seulement si pas en build)
     const cookieHeader = request.headers.get('cookie') || ''
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization') || ''
     const tokenHeader = request.headers.get('x-supabase-auth-token') || request.headers.get('X-Supabase-Auth-Token') || ''
@@ -25,15 +32,17 @@ export async function verifyAuthenticatedUser(
         }).filter(Boolean)
       : []
     
-    console.log('[verifyAuthenticatedUser] 🔍 Checking authentication...', {
-      url: request.url,
-      hasCookies: !!cookieHeader,
-      cookieLength: cookieHeader.length,
-      cookieKeys: cookieKeys,
-      hasAuthCookie: cookieKeys.some(k => k.includes('auth') || k.includes('supabase')),
-      hasJwtToken: !!jwtToken,
-      method: request.method,
-    })
+    if (!isBuildTime) {
+      console.log('[verifyAuthenticatedUser] 🔍 Checking authentication...', {
+        url: request.url,
+        hasCookies: !!cookieHeader,
+        cookieLength: cookieHeader.length,
+        cookieKeys: cookieKeys,
+        hasAuthCookie: cookieKeys.some(k => k.includes('auth') || k.includes('supabase')),
+        hasJwtToken: !!jwtToken,
+        method: request.method,
+      })
+    }
     
     // Si un token JWT est fourni dans les headers, l'utiliser directement
     if (jwtToken) {
@@ -195,16 +204,26 @@ export async function verifyPlatformUser(
   request: NextRequest
 ): Promise<{ isPlatform: boolean; error?: string }> {
   try {
+    // Vérifier si on est en mode build
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
+                        process.env.NODE_ENV === 'production' && 
+                        !request.headers.get('cookie') && 
+                        !request.headers.get('authorization') &&
+                        !request.headers.get('x-supabase-auth-token')
+    
     // Récupérer l'utilisateur depuis la session Supabase
     const supabase = await createServerClient(request)
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      console.error('[verifyPlatformUser] ❌ Session error:', {
-        error: authError?.message,
-        code: authError?.status,
-        hasCookies: !!request.headers.get('cookie'),
-      })
+      // Ne pas logger d'erreurs pendant le build
+      if (!isBuildTime) {
+        console.error('[verifyPlatformUser] ❌ Session error:', {
+          error: authError?.message,
+          code: authError?.status,
+          hasCookies: !!request.headers.get('cookie'),
+        })
+      }
       return {
         isPlatform: false,
         error: `Not authenticated. Please log in. ${authError?.message || ''}`,
