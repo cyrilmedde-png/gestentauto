@@ -138,7 +138,6 @@ export async function GET(request: NextRequest) {
       const interceptionScript = `
 <script>
 (function() {
-  console.log('[N8N Proxy] Script d'interception chargé dans proxy/route.ts');
   const proxyBase = '${escapedProxyBase}';
   const n8nHost = '${escapedN8nHost}';
   const authToken = '${escapedAuthToken}';
@@ -235,7 +234,6 @@ export async function GET(request: NextRequest) {
     options = options || {};
     if (typeof url === 'string' && shouldProxy(url)) {
       const proxyUrl = toProxyUrl(url);
-      console.log('[N8N Proxy Route] Intercepting fetch:', url, '->', proxyUrl);
       const modifiedOptions = { ...options, credentials: 'include', headers: { ...(options.headers || {}) } };
       if (authToken) {
         modifiedOptions.headers['Authorization'] = 'Bearer ' + authToken;
@@ -254,7 +252,6 @@ export async function GET(request: NextRequest) {
     const args = Array.prototype.slice.call(arguments, 2);
     if (typeof url === 'string' && shouldProxy(url)) {
       this._n8nProxyUrl = toProxyUrl(url);
-      console.log('[N8N Proxy Route] Intercepting XHR:', url, '->', this._n8nProxyUrl);
       return originalOpen.apply(this, [method, this._n8nProxyUrl].concat(args));
     }
     return originalOpen.apply(this, arguments);
