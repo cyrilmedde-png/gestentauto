@@ -142,16 +142,25 @@ export async function GET(request: NextRequest) {
   const n8nHost = '${escapedN8nHost}';
   const authToken = '${escapedAuthToken}';
   
-  // Domaines externes à ne PAS proxifier
+  // Domaines externes à ne PAS proxifier (doivent être exclus AVANT toute vérification)
   const externalDomains = ['api.github.com', 'github.com', 'cdn.jsdelivr.net', 'unpkg.com'];
   
   function shouldProxy(url) {
     if (!url || typeof url !== 'string') return false;
     
-    // URLs relatives vers N8N (inclut /rest/telemetry/...)
+    // EXCLUSION PRIORITAIRE : Ne JAMAIS proxifier les domaines externes
+    // Vérifier d'abord par string pour éviter les erreurs de parsing
+    for (const domain of externalDomains) {
+      if (url.includes(domain)) {
+        return false;
+      }
+    }
+    
+    // URLs relatives vers N8N (inclut /rest/telemetry/..., /icons/...)
     if (url.startsWith('/rest/') || 
         url.startsWith('/assets/') || 
         url.startsWith('/types/') ||
+        url.startsWith('/icons/') ||
         url.startsWith('/api/')) {
       return true;
     }
@@ -161,7 +170,7 @@ export async function GET(request: NextRequest) {
       const urlObj = new URL(url, window.location.origin);
       const hostname = urlObj.hostname;
       
-      // Ne pas proxifier les domaines externes
+      // Double vérification pour les domaines externes (sécurité)
       if (externalDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
         return false;
       }
@@ -179,8 +188,10 @@ export async function GET(request: NextRequest) {
       return false;
     } catch {
       // Si l'URL est invalide, vérifier si elle contient n8n.talosprimes.com
+      // MAIS exclure les domaines externes
       if (url.includes('n8n.talosprimes.com')) {
-        return true;
+        // Vérifier qu'elle ne contient pas de domaines externes
+        return !externalDomains.some(d => url.includes(d));
       }
       return false;
     }
