@@ -195,29 +195,29 @@ export async function GET(
   function shouldProxy(url) {
     if (!url || typeof url !== 'string') return false;
     
-    // URLs relatives vers N8N (inclut /rest/telemetry/...)
+    // EXCLUSION PRIORITAIRE : Ne JAMAIS proxifier les domaines externes
+    // Vérifier d'abord par string pour éviter les erreurs de parsing
+    for (const domain of externalDomains) {
+      if (url.includes(domain)) {
+        return false;
+      }
+    }
+    
+    // URLs relatives vers N8N (inclut /rest/telemetry/..., /icons/...)
     if (url.startsWith('/rest/') || 
         url.startsWith('/assets/') || 
         url.startsWith('/types/') ||
+        url.startsWith('/icons/') ||
         url.startsWith('/api/')) {
       return true;
     }
     
-    // URLs absolues - vérifier d'abord par string pour éviter les erreurs de parsing
-    if (url.includes('n8n.talosprimes.com')) {
-      // Vérifier que ce n'est pas un domaine externe
-      if (url.includes('api.github.com') || url.includes('github.com') || 
-          url.includes('cdn.jsdelivr.net') || url.includes('unpkg.com')) {
-        return false;
-      }
-      return true;
-    }
-    
+    // URLs absolues - vérifier si c'est vers n8n.talosprimes.com
     try {
       const urlObj = new URL(url, window.location.origin);
       const hostname = urlObj.hostname;
       
-      // Ne pas proxifier les domaines externes
+      // Double vérification pour les domaines externes (sécurité)
       if (externalDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
         return false;
       }
@@ -234,6 +234,12 @@ export async function GET(
       
       return false;
     } catch {
+      // Si l'URL est invalide, vérifier si elle contient n8n.talosprimes.com
+      // MAIS exclure les domaines externes
+      if (url.includes('n8n.talosprimes.com')) {
+        // Vérifier qu'elle ne contient pas de domaines externes
+        return !externalDomains.some(d => url.includes(d));
+      }
       return false;
     }
   }
