@@ -130,30 +130,66 @@ WEBSOCKET_CONFIG="
     }"
 
 # Trouver où insérer la configuration dans le bloc server pour www.talosprimes.com
+# Utiliser une approche plus simple avec un fichier temporaire
+
+# Créer un fichier temporaire avec la configuration WebSocket
+TEMP_CONFIG=$(mktemp)
+echo "$WEBSOCKET_CONFIG" > "$TEMP_CONFIG"
+
 # Chercher le bloc server pour www.talosprimes.com
 if grep -q "server_name.*www.talosprimes.com" "$CONFIG_FILE"; then
-    # Insérer dans le bloc server pour www.talosprimes.com
-    # Chercher la dernière location dans ce bloc server et insérer après
-    if grep -A 50 "server_name.*www.talosprimes.com" "$CONFIG_FILE" | grep -q "location / {"; then
-        # Insérer après location / dans le bloc www.talosprimes.com
-        sed -i "/server_name.*www.talosprimes.com/,/^}/ {
-            /location \/ {/a\\
-${WEBSOCKET_CONFIG}
-        }" "$CONFIG_FILE"
-    else
-        # Insérer avant le dernier } du bloc server
-        sed -i "/server_name.*www.talosprimes.com/,/^}/ {
-            /^}/i\\
-${WEBSOCKET_CONFIG}
-        }" "$CONFIG_FILE"
+    # Trouver la ligne de fin du bloc server (la dernière } avant le prochain server ou la fin)
+    # Insérer après la dernière location dans ce bloc, ou avant la fermeture du bloc
+    
+    # Chercher si location / existe dans le bloc
+    SERVER_START=$(grep -n "server_name.*www.talosprimes.com" "$CONFIG_FILE" | head -1 | cut -d: -f1)
+    if [ -n "$SERVER_START" ]; then
+        # Trouver la ligne de fermeture du bloc server (la première } après server_start qui ferme le bloc)
+        # Chercher toutes les locations dans ce bloc
+        SERVER_END=$(awk -v start="$SERVER_START" '
+            NR >= start && /^[[:space:]]*}[[:space:]]*$/ && depth == 0 {print NR; exit}
+            NR >= start && /{/ {depth++}
+            NR >= start && /}/ {depth--}
+        ' "$CONFIG_FILE")
+        
+        if [ -n "$SERVER_END" ]; then
+            # Chercher la dernière location avant la fermeture
+            LAST_LOCATION=$(awk -v start="$SERVER_START" -v end="$SERVER_END" '
+                NR >= start && NR < end && /location / {last = NR}
+                END {if (last) print last}
+            ' "$CONFIG_FILE")
+            
+            if [ -n "$LAST_LOCATION" ]; then
+                # Insérer après la dernière location
+                sed -i "${LAST_LOCATION}r $TEMP_CONFIG" "$CONFIG_FILE"
+            else
+                # Insérer avant la fermeture du bloc
+                sed -i "$((SERVER_END - 1))r $TEMP_CONFIG" "$CONFIG_FILE"
+            fi
+        else
+            # Fallback: chercher location / dans tout le fichier
+            if grep -q "location / {" "$CONFIG_FILE"; then
+                sed -i "/location \/ {/r $TEMP_CONFIG" "$CONFIG_FILE"
+            else
+                # Insérer avant le dernier }
+                sed -i '$ i\
+'"$(cat $TEMP_CONFIG)"'
+' "$CONFIG_FILE"
+            fi
+        fi
     fi
 elif grep -q "location / {" "$CONFIG_FILE"; then
     # Fallback: Insérer après location / si pas de bloc spécifique
-    sed -i "/location \/ {/a\\${WEBSOCKET_CONFIG}" "$CONFIG_FILE"
+    sed -i "/location \/ {/r $TEMP_CONFIG" "$CONFIG_FILE"
 else
     # Fallback: Insérer avant le dernier '}'
-    sed -i "$ s/}/${WEBSOCKET_CONFIG}\n}/" "$CONFIG_FILE"
+    sed -i '$ i\
+'"$(cat $TEMP_CONFIG)"'
+' "$CONFIG_FILE"
 fi
+
+# Nettoyer le fichier temporaire
+rm -f "$TEMP_CONFIG"
 
 echo -e "${GREEN}✓ Configuration WebSocket ajoutée${NC}"
 
