@@ -252,11 +252,21 @@ export async function GET(request: NextRequest) {
 </script>
 `
       
-      // Injecter le script juste après <head>
-      modifiedHtml = modifiedHtml.replace(
-        /(<head[^>]*>)/i,
-        `$1${interceptScript}`
-      )
+      // Injecter le script de manière synchrone AVANT tout autre script
+      // Utiliser une injection plus agressive pour s'assurer qu'il s'exécute en premier
+      if (modifiedHtml.includes('</head>')) {
+        // Injecter juste avant </head> pour s'assurer qu'il est chargé tôt
+        modifiedHtml = modifiedHtml.replace(
+          /(<\/head>)/i,
+          `${interceptScript}$1`
+        )
+      } else {
+        // Fallback : injecter après <head>
+        modifiedHtml = modifiedHtml.replace(
+          /(<head[^>]*>)/i,
+          `$1${interceptScript}`
+        )
+      }
       
       return new NextResponse(modifiedHtml, {
         status: response.status,
