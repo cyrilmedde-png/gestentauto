@@ -134,24 +134,36 @@ else
     log_error "PM2 n'est pas installé"
 fi
 
-# Vérifier le statut N8N dans PM2
-if sudo -u "$N8N_USER" pm2 list 2>/dev/null | grep -q "n8n"; then
-    log_success "N8N est présent dans PM2"
-    
+# Vérifier le statut N8N dans PM2 (essayer avec root d'abord, puis avec n8n user)
+N8N_IN_PM2=false
+if pm2 list 2>/dev/null | grep -q "n8n"; then
+    N8N_IN_PM2=true
+    log_success "N8N est présent dans PM2 (utilisateur root)"
+elif sudo -u "$N8N_USER" pm2 list 2>/dev/null | grep -q "n8n"; then
+    N8N_IN_PM2=true
+    log_success "N8N est présent dans PM2 (utilisateur $N8N_USER)"
+fi
+
+if [ "$N8N_IN_PM2" = true ]; then
     # Vérifier le statut
-    N8N_STATUS=$(sudo -u "$N8N_USER" pm2 jlist 2>/dev/null | grep -A 10 '"name":"n8n"' | grep '"pm2_env":{"status"' | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+    N8N_STATUS=$(pm2 jlist 2>/dev/null | grep -A 10 '"name":"n8n"' | grep '"pm2_env":{"status"' | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+    
+    if [ -z "$N8N_STATUS" ] || [ "$N8N_STATUS" = "unknown" ]; then
+        # Essayer avec l'utilisateur n8n
+        N8N_STATUS=$(sudo -u "$N8N_USER" pm2 jlist 2>/dev/null | grep -A 10 '"name":"n8n"' | grep '"pm2_env":{"status"' | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+    fi
     
     if [ "$N8N_STATUS" = "online" ]; then
         log_success "N8N est en ligne (status: $N8N_STATUS)"
     else
         log_error "N8N n'est pas en ligne (status: $N8N_STATUS)"
         log_info "Logs N8N (dernières 20 lignes):"
-        sudo -u "$N8N_USER" pm2 logs n8n --lines 20 --nostream 2>/dev/null || true
+        pm2 logs n8n --lines 20 --nostream 2>/dev/null || sudo -u "$N8N_USER" pm2 logs n8n --lines 20 --nostream 2>/dev/null || true
     fi
     
     # Afficher les infos PM2
     log_info "Informations PM2 N8N:"
-    sudo -u "$N8N_USER" pm2 describe n8n 2>/dev/null | head -20 || true
+    pm2 describe n8n 2>/dev/null | head -20 || sudo -u "$N8N_USER" pm2 describe n8n 2>/dev/null | head -20 || true
 else
     log_error "N8N n'est pas présent dans PM2"
 fi
@@ -285,7 +297,20 @@ if command_exists nginx; then
             log_warning "proxy_pass vers 5678 non trouvé dans la config Nginx"
         fi
     else
-        log_error "Configuration Nginx pour $N8N_DOMAIN introuvable"
+        log_warning "Configuration Nginx pour $N8N_DOMAIN introuvable (peut être dans un autre fichier)"
+    fi
+    
+    # Vérifier la configuration talosprimes.com (PRIORITAIRE pour Next.js)
+    if [ -f "/etc/nginx/sites-available/talosprimes.com" ] || [ -f "/etc/nginx/sites-enabled/talosprimes.com" ]; then
+        log_success "Configuration Nginx pour talosprimes.com trouvée (prioritaire)"
+    elif [ -f "/etc/nginx/sites-available/talosprime" ] || [ -f "/etc/nginx/sites-enabled/talosprime" ]; then
+        log_success "Configuration Nginx pour talosprime trouvée (fallback)"
+    elif [ -f "/etc/nginx/sites-available/www.talosprimes.com" ] || [ -f "/etc/nginx/sites-enabled/www.talosprimes.com" ]; then
+        log_success "Configuration Nginx pour www.talosprimes.com trouvée"
+    else
+        log_warning "Configuration Nginx pour talosprimes.com/talosprime introuvable"
+        log_info "Fichiers Nginx disponibles:"
+        ls -la /etc/nginx/sites-available/ 2>/dev/null | grep -E "talos|www" | head -10 || true
     fi
 else
     log_warning "Nginx n'est pas installé"
@@ -332,16 +357,20 @@ fi
 log_section "8. LOGS D'ERREURS"
 
 # Logs N8N
-if sudo -u "$N8N_USER" pm2 logs n8n --lines 0 --nostream 2>/dev/null | grep -i "error\|fail\|exception" | tail -10 | grep -q .; then
+if pm2 logs n8n --lines 0 --nostream 2>/dev/null | grep -i "error\|fail\|exception" | tail -10 | grep -q .; then
+    log_warning "Erreurs trouvées dans les logs N8N (dernières 10):"
+    pm2 logs n8n --lines 100 --nostream 2>/dev/null | grep -i "error\|fail\|exception" | tail -10 || true
+elif sudo -u "$N8N_USER" pm2 logs n8n --lines 0 --nostream 2>/dev/null | grep -i "error\|fail\|exception" | tail -10 | grep -q .; then
     log_warning "Erreurs trouvées dans les logs N8N (dernières 10):"
     sudo -u "$N8N_USER" pm2 logs n8n --lines 100 --nostream 2>/dev/null | grep -i "error\|fail\|exception" | tail -10 || true
 else
     log_success "Aucune erreur récente dans les logs N8N"
 fi
 
-# Logs Next.js (si PM2)
-if pm2 list 2>/dev/null | grep -q "nextjs\|next"; then
+# Logs Next.js (si PM2 - chercher talosprime aussi)
+if pm2 list 2>/dev/null | grep -q "nextjs\|next\|talosprime"; then
     log_info "Vérification des logs Next.js..."
+    pm2 logs talosprime --lines 0 --nostream 2>/dev/null | grep -i "n8n\|error" | tail -10 || \
     pm2 logs nextjs --lines 0 --nostream 2>/dev/null | grep -i "n8n\|error" | tail -10 || true
 fi
 
@@ -363,18 +392,41 @@ else
     APP_URL="https://www.talosprimes.com"
 fi
 
-log_info "Test de l'endpoint de santé N8N: $APP_URL/api/platform/n8n/health"
-HEALTH_STATUS=$(test_url "$APP_URL/api/platform/n8n/health" 5)
-if [ "$HEALTH_STATUS" = "200" ]; then
+# Tester localhost d'abord (plus fiable)
+log_info "Test de l'endpoint de santé N8N en local: http://localhost:3000/api/platform/n8n/health"
+LOCAL_HEALTH_STATUS=$(test_url "http://localhost:3000/api/platform/n8n/health" 5)
+
+if [ "$LOCAL_HEALTH_STATUS" = "200" ]; then
     log_success "Endpoint de santé répond (HTTP 200)"
     log_info "Réponse complète:"
-    curl -s "$APP_URL/api/platform/n8n/health" | head -20 || true
-elif [ "$HEALTH_STATUS" = "403" ]; then
-    log_warning "Endpoint de santé retourne 403 (authentification requise)"
-elif [ "$HEALTH_STATUS" = "503" ]; then
-    log_error "Endpoint de santé retourne 503 (N8N non accessible)"
+    curl -s "http://localhost:3000/api/platform/n8n/health" | head -20 || true
+elif [ "$LOCAL_HEALTH_STATUS" = "403" ]; then
+    log_success "Endpoint de santé répond (HTTP 403 - authentification requise, c'est normal)"
+    log_info "L'endpoint fonctionne mais nécessite une session d'authentification"
+    log_info "Réponse:"
+    curl -s "http://localhost:3000/api/platform/n8n/health" | head -5 || true
+elif [ "$LOCAL_HEALTH_STATUS" = "503" ]; then
+    log_error "Endpoint de santé retourne 503 (N8N non accessible depuis Next.js)"
+    log_info "Réponse:"
+    curl -s "http://localhost:3000/api/platform/n8n/health" | head -5 || true
 else
-    log_error "Endpoint de santé ne répond pas correctement (HTTP $HEALTH_STATUS)"
+    log_warning "Endpoint de santé ne répond pas correctement en local (HTTP $LOCAL_HEALTH_STATUS)"
+    log_info "Vérifiez que Next.js est démarré sur le port 3000"
+fi
+
+# Tester via domaine public (peut échouer si pas d'auth)
+log_info "Test de l'endpoint de santé N8N via domaine: $APP_URL/api/platform/n8n/health"
+PUBLIC_HEALTH_STATUS=$(test_url "$APP_URL/api/platform/n8n/health" 5)
+
+if [ "$PUBLIC_HEALTH_STATUS" = "200" ]; then
+    log_success "Endpoint de santé répond via domaine (HTTP 200)"
+elif [ "$PUBLIC_HEALTH_STATUS" = "403" ]; then
+    log_success "Endpoint de santé répond via domaine (HTTP 403 - authentification requise, c'est normal)"
+elif [ "$PUBLIC_HEALTH_STATUS" = "503" ]; then
+    log_error "Endpoint de santé retourne 503 via domaine (N8N non accessible)"
+else
+    log_warning "Endpoint de santé ne répond pas via domaine (HTTP $PUBLIC_HEALTH_STATUS)"
+    log_info "Cela peut être normal si l'endpoint nécessite une authentification et qu'il n'y a pas de session"
 fi
 
 # ============================================
@@ -397,7 +449,7 @@ if [ ! -f "$NEXTJS_DIR/.env.production" ]; then
     ((ERRORS++))
 fi
 
-if ! sudo -u "$N8N_USER" pm2 list 2>/dev/null | grep -q "n8n.*online"; then
+if ! pm2 list 2>/dev/null | grep -q "n8n.*online" && ! sudo -u "$N8N_USER" pm2 list 2>/dev/null | grep -q "n8n.*online"; then
     ((ERRORS++))
 fi
 
@@ -424,8 +476,8 @@ if [ ! -f "$NEXTJS_DIR/.env.production" ]; then
     echo "1. Créer le fichier .env.production avec les variables N8N"
 fi
 
-if ! sudo -u "$N8N_USER" pm2 list 2>/dev/null | grep -q "n8n.*online"; then
-    echo "2. Démarrer N8N: sudo -u $N8N_USER pm2 start n8n --name n8n"
+if ! pm2 list 2>/dev/null | grep -q "n8n.*online" && ! sudo -u "$N8N_USER" pm2 list 2>/dev/null | grep -q "n8n.*online"; then
+    echo "2. Démarrer N8N: pm2 start n8n --name n8n (ou sudo -u $N8N_USER pm2 start n8n --name n8n)"
 fi
 
 if [ "$DOMAIN_STATUS" != "200" ] && [ "$DOMAIN_STATUS" != "401" ]; then
