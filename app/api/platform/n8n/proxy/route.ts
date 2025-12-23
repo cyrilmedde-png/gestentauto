@@ -51,6 +51,9 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // Récupérer les query params de l'URL (pour les passer à N8N, mais sans userId)
+  const { searchParams } = new URL(request.url)
+
   // Construire l'URL N8N (racine)
   const queryString = searchParams.toString()
     .replace(/userId=[^&]*&?/g, '')
