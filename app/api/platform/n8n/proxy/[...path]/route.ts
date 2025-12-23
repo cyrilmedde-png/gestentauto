@@ -63,7 +63,10 @@ export async function GET(
     ? `/${resolvedParams.path.join('/')}` 
     : '/'
   
-  // Construire l'URL N8N complète (enlever userId des query params)
+  // Récupérer les query params de l'URL (pour les passer à N8N, mais sans userId)
+  const { searchParams } = new URL(request.url)
+  
+  // Construire l'URL N8N complète (enlever userId des query params si présent)
   const queryString = searchParams.toString()
     .replace(/userId=[^&]*&?/g, '')
     .replace(/&$/, '')
