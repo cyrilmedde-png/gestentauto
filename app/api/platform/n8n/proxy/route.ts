@@ -271,18 +271,19 @@ export async function GET(request: NextRequest) {
 })();
 </script>`
       
-      // Injecter le script dans <head> en priorité pour qu'il soit chargé avant les requêtes
-      // Utiliser une regex pour trouver la première balise <head> et injecter juste après
+      // Injecter le script IMMÉDIATEMENT après <head> pour qu'il soit exécuté en premier
+      // Utiliser replace avec une fonction pour éviter les problèmes de remplacement multiple
       if (modifiedHtml.includes('<head>')) {
-        modifiedHtml = modifiedHtml.replace('<head>', '<head>' + interceptionScript)
+        modifiedHtml = modifiedHtml.replace(/<head>/i, '<head>' + interceptionScript);
       } else if (modifiedHtml.includes('</head>')) {
-        modifiedHtml = modifiedHtml.replace('</head>', interceptionScript + '</head>')
+        modifiedHtml = modifiedHtml.replace('</head>', interceptionScript + '</head>');
       } else if (modifiedHtml.includes('</body>')) {
-        modifiedHtml = modifiedHtml.replace('</body>', interceptionScript + '</body>')
+        modifiedHtml = modifiedHtml.replace('</body>', interceptionScript + '</body>');
       } else if (modifiedHtml.includes('</html>')) {
-        modifiedHtml = modifiedHtml.replace('</html>', interceptionScript + '</html>')
+        modifiedHtml = modifiedHtml.replace('</html>', interceptionScript + '</html>');
       } else {
-        modifiedHtml += interceptionScript
+        // Si aucune balise trouvée, injecter au début du HTML
+        modifiedHtml = interceptionScript + modifiedHtml;
       }
       
       return new NextResponse(modifiedHtml, {
