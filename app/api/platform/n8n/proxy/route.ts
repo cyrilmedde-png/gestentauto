@@ -142,7 +142,10 @@ export async function GET(request: NextRequest) {
       // Ne pas passer userId - utiliser uniquement la session Supabase
       const interceptScript = `
 <script>
+// SCRIPT D'INTERCEPTION N8N - DOIT S'EXÉCUTER IMMÉDIATEMENT
+// Injection synchrone pour capturer toutes les requêtes dès le chargement
 (function() {
+  console.log('[N8N Proxy] 🚀 Script d\'interception chargé');
   const proxyBase = '${baseUrl}${proxyBase}';
   const n8nHost = '${new URL(N8N_URL).hostname}';
   
@@ -151,6 +154,11 @@ export async function GET(request: NextRequest) {
     // Si c'est déjà une URL proxy, ne pas la proxifier à nouveau
     if (url.includes('/api/platform/n8n/proxy')) {
       return false;
+    }
+    
+    // Toujours proxifier /rest/* et /assets/*
+    if (url.includes('/rest/') || url.includes('/assets/')) {
+      return true;
     }
     
     try {
