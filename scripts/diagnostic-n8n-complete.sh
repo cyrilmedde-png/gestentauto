@@ -16,8 +16,8 @@ NC='\033[0m' # No Color
 N8N_DOMAIN="n8n.talosprimes.com"
 N8N_DIR="/var/n8n"
 N8N_USER="n8n"
-APP_DIR="/var/www/gestion-complete-automatiser"
-NEXTJS_DIR="$APP_DIR/gestion complete automatiser"
+APP_DIR="/var/www/talosprime"
+NEXTJS_DIR="$APP_DIR"
 
 # Fonctions utilitaires
 log_info() {
