@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAuthenticatedUser } from '@/lib/middleware/platform-auth'
+import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
 import { checkN8NConfig, getN8NAuthHeaders, proxyN8NRequest } from '@/lib/services/n8n'
 
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
@@ -15,7 +15,7 @@ export async function GET(
 ) {
   // NE PAS récupérer userId depuis query params
   // Utiliser uniquement la session Supabase pour identifier l'utilisateur
-  // verifyAuthenticatedUser récupérera automatiquement l'utilisateur depuis la session
+  // verifyPlatformUser récupérera automatiquement l'utilisateur depuis la session
   
   // Attendre les params (Next.js 16)
   const resolvedParams = await params
@@ -38,21 +38,21 @@ export async function GET(
     isRestLogin,
   })
   
-  // Vérifier que l'utilisateur est authentifié (plateforme ou client) SAUF pour /rest/login
+  // Vérifier que l'utilisateur est un admin plateforme SAUF pour /rest/login
   if (!isRestLogin) {
-    const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
+    const { isPlatform, error } = await verifyPlatformUser(request)
     
-    if (!isAuthenticated || error) {
-      console.error('[N8N Proxy Catch-all] Auth failed:', {
-        isAuthenticated,
+    if (!isPlatform || error) {
+      console.error('[N8N Proxy Catch-all] Platform auth failed:', {
+        isPlatform,
         error,
         hasCookies: !!request.headers.get('cookie'),
         url: request.url,
         n8nPath,
       })
       return NextResponse.json(
-        { error: 'Unauthorized - Authentication required', details: error },
-        { status: 401 }
+        { error: 'Unauthorized - Platform admin access required', details: error },
+        { status: 403 }
       )
     }
   } else {
@@ -353,21 +353,21 @@ export async function POST(
   // Pour /rest/login, on permet l'accès SANS vérification d'authentification
   const isRestLogin = n8nPath === '/rest/login' || n8nPath.startsWith('/rest/login')
   
-  // Vérifier que l'utilisateur est authentifié (plateforme ou client) SAUF pour /rest/login
+  // Vérifier que l'utilisateur est un admin plateforme SAUF pour /rest/login
   if (!isRestLogin) {
-    const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
+    const { isPlatform, error } = await verifyPlatformUser(request)
     
-    if (!isAuthenticated || error) {
-      console.error('[N8N Proxy Catch-all POST] Auth failed:', {
-        isAuthenticated,
+    if (!isPlatform || error) {
+      console.error('[N8N Proxy Catch-all POST] Platform auth failed:', {
+        isPlatform,
         error,
         hasCookies: !!request.headers.get('cookie'),
         url: request.url,
         n8nPath,
       })
       return NextResponse.json(
-        { error: 'Unauthorized - Authentication required', details: error },
-        { status: 401 }
+        { error: 'Unauthorized - Platform admin access required', details: error },
+        { status: 403 }
       )
     }
   } else {

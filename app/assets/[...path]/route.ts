@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAuthenticatedUser } from '@/lib/middleware/platform-auth'
+import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
 import { checkN8NConfig, proxyN8NRequest } from '@/lib/services/n8n'
 
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
@@ -24,13 +24,13 @@ export async function GET(
   const isPublicAsset = publicAssets.some(asset => assetPath.includes(asset))
   
   if (!isPublicAsset) {
-    // Vérifier que l'utilisateur est authentifié (plateforme ou client)
-    // Utiliser uniquement la session Supabase (pas de n8n_userId)
-    const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
+    // Vérifier que l'utilisateur est un admin plateforme
+    // N8N est réservé aux administrateurs plateforme uniquement
+    const { isPlatform, error } = await verifyPlatformUser(request)
     
-    if (!isAuthenticated || error) {
-      console.error('[N8N /assets] Auth failed:', {
-        isAuthenticated,
+    if (!isPlatform || error) {
+      console.error('[N8N /assets] Platform auth failed:', {
+        isPlatform,
         error,
         assetPath,
         hasCookies: !!request.headers.get('cookie'),
@@ -39,12 +39,12 @@ export async function GET(
         url: request.url,
       })
       return NextResponse.json(
-        { error: 'Unauthorized - Authentication required', details: error },
+        { error: 'Unauthorized - Platform admin access required', details: error },
         { status: 403 }
       )
     }
     
-    console.log('[N8N /assets] Auth successful:', {
+    console.log('[N8N /assets] Platform auth successful:', {
       assetPath,
       hasCookies: !!request.headers.get('cookie'),
     })

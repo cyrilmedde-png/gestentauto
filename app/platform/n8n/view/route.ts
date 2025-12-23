@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAuthenticatedUser } from '@/lib/middleware/platform-auth'
+import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
 import { checkN8NConfig, testN8NConnection } from '@/lib/services/n8n'
 import { createServerClient } from '@/lib/supabase/server'
 
@@ -12,19 +12,19 @@ const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
 export async function GET(request: NextRequest) {
   // NE PAS récupérer userId depuis query params
   // Utiliser uniquement la session Supabase pour identifier l'utilisateur
-  // verifyAuthenticatedUser récupérera automatiquement l'utilisateur depuis la session
+  // verifyPlatformUser récupérera automatiquement l'utilisateur depuis la session
   
   try {
     // Log pour debug
     console.log('[N8N View] Cookies:', request.headers.get('cookie'))
     console.log('[N8N View] Using session-based authentication (no userId in URL)')
     
-    // Vérifier que l'utilisateur est authentifié (plateforme ou client)
-    const { isAuthenticated, error, userId } = await verifyAuthenticatedUser(request)
+    // Vérifier que l'utilisateur est un admin plateforme
+    const { isPlatform, error } = await verifyPlatformUser(request)
     
-    console.log('[N8N View] Auth result:', { isAuthenticated, error, userId })
+    console.log('[N8N View] Platform auth result:', { isPlatform, error })
     
-    if (!isAuthenticated || error) {
+    if (!isPlatform || error) {
       // Si l'authentification échoue, retourner une page HTML avec erreur détaillée
       const errorHtml = `
 <!DOCTYPE html>
@@ -422,8 +422,8 @@ export async function GET(request: NextRequest) {
   })
 
   // Ne pas créer de cookie n8n_userId
-      // verifyAuthenticatedUser utilisera uniquement la session Supabase pour identifier l'utilisateur
-  // puis vérifiera si son company_id correspond au platform_company_id
+  // verifyPlatformUser utilisera uniquement la session Supabase pour identifier l'utilisateur
+  // puis vérifiera si son company_id correspond au platform_company_id ou s'il est dans platform_n8n_access
 
   return response
 }

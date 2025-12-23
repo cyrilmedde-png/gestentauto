@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkN8NConfig, testN8NConnection, getN8NAuthHeaders } from '@/lib/services/n8n'
-import { verifyAuthenticatedUser } from '@/lib/middleware/platform-auth'
+import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
 
 /**
  * Route de diagnostic pour vérifier la configuration N8N et l'authentification
@@ -14,8 +14,8 @@ export async function GET(request: NextRequest) {
     // 2. Vérifier la connexion N8N
     const connection = await testN8NConnection(5000)
     
-    // 3. Vérifier l'authentification
-    const auth = await verifyAuthenticatedUser(request)
+    // 3. Vérifier l'authentification plateforme
+    const auth = await verifyPlatformUser(request)
     
     // 4. Vérifier les headers d'auth N8N
     const n8nAuthHeaders = getN8NAuthHeaders()
@@ -69,8 +69,7 @@ export async function GET(request: NextRequest) {
       },
       connection,
       authentication: {
-        isAuthenticated: auth.isAuthenticated,
-        userId: auth.userId,
+        isPlatform: auth.isPlatform,
         error: auth.error,
         requestHeaders,
         debug: {
@@ -87,8 +86,8 @@ export async function GET(request: NextRequest) {
       summary: {
         configValid: config.valid,
         n8nConnected: connection.connected,
-        userAuthenticated: auth.isAuthenticated,
-        allGood: config.valid && connection.connected && auth.isAuthenticated,
+        isPlatformUser: auth.isPlatform,
+        allGood: config.valid && connection.connected && auth.isPlatform,
       },
     })
   } catch (error) {

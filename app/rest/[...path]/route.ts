@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAuthenticatedUser } from '@/lib/middleware/platform-auth'
+import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
 import { checkN8NConfig, proxyN8NRequest } from '@/lib/services/n8n'
 
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
@@ -22,15 +22,14 @@ export async function GET(
   const isLoginRoute = restPath === 'login'
   
   if (!isLoginRoute) {
-    // Pour les autres routes REST, vérifier que l'utilisateur est authentifié
-    // Utiliser uniquement la session Supabase (pas de n8n_userId)
-    const { isAuthenticated, error, userId } = await verifyAuthenticatedUser(request)
+    // Pour les autres routes REST, vérifier que l'utilisateur est un admin plateforme
+    // N8N est réservé aux administrateurs plateforme uniquement
+    const { isPlatform, error } = await verifyPlatformUser(request)
     
-    if (!isAuthenticated || error) {
-      console.error('[N8N /rest] Auth failed:', {
-        isAuthenticated,
+    if (!isPlatform || error) {
+      console.error('[N8N /rest] Platform auth failed:', {
+        isPlatform,
         error,
-        userId,
         restPath,
         hasCookies: !!request.headers.get('cookie'),
         cookieHeader: request.headers.get('cookie')?.substring(0, 100) + '...',
@@ -46,13 +45,12 @@ export async function GET(
         console.log(`[N8N /rest] Allowing public route: ${restPath}`)
       } else {
         return NextResponse.json(
-          { error: 'Unauthorized - Authentication required', details: error },
-          { status: 401 }
+          { error: 'Unauthorized - Platform admin access required', details: error },
+          { status: 403 }
         )
       }
     } else {
-      console.log('[N8N /rest] Auth successful:', {
-        userId,
+      console.log('[N8N /rest] Platform auth successful:', {
         restPath,
         hasCookies: !!request.headers.get('cookie'),
       })
@@ -241,13 +239,13 @@ async function handleRestRequest(
   const isLoginRoute = restPath === 'login'
   
   if (!isLoginRoute) {
-    // Pour les autres routes REST, vérifier que l'utilisateur est authentifié
-    // Utiliser uniquement la session Supabase (pas de n8n_userId)
-    const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
+    // Pour les autres routes REST, vérifier que l'utilisateur est un admin plateforme
+    // N8N est réservé aux administrateurs plateforme uniquement
+    const { isPlatform, error } = await verifyPlatformUser(request)
     
-    if (!isAuthenticated || error) {
-      console.error(`[N8N /rest ${method}] Auth failed:`, {
-        isAuthenticated,
+    if (!isPlatform || error) {
+      console.error(`[N8N /rest ${method}] Platform auth failed:`, {
+        isPlatform,
         error,
         restPath,
         hasCookies: !!request.headers.get('cookie'),
@@ -259,8 +257,8 @@ async function handleRestRequest(
         console.log(`[N8N /rest ${method}] Allowing public route: ${restPath}`)
       } else {
         return NextResponse.json(
-          { error: 'Unauthorized - Authentication required', details: error },
-          { status: 401 }
+          { error: 'Unauthorized - Platform admin access required', details: error },
+          { status: 403 }
         )
       }
     }
