@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAuthenticatedUser } from '@/lib/middleware/platform-auth'
 import { checkN8NConfig, getN8NAuthHeaders, proxyN8NRequest } from '@/lib/services/n8n'
+import { createServerClient } from '@/lib/supabase/server'
 
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
 
@@ -34,6 +35,21 @@ export async function GET(request: NextRequest) {
       { error: 'Unauthorized - Authentication required', details: error },
       { status: 403 }
     )
+  }
+
+  // Récupérer le token JWT depuis la session Supabase pour l'injecter dans le HTML
+  let jwtToken: string | null = null
+  try {
+    const supabase = await createServerClient(request)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) {
+      jwtToken = session.access_token
+      console.log('[N8N Proxy Root] ✅ JWT token retrieved from session')
+    } else {
+      console.warn('[N8N Proxy Root] ⚠️ No JWT token in session')
+    }
+  } catch (tokenError) {
+    console.error('[N8N Proxy Root] ❌ Error retrieving JWT token:', tokenError)
   }
 
   // Vérifier la configuration N8N
@@ -138,6 +154,19 @@ export async function GET(request: NextRequest) {
         }
       )
       
+      // Injecter le token JWT dans le HTML pour que le script d'interception puisse l'utiliser
+      const tokenScript = jwtToken ? `
+<script>
+  // Stocker le token JWT pour l'utiliser dans les requêtes proxy
+  window.__N8N_AUTH_TOKEN__ = ${JSON.stringify(jwtToken)};
+  console.log('[N8N Proxy] JWT token stored for proxy requests');
+</script>
+` : `
+<script>
+  console.warn('[N8N Proxy] No JWT token available - will rely on cookies only');
+</script>
+`
+
       // Injecter un script pour intercepter les requêtes fetch et XMLHttpRequest
       // Ne pas passer userId - utiliser uniquement la session Supabase
       const interceptScript = `
@@ -274,13 +303,13 @@ export async function GET(request: NextRequest) {
 </script>
 `
       
-      // Injecter le script de manière synchrone AVANT tout autre script
+      // Injecter le token JWT et le script d'interception de manière synchrone AVANT tout autre script
       // Utiliser une injection plus agressive pour s'assurer qu'il s'exécute en premier
       if (modifiedHtml.includes('</head>')) {
-        // Injecter juste avant </head> pour s'assurer qu'il est chargé tôt
+        // Injecter le token JWT et le script d'interception juste avant </head> pour s'assurer qu'ils sont chargés tôt
         modifiedHtml = modifiedHtml.replace(
           /(<\/head>)/i,
-          `${interceptScript}$1`
+          `${tokenScript}${interceptScript}$1`
         )
       } else {
         // Fallback : injecter après <head>
