@@ -97,6 +97,9 @@ export async function GET(
       const proxyBase = `/api/platform/n8n/proxy`
       // Ne pas passer userId dans les URLs - utiliser uniquement la session Supabase
       
+      // Calculer n8nHost AVANT de l'utiliser dans le template string
+      const n8nHostValue = new URL(N8N_URL).hostname
+      
       // Remplacer les URLs par des URLs proxy
       let modifiedHtml = htmlData.replace(
         /(src|href|action)=["']([^"']+)["']/g,
@@ -152,7 +155,7 @@ export async function GET(
 (function() {
   console.log('[N8N Proxy] 🚀 Script d\'interception chargé');
   const proxyBase = '${baseUrl}${proxyBase}';
-  const n8nHost = '${new URL(N8N_URL).hostname}';
+  const n8nHost = ${JSON.stringify(n8nHostValue)};
   
   // Fonction pour déterminer si une URL doit être proxifiée
   function shouldProxy(url) {
