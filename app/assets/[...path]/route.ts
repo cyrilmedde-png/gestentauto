@@ -12,21 +12,44 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  // Vérifier que l'utilisateur est authentifié (plateforme ou client)
-  // Utiliser uniquement la session Supabase (pas de n8n_userId)
-  const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
+  // Construire le chemin N8N
+  const resolvedParams = await params
+  const assetPath = resolvedParams.path && resolvedParams.path.length > 0 
+    ? resolvedParams.path.join('/')
+    : ''
   
-  if (!isAuthenticated || error) {
-    console.error('[N8N /assets] Auth failed:', {
-      isAuthenticated,
-      error,
+  // Pour certains assets publics (comme les icônes, logos), permettre l'accès sans auth
+  // Mais pour la plupart des assets, l'authentification est requise
+  const publicAssets = ['favicon.ico', 'logo.png', 'icon.svg']
+  const isPublicAsset = publicAssets.some(asset => assetPath.includes(asset))
+  
+  if (!isPublicAsset) {
+    // Vérifier que l'utilisateur est authentifié (plateforme ou client)
+    // Utiliser uniquement la session Supabase (pas de n8n_userId)
+    const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
+    
+    if (!isAuthenticated || error) {
+      console.error('[N8N /assets] Auth failed:', {
+        isAuthenticated,
+        error,
+        assetPath,
+        hasCookies: !!request.headers.get('cookie'),
+        hasAuthHeader: !!request.headers.get('authorization'),
+        hasXAuthToken: !!request.headers.get('x-supabase-auth-token'),
+        url: request.url,
+      })
+      return NextResponse.json(
+        { error: 'Unauthorized - Authentication required', details: error },
+        { status: 403 }
+      )
+    }
+    
+    console.log('[N8N /assets] Auth successful:', {
+      assetPath,
       hasCookies: !!request.headers.get('cookie'),
-      url: request.url,
     })
-    return NextResponse.json(
-      { error: 'Unauthorized - Authentication required', details: error },
-      { status: 403 }
-    )
+  } else {
+    console.log('[N8N /assets] Allowing public asset:', assetPath)
   }
 
   // Vérifier la configuration N8N
@@ -42,13 +65,13 @@ export async function GET(
     )
   }
 
-  // Construire le chemin N8N
-  const resolvedParams = await params
-  const assetPath = resolvedParams.path && resolvedParams.path.length > 0 
-    ? resolvedParams.path.join('/')
-    : ''
-  
   const n8nUrl = `${N8N_URL}/assets/${assetPath}`
+  
+  console.log('[N8N /assets] Proxying asset:', {
+    assetPath,
+    n8nUrl,
+    requestUrl: request.url,
+  })
   
   try {
     const response = await proxyN8NRequest(n8nUrl, {
@@ -72,13 +95,26 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('[N8N /assets] Error proxying N8N asset:', error)
+    console.error('[N8N /assets] Error proxying N8N asset:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      assetPath,
+      n8nUrl,
+      requestUrl: request.url,
+    })
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+    
+    // Si c'est une erreur 404, retourner 404 au lieu de 503
+    if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+      return new NextResponse(null, { status: 404 })
+    }
+    
     return NextResponse.json(
       { 
         error: 'Échec de la récupération de l\'asset N8N',
         details: errorMessage,
-        hint: 'Vérifiez que N8N est démarré et accessible'
+        hint: 'Vérifiez que N8N est démarré et accessible',
+        assetPath,
       },
       { status: 503 }
     )

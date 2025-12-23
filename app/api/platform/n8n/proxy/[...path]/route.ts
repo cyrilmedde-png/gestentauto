@@ -250,19 +250,48 @@ export async function GET(
         '})();\n' +
         '</script>\n'
       
+      // Récupérer le token JWT depuis la session Supabase pour l'injecter dans le HTML
+      let jwtToken: string | null = null
+      try {
+        const { createServerClient } = await import('@/lib/supabase/server')
+        const supabase = await createServerClient(request)
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) {
+          jwtToken = session.access_token
+          console.log('[N8N Proxy Catch-all] ✅ JWT token retrieved from session')
+        } else {
+          console.warn('[N8N Proxy Catch-all] ⚠️ No JWT token in session')
+        }
+      } catch (tokenError) {
+        console.error('[N8N Proxy Catch-all] ❌ Error retrieving JWT token:', tokenError)
+      }
+
+      // Injecter le token JWT dans le HTML pour que le script d'interception puisse l'utiliser
+      const tokenScript = jwtToken ? `
+<script>
+  // Stocker le token JWT pour l'utiliser dans les requêtes proxy
+  window.__N8N_AUTH_TOKEN__ = ${JSON.stringify(jwtToken)};
+  console.log('[N8N Proxy] JWT token stored for proxy requests');
+</script>
+` : `
+<script>
+  console.warn('[N8N Proxy] No JWT token available - will rely on cookies only');
+</script>
+`
+
       // Injecter le script de manière synchrone AVANT tout autre script
       // Utiliser une injection plus agressive pour s'assurer qu'il s'exécute en premier
       if (modifiedHtml.includes('</head>')) {
         // Injecter juste avant </head> pour s'assurer qu'il est chargé tôt
         modifiedHtml = modifiedHtml.replace(
           /(<\/head>)/i,
-          `${interceptScript}$1`
+          `${tokenScript}${interceptScript}$1`
         )
       } else {
         // Fallback : injecter après <head>
         modifiedHtml = modifiedHtml.replace(
           /(<head[^>]*>)/i,
-          `$1${interceptScript}`
+          `$1${tokenScript}${interceptScript}`
         )
       }
       

@@ -38,17 +38,25 @@ export async function GET(
         hasXAuthToken: !!request.headers.get('x-supabase-auth-token'),
         url: request.url,
       })
-      return NextResponse.json(
-        { error: 'Unauthorized - Authentication required', details: error },
-        { status: 401 }
-      )
+      
+      // Pour certaines routes REST publiques de N8N, permettre l'accès
+      // (par exemple /rest/login, /rest/owner, etc.)
+      const publicRestRoutes = ['login', 'owner', 'settings']
+      if (publicRestRoutes.includes(restPath)) {
+        console.log(`[N8N /rest] Allowing public route: ${restPath}`)
+      } else {
+        return NextResponse.json(
+          { error: 'Unauthorized - Authentication required', details: error },
+          { status: 401 }
+        )
+      }
+    } else {
+      console.log('[N8N /rest] Auth successful:', {
+        userId,
+        restPath,
+        hasCookies: !!request.headers.get('cookie'),
+      })
     }
-    
-    console.log('[N8N /rest] Auth successful:', {
-      userId,
-      restPath,
-      hasCookies: !!request.headers.get('cookie'),
-    })
   } else {
     // Pour /rest/login, on permet l'accès SANS aucune vérification d'authentification
     // N8N gère sa propre authentification via cette route
@@ -154,13 +162,30 @@ export async function GET(
       headers: responseHeaders,
     })
   } catch (error) {
-    console.error('[N8N /rest] Error proxying N8N REST API:', error)
+    console.error('[N8N /rest] Error proxying N8N REST API:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      restPath,
+      n8nUrl,
+      requestUrl: request.url,
+      method: 'GET',
+    })
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+    
+    // Si c'est une erreur 404, retourner 404 au lieu de 503
+    if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+      return NextResponse.json(
+        { error: 'Route REST N8N non trouvée', restPath },
+        { status: 404 }
+      )
+    }
+    
     return NextResponse.json(
       { 
         error: 'Échec de la connexion à l\'API REST N8N',
         details: errorMessage,
-        hint: 'Vérifiez que N8N est démarré et accessible'
+        hint: 'Vérifiez que N8N est démarré et accessible',
+        restPath,
       },
       { status: 503 }
     )
@@ -224,10 +249,17 @@ async function handleRestRequest(
         restPath,
         hasCookies: !!request.headers.get('cookie'),
       })
-      return NextResponse.json(
-        { error: 'Unauthorized - Authentication required', details: error },
-        { status: 401 }
-      )
+      
+      // Pour certaines routes REST publiques de N8N, permettre l'accès
+      const publicRestRoutes = ['login', 'owner', 'settings']
+      if (publicRestRoutes.includes(restPath)) {
+        console.log(`[N8N /rest ${method}] Allowing public route: ${restPath}`)
+      } else {
+        return NextResponse.json(
+          { error: 'Unauthorized - Authentication required', details: error },
+          { status: 401 }
+        )
+      }
     }
   } else {
     // Pour /rest/login, on permet l'accès SANS aucune vérification d'authentification
@@ -322,13 +354,30 @@ async function handleRestRequest(
       headers: responseHeaders,
     })
   } catch (error) {
-    console.error(`[N8N /rest ${method}] Error proxying N8N REST API:`, error)
+    console.error(`[N8N /rest ${method}] Error proxying N8N REST API:`, {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      restPath,
+      n8nUrl,
+      requestUrl: request.url,
+      method,
+    })
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+    
+    // Si c'est une erreur 404, retourner 404 au lieu de 503
+    if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+      return NextResponse.json(
+        { error: 'Route REST N8N non trouvée', restPath },
+        { status: 404 }
+      )
+    }
+    
     return NextResponse.json(
       { 
         error: `Échec de la connexion à l'API REST N8N (${method})`,
         details: errorMessage,
-        hint: 'Vérifiez que N8N est démarré et accessible'
+        hint: 'Vérifiez que N8N est démarré et accessible',
+        restPath,
       },
       { status: 503 }
     )

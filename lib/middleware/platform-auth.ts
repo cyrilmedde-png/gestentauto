@@ -99,7 +99,47 @@ export async function verifyAuthenticatedUser(
         cookieKeys: cookieKeys,
         url: request.url,
         method: request.method,
+        hasJwtToken: !!jwtToken,
       })
+      
+      // Si on a un token JWT mais que getUser() échoue, essayer de créer un client avec le token directement
+      if (jwtToken && authError) {
+        console.log('[verifyAuthenticatedUser] 🔄 Retrying with JWT token directly...')
+        try {
+          const { createClient } = await import('@supabase/supabase-js')
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+          
+          if (supabaseUrl && supabaseAnonKey) {
+            const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+              auth: {
+                persistSession: false,
+                autoRefreshToken: false,
+              },
+              global: {
+                headers: {
+                  Authorization: `Bearer ${jwtToken}`,
+                },
+              },
+            })
+            
+            const { data: { user: jwtUser }, error: jwtError } = await tempClient.auth.getUser()
+            
+            if (!jwtError && jwtUser) {
+              console.log('[verifyAuthenticatedUser] ✅ User authenticated via JWT token (retry):', {
+                userId: jwtUser.id,
+                email: jwtUser.email,
+              })
+              return {
+                isAuthenticated: true,
+                userId: jwtUser.id,
+              }
+            }
+          }
+        } catch (retryErr) {
+          console.warn('[verifyAuthenticatedUser] ⚠️ JWT retry failed:', retryErr)
+        }
+      }
       
       // Message d'erreur plus détaillé
       let errorMessage = 'Not authenticated. Please log in.'
