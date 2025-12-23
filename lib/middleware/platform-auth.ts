@@ -2,6 +2,49 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createServerClient } from '@/lib/supabase/server'
 
 /**
+ * Vérifie que l'utilisateur est authentifié (plateforme ou client)
+ * À utiliser pour les routes N8N qui doivent être accessibles à tous les utilisateurs authentifiés
+ * 
+ * @param request - La requête Next.js
+ * @returns true si l'utilisateur est authentifié, false sinon
+ */
+export async function verifyAuthenticatedUser(
+  request: NextRequest
+): Promise<{ isAuthenticated: boolean; error?: string; userId?: string }> {
+  try {
+    const supabase = await createServerClient(request)
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      console.log('[verifyAuthenticatedUser] ❌ User not authenticated:', {
+        error: authError?.message,
+        hasUser: !!user,
+      })
+      return {
+        isAuthenticated: false,
+        error: authError?.message || 'Not authenticated. Please log in.',
+      }
+    }
+    
+    console.log('[verifyAuthenticatedUser] ✅ User authenticated:', {
+      userId: user.id,
+      email: user.email,
+    })
+    
+    return {
+      isAuthenticated: true,
+      userId: user.id,
+    }
+  } catch (error) {
+    console.error('[verifyAuthenticatedUser] ❌ Error:', error)
+    return {
+      isAuthenticated: false,
+      error: error instanceof Error ? error.message : 'Authentication error',
+    }
+  }
+}
+
+/**
  * Middleware pour vérifier que l'utilisateur est un utilisateur plateforme
  * À utiliser dans les routes API /api/platform/*
  * 

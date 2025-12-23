@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
+import { verifyAuthenticatedUser } from '@/lib/middleware/platform-auth'
 import { testN8NConnection } from '@/lib/services/n8n'
 
 /**
  * Route pour vérifier l'état de santé de N8N
- * Accessible uniquement aux utilisateurs de la plateforme
+ * Accessible à tous les utilisateurs authentifiés (plateforme et clients)
  */
 export async function GET(request: NextRequest) {
   try {
-    // Vérifier que l'utilisateur est de la plateforme
-    const { isPlatform, error } = await verifyPlatformUser(request)
+    // Vérifier que l'utilisateur est authentifié (plateforme ou client)
+    const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
     
-    if (!isPlatform || error) {
+    if (!isAuthenticated || error) {
       return NextResponse.json(
-        { error: 'Unauthorized - Plateforme uniquement', details: error },
+        { error: 'Unauthorized - Authentication required', details: error },
         { status: 403 }
       )
     }

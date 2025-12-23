@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
+import { verifyAuthenticatedUser } from '@/lib/middleware/platform-auth'
 import { checkN8NConfig, testN8NConnection } from '@/lib/services/n8n'
 
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
@@ -18,13 +18,12 @@ export async function GET(request: NextRequest) {
     console.log('[N8N View] Cookies:', request.headers.get('cookie'))
     console.log('[N8N View] Using session-based authentication (no userId in URL)')
     
-    // Vérifier que l'utilisateur est de la plateforme
-    // Ne pas passer userId - laisser verifyPlatformUser utiliser uniquement la session Supabase
-    const { isPlatform, error } = await verifyPlatformUser(request)
+    // Vérifier que l'utilisateur est authentifié (plateforme ou client)
+    const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
     
-    console.log('[N8N View] Auth result:', { isPlatform, error })
+    console.log('[N8N View] Auth result:', { isAuthenticated, error })
     
-    if (!isPlatform || error) {
+    if (!isAuthenticated || error) {
       // Si l'authentification échoue, retourner une page HTML avec erreur détaillée
       const errorHtml = `
 <!DOCTYPE html>
@@ -63,7 +62,7 @@ export async function GET(request: NextRequest) {
 <body>
   <div class="error">
     <h1>Erreur d'authentification</h1>
-    <p>Vous devez être un utilisateur de la plateforme pour accéder à N8N.</p>
+    <p>Vous devez être authentifié pour accéder à N8N.</p>
     <p style="color: #888; font-size: 12px;">${error || 'Non autorisé'}</p>
     <div class="debug">
       <strong>Debug info:</strong><br>
@@ -228,7 +227,7 @@ export async function GET(request: NextRequest) {
   })
 
   // Ne pas créer de cookie n8n_userId
-  // verifyPlatformUser utilisera uniquement la session Supabase pour identifier l'utilisateur
+      // verifyAuthenticatedUser utilisera uniquement la session Supabase pour identifier l'utilisateur
   // puis vérifiera si son company_id correspond au platform_company_id
 
   return response

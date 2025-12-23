@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
+import { verifyAuthenticatedUser } from '@/lib/middleware/platform-auth'
 import { checkN8NConfig, proxyN8NRequest } from '@/lib/services/n8n'
 
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
@@ -24,12 +24,12 @@ export async function GET(
   
   const userId = cookies['n8n_userId'] || request.headers.get('X-User-Id')
   
-  // Vérifier que l'utilisateur est de la plateforme
-  const { isPlatform, error } = await verifyPlatformUser(request, userId || undefined)
+  // Vérifier que l'utilisateur est authentifié (plateforme ou client)
+  const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
   
-  if (!isPlatform || error) {
+  if (!isAuthenticated || error) {
     return NextResponse.json(
-      { error: 'Unauthorized - Plateforme uniquement', details: error },
+      { error: 'Unauthorized - Authentication required', details: error },
       { status: 403 }
     )
   }

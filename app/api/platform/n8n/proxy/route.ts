@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
+import { verifyAuthenticatedUser } from '@/lib/middleware/platform-auth'
 import { checkN8NConfig, getN8NAuthHeaders, proxyN8NRequest } from '@/lib/services/n8n'
 
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
@@ -12,7 +12,7 @@ const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
 export async function GET(request: NextRequest) {
   // NE PAS récupérer userId depuis query params
   // Utiliser uniquement la session Supabase pour identifier l'utilisateur
-  // verifyPlatformUser récupérera automatiquement l'utilisateur depuis la session
+  // verifyAuthenticatedUser récupérera automatiquement l'utilisateur depuis la session
   
   // Log pour déboguer
   console.log('[N8N Proxy Root] Request:', {
@@ -20,19 +20,18 @@ export async function GET(request: NextRequest) {
     hasCookies: !!request.headers.get('cookie'),
   })
   
-  // Vérifier que l'utilisateur est de la plateforme
-  // Utiliser uniquement la session Supabase (pas de userId dans query params)
-  const { isPlatform, error } = await verifyPlatformUser(request)
+  // Vérifier que l'utilisateur est authentifié (plateforme ou client)
+  const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
   
-  if (!isPlatform || error) {
+  if (!isAuthenticated || error) {
     console.error('[N8N Proxy Root] Auth failed:', {
-      isPlatform,
+      isAuthenticated,
       error,
       hasCookies: !!request.headers.get('cookie'),
       url: request.url,
     })
     return NextResponse.json(
-      { error: 'Unauthorized - Plateforme uniquement', details: error },
+      { error: 'Unauthorized - Authentication required', details: error },
       { status: 403 }
     )
   }
@@ -258,11 +257,11 @@ export async function POST(request: NextRequest) {
   // NE PAS récupérer userId depuis query params
   // Utiliser uniquement la session Supabase pour identifier l'utilisateur
   
-  const { isPlatform, error } = await verifyPlatformUser(request)
+  const { isAuthenticated, error } = await verifyAuthenticatedUser(request)
   
-  if (!isPlatform || error) {
+  if (!isAuthenticated || error) {
     return NextResponse.json(
-      { error: 'Unauthorized - Plateforme uniquement', details: error },
+      { error: 'Unauthorized - Authentication required', details: error },
       { status: 403 }
     )
   }
