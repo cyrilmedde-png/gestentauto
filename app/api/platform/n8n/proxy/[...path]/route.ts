@@ -6,6 +6,19 @@ import { createServerClient } from '@/lib/supabase/server'
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
 
 /**
+ * Fonction pour créer les headers CORS
+ */
+function getCorsHeaders(origin?: string | null): HeadersInit {
+  const allowedOrigin = origin || 'https://www.talosprimes.com'
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Supabase-Auth-Token, X-Requested-With',
+    'Access-Control-Allow-Credentials': 'true',
+  }
+}
+
+/**
  * Proxy catch-all pour N8N
  * Gère toutes les requêtes vers /api/platform/n8n/proxy/*
  */
@@ -71,6 +84,7 @@ export async function GET(
         headers: {
           'Content-Type': contentType,
           'Cache-Control': 'no-cache, no-store, must-revalidate',
+          ...getCorsHeaders(request.headers.get('origin')),
         },
       })
       
@@ -189,7 +203,7 @@ export async function GET(
       }
     } catch {}
     
-    // URLs relatives vers N8N
+    // URLs relatives vers N8N (inclut /rest/telemetry/...)
     if (url.startsWith('/rest/') || 
         url.startsWith('/assets/') || 
         url.startsWith('/types/') ||
@@ -291,8 +305,10 @@ export async function GET(
 })();
 </script>`
       
-      // Injecter le script avant </body> ou avant </html>
-      if (modifiedHtml.includes('</body>')) {
+      // Injecter le script dans <head> en priorité pour qu'il soit chargé avant les requêtes
+      if (modifiedHtml.includes('</head>')) {
+        modifiedHtml = modifiedHtml.replace('</head>', interceptionScript + '</head>')
+      } else if (modifiedHtml.includes('</body>')) {
         modifiedHtml = modifiedHtml.replace('</body>', interceptionScript + '</body>')
       } else if (modifiedHtml.includes('</html>')) {
         modifiedHtml = modifiedHtml.replace('</html>', interceptionScript + '</html>')
@@ -305,6 +321,7 @@ export async function GET(
         headers: {
           'Content-Type': contentType,
           'Cache-Control': 'no-cache, no-store, must-revalidate',
+          ...getCorsHeaders(request.headers.get('origin')),
         },
       })
     }
@@ -318,6 +335,7 @@ export async function GET(
         'Cache-Control': contentType.includes('javascript') || contentType.includes('css')
           ? 'public, max-age=31536000, immutable'
           : 'no-cache, no-store, must-revalidate',
+        ...getCorsHeaders(request.headers.get('origin')),
       },
     })
   } catch (error) {
@@ -387,6 +405,7 @@ export async function POST(
       headers: {
         'Content-Type': contentType,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
+        ...getCorsHeaders(request.headers.get('origin')),
       },
     })
     

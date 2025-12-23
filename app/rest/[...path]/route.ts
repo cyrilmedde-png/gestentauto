@@ -5,9 +5,32 @@ import { checkN8NConfig, proxyN8NRequest } from '@/lib/services/n8n'
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
 
 /**
+ * Fonction pour créer les headers CORS
+ */
+function getCorsHeaders(origin?: string | null): HeadersInit {
+  const allowedOrigin = origin || 'https://www.talosprimes.com'
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Supabase-Auth-Token, X-Requested-With',
+    'Access-Control-Allow-Credentials': 'true',
+  }
+}
+
+/**
  * Route pour intercepter les requêtes vers /rest/* depuis N8N
  * Proxy vers N8N avec authentification plateforme
  */
+export async function OPTIONS(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: getCorsHeaders(request.headers.get('origin')),
+  })
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -70,6 +93,7 @@ export async function GET(
         headers: {
           'Content-Type': contentType,
           'Cache-Control': 'no-cache, no-store, must-revalidate',
+          ...getCorsHeaders(request.headers.get('origin')),
         },
       })
       
@@ -108,6 +132,7 @@ export async function GET(
     const responseHeaders: HeadersInit = {
       'Content-Type': contentType,
       'Cache-Control': 'no-cache, no-store, must-revalidate',
+      ...getCorsHeaders(request.headers.get('origin')),
     }
     
     const setCookieHeaders = response.headers.getSetCookie()
