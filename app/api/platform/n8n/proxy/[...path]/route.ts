@@ -224,10 +224,21 @@ export async function GET(
       return true;
     }
     
+    // IMPORTANT: Capturer les requêtes vers localhost:5678 (N8N direct)
+    if (url.includes('localhost:5678') || url.includes('127.0.0.1:5678')) {
+      return true;
+    }
+    
     // URLs absolues - vérifier si c'est vers n8n.talosprimes.com
     try {
       const urlObj = new URL(url, window.location.origin);
       const hostname = urlObj.hostname;
+      const port = urlObj.port;
+      
+      // Capturer localhost:5678 ou 127.0.0.1:5678
+      if ((hostname === 'localhost' || hostname === '127.0.0.1') && port === '5678') {
+        return true;
+      }
       
       // Double vérification pour les domaines externes (sécurité)
       if (externalDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
@@ -246,9 +257,8 @@ export async function GET(
       
       return false;
     } catch {
-      // Si l'URL est invalide, vérifier si elle contient n8n.talosprimes.com
-      // MAIS exclure les domaines externes
-      if (url.includes('n8n.talosprimes.com')) {
+      // Si l'URL est invalide, vérifier si elle contient n8n.talosprimes.com ou localhost:5678
+      if (url.includes('n8n.talosprimes.com') || url.includes('localhost:5678') || url.includes('127.0.0.1:5678')) {
         // Vérifier qu'elle ne contient pas de domaines externes
         return !externalDomains.some(d => url.includes(d));
       }
@@ -257,6 +267,59 @@ export async function GET(
   }
   
   function toProxyUrl(url) {
+    // Si c'est une URL vers localhost:5678, extraire le chemin
+    if (url.includes('localhost:5678') || url.includes('127.0.0.1:5678')) {
+      try {
+        const urlObj = new URL(url);
+        const path = urlObj.pathname || '/';
+        const search = urlObj.search || '';
+        return proxyBase + path + search;
+      } catch {
+        // Extraction manuelle si URL() échoue - utiliser new RegExp() pour éviter les problèmes d'échappement
+        try {
+          const localhostPattern = new RegExp('localhost:5678(\\/.*|$)');
+          const localhostMatch = url.match(localhostPattern);
+          if (localhostMatch && localhostMatch[1]) {
+            return proxyBase + (localhostMatch[1] || '/');
+          }
+        } catch (e) {
+          // Ignorer l'erreur de regex
+        }
+        
+        try {
+          const ipPattern = new RegExp('127\\.0\\.0\\.1:5678(\\/.*|$)');
+          const ipMatch = url.match(ipPattern);
+          if (ipMatch && ipMatch[1]) {
+            return proxyBase + (ipMatch[1] || '/');
+          }
+        } catch (e) {
+          // Ignorer l'erreur de regex
+        }
+        
+        // Si pas de chemin trouvé, essayer d'extraire /rest/...
+        try {
+          const restPattern = new RegExp('(\\/rest\\/.*)');
+          const restMatch = url.match(restPattern);
+          if (restMatch && restMatch[1]) {
+            return proxyBase + restMatch[1];
+          }
+        } catch (e) {
+          // Ignorer l'erreur de regex
+        }
+        
+        // Fallback : extraire manuellement après le port
+        const portIndex = url.indexOf(':5678');
+        if (portIndex !== -1) {
+          const pathStart = url.indexOf('/', portIndex + 5);
+          if (pathStart !== -1) {
+            return proxyBase + url.substring(pathStart);
+          }
+        }
+        
+        return proxyBase + '/';
+      }
+    }
+    
     if (url.startsWith('http://') || url.startsWith('https://')) {
       try {
         const urlObj = new URL(url);

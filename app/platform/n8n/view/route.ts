@@ -220,16 +220,47 @@ export async function GET(request: NextRequest) {
             const search = urlObj.search || '';
             return proxyBase + path + search;
           } catch {
-            // Extraction manuelle si URL() échoue
-            const match = url.match(/localhost:5678(\/.*|$)/) || url.match(/127\.0\.0\.1:5678(\/.*|$)/);
-            if (match && match[1]) {
-              return proxyBase + match[1];
+            // Extraction manuelle si URL() échoue - utiliser new RegExp() pour éviter les problèmes d'échappement
+            try {
+              const localhostPattern = new RegExp('localhost:5678(\\/.*|$)');
+              const localhostMatch = url.match(localhostPattern);
+              if (localhostMatch && localhostMatch[1]) {
+                return proxyBase + (localhostMatch[1] || '/');
+              }
+            } catch (e) {
+              // Ignorer l'erreur de regex
             }
-            // Si pas de chemin, utiliser la racine
-            const pathMatch = url.match(/(\/rest\/.*)/);
-            if (pathMatch) {
-              return proxyBase + pathMatch[1];
+            
+            try {
+              const ipPattern = new RegExp('127\\.0\\.0\\.1:5678(\\/.*|$)');
+              const ipMatch = url.match(ipPattern);
+              if (ipMatch && ipMatch[1]) {
+                return proxyBase + (ipMatch[1] || '/');
+              }
+            } catch (e) {
+              // Ignorer l'erreur de regex
             }
+            
+            // Si pas de chemin trouvé, essayer d'extraire /rest/...
+            try {
+              const restPattern = new RegExp('(\\/rest\\/.*)');
+              const restMatch = url.match(restPattern);
+              if (restMatch && restMatch[1]) {
+                return proxyBase + restMatch[1];
+              }
+            } catch (e) {
+              // Ignorer l'erreur de regex
+            }
+            
+            // Fallback : extraire manuellement après le port
+            const portIndex = url.indexOf(':5678');
+            if (portIndex !== -1) {
+              const pathStart = url.indexOf('/', portIndex + 5);
+              if (pathStart !== -1) {
+                return proxyBase + url.substring(pathStart);
+              }
+            }
+            
             return proxyBase + '/';
           }
         }
