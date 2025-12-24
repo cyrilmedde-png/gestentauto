@@ -349,11 +349,19 @@ export async function proxyN8NRequest(
           const chunks: Buffer[] = []
           const responseHeaders: Record<string, string> = {}
           
-          // Collecter les headers
+          // Collecter les headers (gérer Set-Cookie spécialement)
           Object.keys(res.headers).forEach((key) => {
             const value = res.headers[key]
+            const lowerKey = key.toLowerCase()
+            
             if (value) {
-              responseHeaders[key.toLowerCase()] = Array.isArray(value) ? value.join(', ') : value
+              // Set-Cookie est toujours un tableau dans Node.js
+              if (lowerKey === 'set-cookie') {
+                // Garder Set-Cookie comme tableau pour pouvoir l'extraire
+                responseHeaders[lowerKey] = Array.isArray(value) ? value.join('\n') : value
+              } else {
+                responseHeaders[lowerKey] = Array.isArray(value) ? value.join(', ') : value
+              }
             }
           })
 
@@ -422,10 +430,36 @@ export async function proxyN8NRequest(
       bufferCopy.byteOffset + bufferCopy.byteLength
     ) as ArrayBuffer
     
+    // Créer un objet Headers pour gérer Set-Cookie correctement
+    const responseHeaders = new Headers()
+    
+    // Ajouter tous les headers sauf Set-Cookie (qui sera géré séparément)
+    Object.keys(responseData.headers).forEach((key) => {
+      if (key.toLowerCase() !== 'set-cookie') {
+        responseHeaders.set(key, responseData.headers[key])
+      }
+    })
+    
+    // Gérer Set-Cookie spécialement (peut être multiple)
+    const setCookieValue = responseData.headers['set-cookie']
+    if (setCookieValue) {
+      // Si Set-Cookie est stocké comme string (séparé par \n), le diviser
+      const setCookieArray = typeof setCookieValue === 'string' 
+        ? setCookieValue.split('\n')
+        : (Array.isArray(setCookieValue) ? setCookieValue : [setCookieValue])
+      
+      // Ajouter chaque cookie Set-Cookie (l'API Headers gère automatiquement les multiples)
+      setCookieArray.forEach((cookie: string) => {
+        if (cookie) {
+          responseHeaders.append('Set-Cookie', cookie.trim())
+        }
+      })
+    }
+    
     const response = new Response(arrayBuffer, {
       status: responseData.statusCode,
       statusText: responseData.statusMessage,
-      headers: responseData.headers,
+      headers: responseHeaders,
     })
 
     return response
