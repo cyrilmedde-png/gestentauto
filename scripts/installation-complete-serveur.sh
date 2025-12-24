@@ -249,22 +249,16 @@ server {
     return 301 https://\$host\$request_uri;
 }
 
-# Configuration HTTPS
+# Configuration HTTPS (sans certificats SSL pour l'instant)
+# Les certificats seront ajoutés automatiquement par Certbot
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
     server_name $DOMAIN_NO_WWW $DOMAIN;
     
-    # Certificats SSL (seront configurés par Certbot)
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN_NO_WWW/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN_NO_WWW/privkey.pem;
-    
-    # Configuration SSL
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers on;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
+    # Certificats SSL (seront ajoutés par Certbot)
+    # ssl_certificate /etc/letsencrypt/live/$DOMAIN_NO_WWW/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/$DOMAIN_NO_WWW/privkey.pem;
     
     # Headers de sécurité
     add_header X-Frame-Options "SAMEORIGIN" always;
@@ -317,6 +311,7 @@ fi
 # Tester la configuration
 if nginx -t; then
     echo "✅ Configuration Nginx valide"
+    systemctl reload nginx
 else
     echo "❌ Erreur dans la configuration Nginx"
     nginx -t
@@ -326,18 +321,37 @@ fi
 echo ""
 echo "1️⃣4️⃣  Configuration SSL avec Certbot..."
 echo "--------------------------------------"
-echo "📋 Pour obtenir un certificat SSL, exécutez:"
-echo "   certbot --nginx -d $DOMAIN_NO_WWW -d $DOMAIN"
+echo "📋 Configuration SSL (nécessite que les DNS pointent vers ce serveur)"
 echo ""
 read -p "Voulez-vous configurer SSL maintenant ? (o/N): " -n 1 -r
 echo ""
 if [[ $REPLY =~ ^[OoYy]$ ]]; then
-    certbot --nginx -d "$DOMAIN_NO_WWW" -d "$DOMAIN" --non-interactive --agree-tos --email admin@talosprimes.com || {
+    echo "📧 Entrez votre email pour les notifications Let's Encrypt:"
+    read -p "Email: " CERTBOT_EMAIL
+    
+    if [ -z "$CERTBOT_EMAIL" ]; then
+        CERTBOT_EMAIL="admin@talosprimes.com"
+    fi
+    
+    echo "🔐 Obtention des certificats SSL..."
+    certbot --nginx -d "$DOMAIN_NO_WWW" -d "$DOMAIN" \
+        --non-interactive \
+        --agree-tos \
+        --email "$CERTBOT_EMAIL" \
+        --redirect || {
         echo "⚠️  Erreur lors de la configuration SSL"
-        echo "   Vous pourrez le faire manuellement plus tard"
+        echo "   Vérifiez que:"
+        echo "   1. Les DNS pointent vers ce serveur"
+        echo "   2. Les ports 80 et 443 sont ouverts"
+        echo "   3. Le domaine est accessible depuis Internet"
+        echo ""
+        echo "   Vous pourrez réessayer plus tard avec:"
+        echo "   certbot --nginx -d $DOMAIN_NO_WWW -d $DOMAIN"
     }
 else
-    echo "⏭️  Configuration SSL ignorée (à faire manuellement)"
+    echo "⏭️  Configuration SSL ignorée"
+    echo "   Pour configurer SSL plus tard, exécutez:"
+    echo "   certbot --nginx -d $DOMAIN_NO_WWW -d $DOMAIN"
 fi
 
 echo ""
