@@ -415,7 +415,13 @@ export async function proxyN8NRequest(
     })
 
     // Convertir la réponse en objet Response compatible
-    const response = new Response(responseData.body, {
+    // Convertir Buffer en ArrayBuffer pour Response
+    const arrayBuffer = responseData.body.buffer.slice(
+      responseData.body.byteOffset,
+      responseData.body.byteOffset + responseData.body.byteLength
+    )
+    
+    const response = new Response(arrayBuffer, {
       status: responseData.statusCode,
       statusText: responseData.statusMessage,
       headers: responseData.headers,
