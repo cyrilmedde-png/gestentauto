@@ -78,7 +78,11 @@ export async function testN8NConnection(timeout: number = 5000): Promise<N8NConn
 
     // Utiliser https de Node.js directement pour éviter les problèmes avec fetch()
     const url = new URL(N8N_URL)
-    const responseTime = Date.now() - startTime
+    
+    if (process.env.NODE_ENV === 'production') {
+      console.log('[testN8NConnection] Utilisation de https.request() (nouveau code)')
+      console.log('[testN8NConnection] URL parsée:', { hostname: url.hostname, port: url.port || 443, path: url.pathname || '/' })
+    }
 
     // Créer un agent HTTPS qui ignore les erreurs de certificat (pour les certificats auto-signés)
     const agent = new https.Agent({
@@ -110,6 +114,15 @@ export async function testN8NConnection(timeout: number = 5000): Promise<N8NConn
       )
 
       req.on('error', (error) => {
+        if (process.env.NODE_ENV === 'production') {
+          console.error('[testN8NConnection] Erreur https.request:', {
+            message: error.message,
+            name: error.name,
+            code: (error as any).code,
+            syscall: (error as any).syscall,
+            hostname: (error as any).hostname,
+          })
+        }
         reject(error)
       })
 
