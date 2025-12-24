@@ -124,7 +124,7 @@ BEGIN { found_first=0; block_num=0 }
     if (found_first && has_location) {
         print "   ✅ A location / avec proxy_pass"
     } else if (found_first && !has_location) {
-        print "   ❌ PAS de location / - C'EST LE PROBLÈME !"
+        print "   ❌ PAS de location / - CEST LE PROBLEME !"
     }
     in_block=0
 }
@@ -141,21 +141,47 @@ BEGIN { block_num=0; found_www=0 }
     in_block=1
     server_name=""
     listen_line=$0
+    is_default=0
+}
+/default_server/ && in_block {
+    is_default=1
 }
 /server_name.*www\.talosprimes\.com/ && in_block {
     found_www=1
     print "⭐ Bloc #" block_num " - Bloc pour www.talosprimes.com"
+    if (is_default) {
+        print "   ⚠️  Ce bloc est default_server (peut intercepter)"
+    }
 }
 /server_name/ && in_block && !found_www {
     server_name=$0
     if (server_name !~ /www\.talosprimes\.com/ && server_name ~ /talosprimes/) {
         print "⚠️  Bloc #" block_num " - " server_name " (AVANT le bloc www.talosprimes.com)"
+        if (is_default) {
+            print "   ⚠️  Ce bloc est default_server (INTERCEPTE TOUT)"
+        }
     }
 }
 /^}/ && in_block {
     in_block=0
 }
 '
+echo ""
+
+# Test 8: Vérifier s'il y a un bloc default_server
+echo "8️⃣  Vérification des blocs default_server:"
+echo "------------------------------------------"
+DEFAULT_BLOCKS=$(nginx -T 2>/dev/null | grep -A 20 "listen 443.*default_server" | head -30)
+if [ -n "$DEFAULT_BLOCKS" ]; then
+    echo "⚠️  Bloc default_server trouvé:"
+    echo "$DEFAULT_BLOCKS"
+    echo ""
+    echo "💡 Un bloc default_server intercepte TOUTES les requêtes qui ne correspondent pas"
+    echo "   à un autre bloc. Si ce bloc n'est pas pour www.talosprimes.com,"
+    echo "   il faut le désactiver ou le modifier."
+else
+    echo "✅ Aucun bloc default_server trouvé"
+fi
 echo ""
 
 echo "=============================="
