@@ -2,6 +2,9 @@
  * Service pour gérer la connexion et les interactions avec N8N
  */
 
+import https from 'https'
+import { URL } from 'url'
+
 const N8N_URL = process.env.N8N_URL || 'https://n8n.talosprimes.com'
 const N8N_USERNAME = process.env.N8N_BASIC_AUTH_USER
 const N8N_PASSWORD = process.env.N8N_BASIC_AUTH_PASSWORD
@@ -69,45 +72,78 @@ export async function testN8NConnection(timeout: number = 5000): Promise<N8NConn
   const startTime = Date.now()
 
   try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), timeout)
-
     if (process.env.NODE_ENV === 'production') {
       console.log('[testN8NConnection] Tentative de connexion à:', N8N_URL)
     }
 
-    const response = await fetch(N8N_URL, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'User-Agent': 'TalosPrime-Platform-HealthCheck',
-      },
-      signal: controller.signal,
-    })
-
-    clearTimeout(timeoutId)
+    // Utiliser https de Node.js directement pour éviter les problèmes avec fetch()
+    const url = new URL(N8N_URL)
     const responseTime = Date.now() - startTime
 
-    if (response.ok || response.status === 401) {
+    // Créer un agent HTTPS qui ignore les erreurs de certificat (pour les certificats auto-signés)
+    const agent = new https.Agent({
+      rejectUnauthorized: false, // Ignorer les erreurs de certificat SSL
+    })
+
+    const response = await new Promise<{ statusCode: number; statusMessage: string }>((resolve, reject) => {
+      const req = https.request(
+        {
+          hostname: url.hostname,
+          port: url.port || 443,
+          path: url.pathname || '/',
+          method: 'GET',
+          agent,
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'User-Agent': 'TalosPrime-Platform-HealthCheck',
+          },
+          timeout,
+        },
+        (res) => {
+          resolve({
+            statusCode: res.statusCode || 0,
+            statusMessage: res.statusMessage || '',
+          })
+          res.on('data', () => {}) // Consommer les données
+          res.on('end', () => {})
+        }
+      )
+
+      req.on('error', (error) => {
+        reject(error)
+      })
+
+      req.on('timeout', () => {
+        req.destroy()
+        reject(new Error('Timeout'))
+      })
+
+      req.setTimeout(timeout)
+      req.end()
+    })
+
+    const finalResponseTime = Date.now() - startTime
+
+    if (response.statusCode === 200 || response.statusCode === 401 || response.statusCode === 302) {
       return {
         connected: true,
         details: {
           url: N8N_URL,
           hasAuth: true,
-          responseTime,
-          statusCode: response.status,
+          responseTime: finalResponseTime,
+          statusCode: response.statusCode,
         },
       }
     }
 
     return {
       connected: false,
-      error: `N8N a répondu avec le statut ${response.status}: ${response.statusText}`,
+      error: `N8N a répondu avec le statut ${response.statusCode}: ${response.statusMessage}`,
       details: {
         url: N8N_URL,
         hasAuth: true,
-        responseTime,
-        statusCode: response.status,
+        responseTime: finalResponseTime,
+        statusCode: response.statusCode,
       },
     }
   } catch (error) {
@@ -125,7 +161,7 @@ export async function testN8NConnection(timeout: number = 5000): Promise<N8NConn
     }
 
     if (error instanceof Error) {
-      if (error.name === 'AbortError') {
+      if (error.message === 'Timeout' || error.name === 'AbortError') {
         return {
           connected: false,
           error: `Timeout: N8N n'a pas répondu dans les ${timeout}ms`,
