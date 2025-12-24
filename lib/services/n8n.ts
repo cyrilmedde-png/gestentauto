@@ -42,8 +42,19 @@ export function checkN8NConfig(): { valid: boolean; error?: string } {
  * Teste la connexion à N8N
  */
 export async function testN8NConnection(timeout: number = 5000): Promise<N8NConnectionStatus> {
+  // Log pour déboguer (seulement en production pour voir les valeurs)
+  if (process.env.NODE_ENV === 'production') {
+    console.log('[testN8NConnection] Configuration:', {
+      hasUrl: !!N8N_URL,
+      url: N8N_URL,
+      hasUsername: !!N8N_USERNAME,
+      hasPassword: !!N8N_PASSWORD,
+    })
+  }
+
   const configCheck = checkN8NConfig()
   if (!configCheck.valid) {
+    console.error('[testN8NConnection] Configuration invalide:', configCheck.error)
     return {
       connected: false,
       error: configCheck.error,
@@ -60,6 +71,10 @@ export async function testN8NConnection(timeout: number = 5000): Promise<N8NConn
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    if (process.env.NODE_ENV === 'production') {
+      console.log('[testN8NConnection] Tentative de connexion à:', N8N_URL)
+    }
 
     const response = await fetch(N8N_URL, {
       method: 'GET',
@@ -97,6 +112,17 @@ export async function testN8NConnection(timeout: number = 5000): Promise<N8NConn
     }
   } catch (error) {
     const responseTime = Date.now() - startTime
+
+    // Log détaillé de l'erreur en production
+    if (process.env.NODE_ENV === 'production' && error instanceof Error) {
+      console.error('[testN8NConnection] Erreur de connexion:', {
+        message: error.message,
+        name: error.name,
+        code: (error as any).code,
+        url: N8N_URL,
+        hasAuth: !!(N8N_USERNAME && N8N_PASSWORD),
+      })
+    }
 
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
