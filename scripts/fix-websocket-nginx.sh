@@ -36,20 +36,47 @@ echo ""
 if grep -q "location /rest/push" "$NGINX_CONFIG"; then
     echo "✅ Configuration WebSocket /rest/push existe déjà"
     
+    # Vérifier si elle proxifie vers N8N (pas Next.js)
+    if grep -A 10 "location /rest/push" "$NGINX_CONFIG" | grep -q "proxy_pass.*n8n"; then
+        echo "✅ Configuration WebSocket proxifie vers N8N"
+    else
+        echo "⚠️  Configuration WebSocket incorrecte (proxifie vers Next.js au lieu de N8N)"
+        echo "   Correction nécessaire..."
+        
+        # Remplacer la section /rest/push complète
+        sed -i '/location \/rest\/push/,/^[[:space:]]*}/ {
+            /location \/rest\/push/ {
+                r /dev/stdin
+            }
+            /^[[:space:]]*}/!d
+        }' "$NGINX_CONFIG" << 'EOF'
+    location /rest/push {
+        proxy_pass https://n8n.talosprimes.com;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host n8n.talosprimes.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400;
+        proxy_send_timeout 86400;
+    }
+EOF
+        echo "✅ Configuration WebSocket corrigée pour proxifier vers N8N"
+    fi
+    
     # Vérifier si elle a les bons headers
-    if grep -A 5 "location /rest/push" "$NGINX_CONFIG" | grep -q "Upgrade.*upgrade"; then
+    if grep -A 10 "location /rest/push" "$NGINX_CONFIG" | grep -q "Upgrade.*upgrade"; then
         echo "✅ Headers WebSocket corrects"
     else
-        echo "⚠️  Headers WebSocket manquants, correction..."
-        # Remplacer la section /rest/push
-        sed -i '/location \/rest\/push/,/}/ {
-            /location \/rest\/push/ {
-                a\
-    proxy_http_version 1.1;\
-    proxy_set_header Upgrade $http_upgrade;\
-    proxy_set_header Connection "upgrade";
-            }
-        }' "$NGINX_CONFIG"
+        echo "⚠️  Headers WebSocket manquants, ajout..."
+        # Ajouter les headers manquants
+        sed -i '/location \/rest\/push/a\
+        proxy_http_version 1.1;\
+        proxy_set_header Upgrade $http_upgrade;\
+        proxy_set_header Connection "upgrade";
+' "$NGINX_CONFIG"
     fi
 else
     echo "📝 Ajout de la configuration WebSocket..."
@@ -62,16 +89,19 @@ else
     }
     /^}/ && in_correct_block {
         # Insérer la configuration WebSocket avant la fermeture
-        print "    # WebSocket pour N8N"
+        # IMPORTANT: Proxifier directement vers N8N, pas vers Next.js
+        print "    # WebSocket pour N8N - proxifier directement vers N8N"
         print "    location /rest/push {"
-        print "        proxy_pass http://localhost:3000;"
+        print "        proxy_pass https://n8n.talosprimes.com;"
         print "        proxy_http_version 1.1;"
         print "        proxy_set_header Upgrade $http_upgrade;"
         print "        proxy_set_header Connection \"upgrade\";"
-        print "        proxy_set_header Host $host;"
+        print "        proxy_set_header Host n8n.talosprimes.com;"
         print "        proxy_set_header X-Real-IP $remote_addr;"
         print "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
         print "        proxy_set_header X-Forwarded-Proto $scheme;"
+        print "        proxy_read_timeout 86400;"
+        print "        proxy_send_timeout 86400;"
         print "    }"
         print ""
         in_correct_block=0
