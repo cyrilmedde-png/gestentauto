@@ -415,11 +415,12 @@ export async function proxyN8NRequest(
     })
 
     // Convertir la réponse en objet Response compatible
-    // Convertir Buffer en ArrayBuffer pour Response
-    const arrayBuffer = responseData.body.buffer.slice(
-      responseData.body.byteOffset,
-      responseData.body.byteOffset + responseData.body.byteLength
-    )
+    // Convertir Buffer en ArrayBuffer pour Response (créer une copie pour éviter SharedArrayBuffer)
+    const bufferCopy = Buffer.from(responseData.body)
+    const arrayBuffer = bufferCopy.buffer.slice(
+      bufferCopy.byteOffset,
+      bufferCopy.byteOffset + bufferCopy.byteLength
+    ) as ArrayBuffer
     
     const response = new Response(arrayBuffer, {
       status: responseData.statusCode,
