@@ -366,14 +366,28 @@ export async function GET(request: NextRequest) {
             // Convertir en URL proxy
             let proxyWsUrl = url;
             if (url.startsWith('ws://localhost:5678') || url.startsWith('ws://127.0.0.1:5678')) {
-              // Extraire le chemin
-              const pathMatch = url.match(/(\/rest\/push[^\\s]*)/);
-              if (pathMatch) {
+              // Extraire le chemin - utiliser new RegExp() pour éviter les problèmes d'échappement
+              try {
+                const pathPattern = new RegExp('(\\/rest\\/push[^\\s]*)');
+                const pathMatch = url.match(pathPattern);
+                if (pathMatch && pathMatch[1]) {
+                  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                  proxyWsUrl = wsProtocol + '//' + window.location.host + pathMatch[1];
+                } else {
+                  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                  proxyWsUrl = wsProtocol + '//' + window.location.host + '/rest/push';
+                }
+              } catch (e) {
+                // Fallback si la regex échoue
                 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                proxyWsUrl = wsProtocol + '//' + window.location.host + pathMatch[1];
-              } else {
-                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                proxyWsUrl = wsProtocol + '//' + window.location.host + '/rest/push';
+                const pathIndex = url.indexOf('/rest/push');
+                if (pathIndex !== -1) {
+                  const queryIndex = url.indexOf('?', pathIndex);
+                  const path = queryIndex !== -1 ? url.substring(pathIndex, queryIndex) + url.substring(queryIndex) : url.substring(pathIndex);
+                  proxyWsUrl = wsProtocol + '//' + window.location.host + path;
+                } else {
+                  proxyWsUrl = wsProtocol + '//' + window.location.host + '/rest/push';
+                }
               }
             } else if (url.includes('/rest/push')) {
               // Déjà une URL relative ou avec le bon domaine, utiliser telle quelle
