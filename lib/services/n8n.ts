@@ -151,13 +151,24 @@ export async function testN8NConnection(timeout: number = 5000): Promise<N8NConn
 
     // Log détaillé de l'erreur en production
     if (process.env.NODE_ENV === 'production' && error instanceof Error) {
-      console.error('[testN8NConnection] Erreur de connexion:', {
+      const errorDetails: any = {
         message: error.message,
         name: error.name,
-        code: (error as any).code,
         url: N8N_URL,
         hasAuth: !!(N8N_USERNAME && N8N_PASSWORD),
-      })
+      }
+      
+      // Ajouter le code d'erreur si disponible
+      if ((error as any).code) {
+        errorDetails.code = (error as any).code
+      }
+      
+      // Ajouter la stack trace pour déboguer
+      if (error.stack) {
+        errorDetails.stack = error.stack.split('\n').slice(0, 3).join('\n')
+      }
+      
+      console.error('[testN8NConnection] Erreur de connexion:', errorDetails)
     }
 
     if (error instanceof Error) {
