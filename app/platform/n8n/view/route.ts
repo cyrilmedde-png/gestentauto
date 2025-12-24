@@ -169,10 +169,21 @@ export async function GET(request: NextRequest) {
           return true;
         }
         
+        // IMPORTANT: Capturer les requêtes vers localhost:5678 (N8N direct)
+        if (url.includes('localhost:5678') || url.includes('127.0.0.1:5678')) {
+          return true;
+        }
+        
         // URLs absolues - vérifier si c'est vers n8n.talosprimes.com
         try {
           const urlObj = new URL(url, window.location.origin);
           const hostname = urlObj.hostname;
+          const port = urlObj.port;
+          
+          // Capturer localhost:5678 ou 127.0.0.1:5678
+          if ((hostname === 'localhost' || hostname === '127.0.0.1') && port === '5678') {
+            return true;
+          }
           
           // Double vérification pour les domaines externes (sécurité)
           if (externalDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
@@ -191,9 +202,8 @@ export async function GET(request: NextRequest) {
           
           return false;
         } catch {
-          // Si l'URL est invalide, vérifier si elle contient n8n.talosprimes.com
-          // MAIS exclure les domaines externes
-          if (url.includes('n8n.talosprimes.com')) {
+          // Si l'URL est invalide, vérifier si elle contient n8n.talosprimes.com ou localhost:5678
+          if (url.includes('n8n.talosprimes.com') || url.includes('localhost:5678') || url.includes('127.0.0.1:5678')) {
             // Vérifier qu'elle ne contient pas de domaines externes
             return !externalDomains.some(d => url.includes(d));
           }
@@ -202,6 +212,28 @@ export async function GET(request: NextRequest) {
       }
       
       function toProxyUrl(url) {
+        // Si c'est une URL vers localhost:5678, extraire le chemin
+        if (url.includes('localhost:5678') || url.includes('127.0.0.1:5678')) {
+          try {
+            const urlObj = new URL(url);
+            const path = urlObj.pathname || '/';
+            const search = urlObj.search || '';
+            return proxyBase + path + search;
+          } catch {
+            // Extraction manuelle si URL() échoue
+            const match = url.match(/localhost:5678(\/.*|$)/) || url.match(/127\.0\.0\.1:5678(\/.*|$)/);
+            if (match && match[1]) {
+              return proxyBase + match[1];
+            }
+            // Si pas de chemin, utiliser la racine
+            const pathMatch = url.match(/(\/rest\/.*)/);
+            if (pathMatch) {
+              return proxyBase + pathMatch[1];
+            }
+            return proxyBase + '/';
+          }
+        }
+        
         if (url.startsWith('http://') || url.startsWith('https://')) {
           try {
             const urlObj = new URL(url);
@@ -290,6 +322,50 @@ export async function GET(request: NextRequest) {
           delete this._n8nHeaders;
         }
         return originalSend.apply(this, arguments);
+      };
+      
+      // Intercepter WebSocket
+      const originalWebSocket = window.WebSocket;
+      window.WebSocket = function(url, protocols) {
+        if (typeof url === 'string') {
+          // Si c'est une URL vers localhost:5678 ou wss://www.talosprimes.com/rest/push
+          if (url.includes('localhost:5678') || 
+              url.includes('127.0.0.1:5678') ||
+              (url.includes('/rest/push') && shouldProxy(url))) {
+            // Convertir en URL proxy
+            let proxyWsUrl = url;
+            if (url.startsWith('ws://localhost:5678') || url.startsWith('ws://127.0.0.1:5678')) {
+              // Extraire le chemin
+              const pathMatch = url.match(/(\/rest\/push[^\\s]*)/);
+              if (pathMatch) {
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                proxyWsUrl = wsProtocol + '//' + window.location.host + pathMatch[1];
+              } else {
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                proxyWsUrl = wsProtocol + '//' + window.location.host + '/rest/push';
+              }
+            } else if (url.includes('/rest/push')) {
+              // Déjà une URL relative ou avec le bon domaine, utiliser telle quelle
+              if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                proxyWsUrl = wsProtocol + '//' + window.location.host + (url.startsWith('/') ? url : '/' + url);
+              }
+            }
+            
+            if (protocols) {
+              return new originalWebSocket(proxyWsUrl, protocols);
+            } else {
+              return new originalWebSocket(proxyWsUrl);
+            }
+          }
+        }
+        
+        // WebSocket normal
+        if (protocols) {
+          return new originalWebSocket(url, protocols);
+        } else {
+          return new originalWebSocket(url);
+        }
       };
     })();
   </script>
