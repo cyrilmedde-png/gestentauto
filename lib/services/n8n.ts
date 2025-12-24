@@ -271,6 +271,7 @@ export function getN8NAuthHeaders(): { Authorization: string } | null {
 
 /**
  * Proxie une requête vers N8N avec gestion d'erreurs améliorée
+ * Utilise https.request() au lieu de fetch() pour éviter les problèmes de connexion
  * @param url - URL N8N cible
  * @param options - Options de requête
  * @param cookies - Cookies de session N8N à transmettre (optionnel)
@@ -316,24 +317,123 @@ export async function proxyN8NRequest(
     headersRecord['Cookie'] = cookies
   }
 
-  // Convertir en HeadersInit
-  const headers: HeadersInit = headersRecord
+  // Parser l'URL
+  const urlObj = new URL(url)
+  const method = options.method || 'GET'
+  const timeout = 30000 // 30 secondes pour les requêtes proxy
+
+  // Créer un agent HTTPS qui ignore les erreurs de certificat
+  const agent = new https.Agent({
+    rejectUnauthorized: false,
+  })
 
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
+    // Utiliser https.request() au lieu de fetch()
+    const responseData = await new Promise<{
+      statusCode: number
+      statusMessage: string
+      headers: Record<string, string>
+      body: Buffer
+    }>((resolve, reject) => {
+      const req = https.request(
+        {
+          hostname: urlObj.hostname,
+          port: urlObj.port || 443,
+          path: urlObj.pathname + urlObj.search,
+          method,
+          agent,
+          headers: headersRecord,
+          timeout,
+        },
+        (res) => {
+          const chunks: Buffer[] = []
+          const responseHeaders: Record<string, string> = {}
+          
+          // Collecter les headers
+          Object.keys(res.headers).forEach((key) => {
+            const value = res.headers[key]
+            if (value) {
+              responseHeaders[key.toLowerCase()] = Array.isArray(value) ? value.join(', ') : value
+            }
+          })
+
+          // Collecter le body
+          res.on('data', (chunk: Buffer) => {
+            chunks.push(chunk)
+          })
+
+          res.on('end', () => {
+            resolve({
+              statusCode: res.statusCode || 200,
+              statusMessage: res.statusMessage || '',
+              headers: responseHeaders,
+              body: Buffer.concat(chunks),
+            })
+          })
+
+          res.on('error', (error) => {
+            reject(error)
+          })
+        }
+      )
+
+      req.on('error', (error) => {
+        if (process.env.NODE_ENV === 'production') {
+          console.error('[proxyN8NRequest] Erreur https.request:', {
+            message: error.message,
+            name: error.name,
+            code: (error as any).code,
+            syscall: (error as any).syscall,
+            hostname: (error as any).hostname,
+            url,
+          })
+        }
+        reject(error)
+      })
+
+      req.on('timeout', () => {
+        req.destroy()
+        reject(new Error('Timeout'))
+      })
+
+      // Envoyer le body si présent (POST, PUT, etc.)
+      if (options.body) {
+        if (typeof options.body === 'string') {
+          req.write(options.body)
+        } else if (options.body instanceof Buffer) {
+          req.write(options.body)
+        } else if (options.body instanceof ArrayBuffer) {
+          req.write(Buffer.from(options.body))
+        } else {
+          // Pour les autres types, convertir en string
+          req.write(String(options.body))
+        }
+      }
+
+      req.setTimeout(timeout)
+      req.end()
+    })
+
+    // Convertir la réponse en objet Response compatible
+    const response = new Response(responseData.body, {
+      status: responseData.statusCode,
+      statusText: responseData.statusMessage,
+      headers: responseData.headers,
     })
 
     return response
   } catch (error) {
     if (error instanceof Error) {
-      if (error.message.includes('ECONNREFUSED') || error.message.includes('ENOTFOUND')) {
+      const msg = error.message
+      if (msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND')) {
         throw new Error(
           `Impossible de se connecter à N8N (${N8N_URL}). Vérifiez que N8N est démarré et accessible.`
         )
       }
-      throw new Error(`Erreur lors de la requête vers N8N: ${error.message}`)
+      if (msg === 'Timeout') {
+        throw new Error(`Timeout: N8N n'a pas répondu dans les ${timeout}ms`)
+      }
+      throw new Error(`Erreur lors de la requête vers N8N: ${msg}`)
     }
     throw new Error('Erreur inconnue lors de la requête vers N8N')
   }
