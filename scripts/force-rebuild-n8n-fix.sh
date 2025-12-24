@@ -18,9 +18,9 @@ echo ""
 # 2. Vérifier que le nouveau code est présent
 echo "2️⃣  Vérification du code source..."
 if grep -q "Utilisation de https.request()" lib/services/n8n.ts; then
-    echo "   ✅ Nouveau code trouvé dans lib/services/n8n.ts"
+    echo "   ✅ Nouveau code trouvé dans lib/services/n8n.ts (testN8NConnection)"
 else
-    echo "   ❌ Nouveau code NON trouvé !"
+    echo "   ❌ Nouveau code NON trouvé dans testN8NConnection !"
     echo "   💡 Le fichier n'a peut-être pas été mis à jour"
     exit 1
 fi
@@ -30,6 +30,13 @@ if grep -q "https.request" lib/services/n8n.ts; then
 else
     echo "   ❌ Code https.request() NON trouvé !"
     exit 1
+fi
+
+# Vérifier que proxyN8NRequest utilise aussi https.request()
+if grep -q "proxyN8NRequest.*https.request" lib/services/n8n.ts || grep -A 5 "export async function proxyN8NRequest" lib/services/n8n.ts | grep -q "https.request"; then
+    echo "   ✅ proxyN8NRequest utilise https.request()"
+else
+    echo "   ⚠️  proxyN8NRequest pourrait encore utiliser fetch()"
 fi
 echo ""
 
@@ -105,5 +112,9 @@ echo "💡 Les nouveaux logs devraient montrer:"
 echo "   - '[testN8NConnection] Utilisation de https.request() (nouveau code)'"
 echo "   - '[testN8NConnection] URL parsée:'"
 echo "   - '[testN8NConnection] Erreur https.request:' (si erreur)"
+echo "   - '[proxyN8NRequest] Erreur https.request:' (si erreur dans proxy)"
+echo ""
+echo "🔍 Pour voir les erreurs de proxyN8NRequest:"
+echo "   pm2 logs talosprime --lines 50 --nostream | grep -A 10 'proxyN8NRequest'"
 echo ""
 
