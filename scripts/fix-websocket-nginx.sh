@@ -26,6 +26,22 @@ fi
 echo "✅ Fichier trouvé: $NGINX_CONFIG"
 echo ""
 
+# Détecter où N8N est accessible
+echo "🔍 Détection de l'emplacement N8N..."
+N8N_PROXY=""
+if curl -k -s -o /dev/null -w "%{http_code}" https://n8n.talosprimes.com | grep -q "200\|401\|302"; then
+    N8N_PROXY="https://n8n.talosprimes.com"
+    echo "✅ N8N détecté sur: $N8N_PROXY"
+elif curl -k -s -o /dev/null -w "%{http_code}" http://localhost:5678 | grep -q "200\|401\|302"; then
+    N8N_PROXY="http://localhost:5678"
+    echo "✅ N8N détecté sur: $N8N_PROXY"
+else
+    # Par défaut, utiliser le sous-domaine
+    N8N_PROXY="https://n8n.talosprimes.com"
+    echo "⚠️  N8N non détecté, utilisation par défaut: $N8N_PROXY"
+fi
+echo ""
+
 # Créer une sauvegarde
 BACKUP_FILE="${NGINX_CONFIG}.backup.$(date +%Y%m%d_%H%M%S)"
 cp "$NGINX_CONFIG" "$BACKUP_FILE"
@@ -44,21 +60,28 @@ if grep -q "location /rest/push" "$NGINX_CONFIG"; then
         echo "   Correction nécessaire..."
         
         # Remplacer la section /rest/push complète
+        # Déterminer le Host header
+        if echo "$N8N_PROXY" | grep -q "https://"; then
+            N8N_HOST="n8n.talosprimes.com"
+        else
+            N8N_HOST="\$host"
+        fi
+        
         sed -i '/location \/rest\/push/,/^[[:space:]]*}/ {
             /location \/rest\/push/ {
                 r /dev/stdin
             }
             /^[[:space:]]*}/!d
-        }' "$NGINX_CONFIG" << 'EOF'
+        }' "$NGINX_CONFIG" << EOF
     location /rest/push {
-        proxy_pass https://n8n.talosprimes.com;
+        proxy_pass $N8N_PROXY;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host n8n.talosprimes.com;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $N8N_HOST;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_read_timeout 86400;
         proxy_send_timeout 86400;
     }
@@ -83,7 +106,8 @@ else
     
     # Trouver le bloc server pour www.talosprimes.com
     # Ajouter la configuration WebSocket avant la fermeture du bloc
-    awk '
+    # Utiliser une variable shell pour passer N8N_PROXY à awk
+    awk -v n8n_proxy="$N8N_PROXY" -v n8n_host=$(echo "$N8N_PROXY" | sed 's|https\?://||' | cut -d: -f1) '
     /server_name.*www\.talosprimes\.com/ || /server_name.*talosprimes\.com.*www\.talosprimes\.com/ {
         in_correct_block=1
     }
@@ -92,11 +116,15 @@ else
         # IMPORTANT: Proxifier directement vers N8N, pas vers Next.js
         print "    # WebSocket pour N8N - proxifier directement vers N8N"
         print "    location /rest/push {"
-        print "        proxy_pass https://n8n.talosprimes.com;"
+        print "        proxy_pass " n8n_proxy ";"
         print "        proxy_http_version 1.1;"
         print "        proxy_set_header Upgrade $http_upgrade;"
         print "        proxy_set_header Connection \"upgrade\";"
-        print "        proxy_set_header Host n8n.talosprimes.com;"
+        if (n8n_proxy ~ /https:\/\//) {
+            print "        proxy_set_header Host n8n.talosprimes.com;"
+        } else {
+            print "        proxy_set_header Host $host;"
+        }
         print "        proxy_set_header X-Real-IP $remote_addr;"
         print "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
         print "        proxy_set_header X-Forwarded-Proto $scheme;"
