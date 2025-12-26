@@ -33,11 +33,15 @@ export async function OPTIONS(request: NextRequest) {
  * Gère les requêtes vers /api/platform/make/proxy (sans chemin)
  */
 export async function GET(request: NextRequest) {
+  console.log('[Make Proxy Root] GET request received')
   try {
     // Vérifier que l'utilisateur est un admin plateforme
+    console.log('[Make Proxy Root] Verifying platform user...')
     const { isPlatform, error } = await verifyPlatformUser(request)
+    console.log('[Make Proxy Root] Platform user verification result:', { isPlatform, error })
     
     if (!isPlatform || error) {
+      console.log('[Make Proxy Root] Unauthorized:', error)
       return NextResponse.json(
         { error: 'Unauthorized - Platform admin access required', details: error },
         { status: 403, headers: getCorsHeaders(request.headers.get('origin')) }
@@ -45,8 +49,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Vérifier la configuration Make
+    console.log('[Make Proxy Root] Checking Make config...')
     const configCheck = checkMakeConfig()
     if (!configCheck.valid) {
+      console.error('[Make Proxy Root] Invalid Make config:', configCheck.error)
       return NextResponse.json(
         { error: 'Configuration Make invalide', details: configCheck.error },
         { status: 500, headers: getCorsHeaders(request.headers.get('origin')) }
@@ -57,11 +63,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const queryString = searchParams.toString()
     const makeUrl = `${MAKE_URL}${queryString ? `?${queryString}` : ''}`
+    console.log('[Make Proxy Root] Proxying to Make URL:', makeUrl)
     
     // Extraire les cookies de session Make
     const requestCookies = request.headers.get('cookie') || ''
     
     try {
+      console.log('[Make Proxy Root] Starting proxy request...')
       const response = await proxyMakeRequest(makeUrl, {
         method: 'GET',
         headers: {
@@ -114,6 +122,9 @@ export async function GET(request: NextRequest) {
           console.warn('[Make Proxy Root] Failed to get session token:', error)
         }
         
+        // Échapper le token pour le script (gérer le cas où authToken est vide)
+        const escapedAuthToken = (authToken || '').replace(/'/g, "\\'").replace(/\\/g, "\\\\")
+        
         // Remplacer les URLs par des URLs proxy
         let modifiedHtml = htmlData.replace(
           /(src|href|action)=["']([^"']+)["']/g,
@@ -152,7 +163,6 @@ export async function GET(request: NextRequest) {
         // Injecter le script d'interception pour les requêtes fetch/XHR
         const escapedProxyBase = baseUrl + proxyBase
         const escapedMakeHost = makeHost
-        const escapedAuthToken = authToken.replace(/'/g, "\\'").replace(/\\/g, "\\\\")
         
         const interceptionScript = `
 <script>
