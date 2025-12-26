@@ -151,6 +151,12 @@ export async function GET(request: NextRequest) {
       function shouldProxy(url) {
         if (!url || typeof url !== 'string') return false;
         
+        // EXCLUSION CRITIQUE : Ne JAMAIS proxifier les WebSockets (/rest/push)
+        // Les WebSockets doivent passer directement par Nginx, pas par Next.js
+        if (url.includes('/rest/push') || url.includes('ws://') || url.includes('wss://')) {
+          return false;
+        }
+        
         // EXCLUSION PRIORITAIRE : Ne JAMAIS proxifier les domaines externes
         // Vérifier d'abord par string pour éviter les erreurs de parsing
         const urlLower = url.toLowerCase();
@@ -161,6 +167,7 @@ export async function GET(request: NextRequest) {
         }
         
         // URLs relatives vers N8N (inclut /rest/telemetry/..., /icons/...)
+        // MAIS PAS /rest/push (exclu ci-dessus)
         if (url.startsWith('/rest/') || 
             url.startsWith('/assets/') || 
             url.startsWith('/types/') ||
@@ -191,12 +198,14 @@ export async function GET(request: NextRequest) {
           }
           
           // Proxifier toutes les URLs vers n8n.talosprimes.com
-          if (hostname === n8nHost || hostname === 'n8n.talosprimes.com') {
+          // SAUF /rest/push (WebSocket - doit passer par Nginx directement)
+          if ((hostname === n8nHost || hostname === 'n8n.talosprimes.com') && !urlObj.pathname.includes('/rest/push')) {
             return true;
           }
           
           // Proxifier les sous-domaines talosprimes.com sauf les domaines externes
-          if (hostname.endsWith('.talosprimes.com')) {
+          // SAUF /rest/push (WebSocket - doit passer par Nginx directement)
+          if (hostname.endsWith('.talosprimes.com') && !urlObj.pathname.includes('/rest/push')) {
             return !externalDomains.some(d => hostname.includes(d));
           }
           
@@ -356,56 +365,37 @@ export async function GET(request: NextRequest) {
       };
       
       // Intercepter WebSocket
+      // IMPORTANT: Les WebSockets /rest/push doivent passer DIRECTEMENT par Nginx
+      // Ne PAS les modifier - laisser Nginx les proxifier vers N8N
       const originalWebSocket = window.WebSocket;
       window.WebSocket = function(url, protocols) {
         if (typeof url === 'string') {
-          // Si c'est une URL vers localhost:5678 ou wss://www.talosprimes.com/rest/push
-          if (url.includes('localhost:5678') || 
-              url.includes('127.0.0.1:5678') ||
-              (url.includes('/rest/push') && shouldProxy(url))) {
-            // Convertir en URL proxy
-            let proxyWsUrl = url;
-            if (url.startsWith('ws://localhost:5678') || url.startsWith('ws://127.0.0.1:5678')) {
-              // Extraire le chemin - utiliser new RegExp() pour éviter les problèmes d'échappement
-              try {
-                const pathPattern = new RegExp('(\\/rest\\/push[^\\s]*)');
-                const pathMatch = url.match(pathPattern);
-                if (pathMatch && pathMatch[1]) {
-                  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                  proxyWsUrl = wsProtocol + '//' + window.location.host + pathMatch[1];
-                } else {
-                  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                  proxyWsUrl = wsProtocol + '//' + window.location.host + '/rest/push';
-                }
-              } catch (e) {
-                // Fallback si la regex échoue
-                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const pathIndex = url.indexOf('/rest/push');
-                if (pathIndex !== -1) {
-                  const queryIndex = url.indexOf('?', pathIndex);
-                  const path = queryIndex !== -1 ? url.substring(pathIndex, queryIndex) + url.substring(queryIndex) : url.substring(pathIndex);
-                  proxyWsUrl = wsProtocol + '//' + window.location.host + path;
-                } else {
-                  proxyWsUrl = wsProtocol + '//' + window.location.host + '/rest/push';
-                }
-              }
-            } else if (url.includes('/rest/push')) {
-              // Déjà une URL relative ou avec le bon domaine, utiliser telle quelle
-              if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
-                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                proxyWsUrl = wsProtocol + '//' + window.location.host + (url.startsWith('/') ? url : '/' + url);
+          // Si c'est /rest/push, laisser passer DIRECTEMENT sans modification
+          // Nginx doit être configuré pour proxifier wss://www.talosprimes.com/rest/push vers N8N
+          if (url.includes('/rest/push')) {
+            // Convertir localhost:5678 vers le domaine public pour que Nginx puisse le proxifier
+            if (url.includes('localhost:5678') || url.includes('127.0.0.1:5678')) {
+              const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+              const proxyWsUrl = wsProtocol + '//' + window.location.host + '/rest/push';
+              if (protocols) {
+                return new originalWebSocket(proxyWsUrl, protocols);
+              } else {
+                return new originalWebSocket(proxyWsUrl);
               }
             }
-            
+            // Si c'est déjà une URL vers le domaine public, laisser passer telle quelle
+            // Nginx s'occupera de la proxifier
             if (protocols) {
-              return new originalWebSocket(proxyWsUrl, protocols);
+              return new originalWebSocket(url, protocols);
             } else {
-              return new originalWebSocket(proxyWsUrl);
+              return new originalWebSocket(url);
             }
           }
+          
+          // Pour les autres WebSockets (non-N8N), laisser passer normalement
         }
         
-        // WebSocket normal
+        // WebSocket normal (non-N8N)
         if (protocols) {
           return new originalWebSocket(url, protocols);
         } else {
