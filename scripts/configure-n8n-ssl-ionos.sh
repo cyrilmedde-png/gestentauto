@@ -235,13 +235,28 @@ echo ""
 # Tester la configuration
 echo "5️⃣ Test de la configuration Nginx..."
 echo "--------------------------------------"
-if nginx -t 2>&1 | grep -q "syntax is ok"; then
+NGINX_TEST=$(nginx -t 2>&1)
+if echo "$NGINX_TEST" | grep -q "syntax is ok"; then
     echo "✅ Configuration Nginx valide"
+    if echo "$NGINX_TEST" | grep -q "test is successful"; then
+        echo "✅ Test Nginx réussi"
+    else
+        echo "⚠️  Avertissements dans la configuration (mais syntaxe OK)"
+        echo "$NGINX_TEST" | grep -v "syntax is ok"
+    fi
 else
     echo "❌ Erreur dans la configuration Nginx"
-    echo "   Restauration de la sauvegarde..."
+    echo ""
+    echo "📋 Détails de l'erreur:"
+    echo "$NGINX_TEST"
+    echo ""
+    echo "🔄 Restauration de la sauvegarde..."
     cp "$BACKUP_FILE" "$NGINX_CONFIG"
-    nginx -t
+    echo "✅ Sauvegarde restaurée"
+    echo ""
+    echo "💡 Suggestions:"
+    echo "   1. Vérifiez la configuration manuellement: nano $NGINX_CONFIG"
+    echo "   2. Testez: nginx -t"
     exit 1
 fi
 
