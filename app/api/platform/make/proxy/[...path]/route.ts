@@ -56,16 +56,24 @@ export async function GET(
   const queryString = searchParams.toString()
   
   // Si makePath est juste '/', utiliser MAKE_URL tel quel
-  // Sinon, construire l'URL en ajoutant le chemin
+  // Pour les fichiers statiques à la racine (CSS, JS, etc.), utiliser seulement l'origin
   let makeUrl: string
   try {
     const makeUrlObj = new URL(MAKE_URL)
     if (makePath === '/') {
       makeUrl = MAKE_URL
     } else {
-      // Extraire le chemin de base de MAKE_URL et ajouter makePath
-      const basePath = makeUrlObj.pathname
-      makeUrl = `${makeUrlObj.origin}${basePath}${makePath}`
+      // Si le chemin ressemble à un fichier statique (CSS, JS, etc.), utiliser seulement l'origin
+      // Sinon, préfixer avec le basePath de MAKE_URL
+      const isStaticFile = /\.(css|js|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|ico)$/i.test(makePath)
+      if (isStaticFile) {
+        // Fichiers statiques sont à la racine de Make.com
+        makeUrl = `${makeUrlObj.origin}${makePath}`
+      } else {
+        // Autres chemins, utiliser le basePath de MAKE_URL
+        const basePath = makeUrlObj.pathname
+        makeUrl = `${makeUrlObj.origin}${basePath}${makePath}`
+      }
     }
     makeUrl += queryString ? `?${queryString}` : ''
   } catch {
@@ -266,16 +274,18 @@ export async function GET(
     }
 
     // Pour les autres types de contenu
-    const responseHeaders = new Headers(response.headers)
-    responseHeaders.delete('content-security-policy')
-    responseHeaders.delete('x-frame-options')
-    
+    // Ne copier que les headers nécessaires (comme dans la route racine)
     const setCookieHeaders = response.headers.getSetCookie()
     const nextResponse = new NextResponse(response.body, {
       status: response.status,
-      headers: responseHeaders,
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        ...getCorsHeaders(request.headers.get('origin')),
+      },
     })
     
+    // Transmettre les cookies Set-Cookie de Make
     if (setCookieHeaders && setCookieHeaders.length > 0) {
       setCookieHeaders.forEach(cookie => {
         nextResponse.headers.append('Set-Cookie', cookie)
