@@ -1,91 +1,58 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { ExternalLink } from 'lucide-react'
+
+const MAKE_URL = process.env.NEXT_PUBLIC_MAKE_URL || 'https://eu1.make.com/organization/5837397/dashboard'
 
 export default function MakePage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const mountedRef = useRef(false)
-  const iframeCreatedRef = useRef(false)
+  const [redirecting, setRedirecting] = useState(true)
 
   useEffect(() => {
-    mountedRef.current = true
-    
-    // Timeout de sécurité pour le chargement
-    const timeout = setTimeout(() => {
-      if (mountedRef.current) {
-        setLoading(false)
-      }
-    }, 2000)
+    // Redirection après un court délai pour afficher le message
+    const timer = setTimeout(() => {
+      window.open(MAKE_URL, '_blank')
+      setRedirecting(false)
+    }, 1500)
 
-    return () => {
-      mountedRef.current = false
-      clearTimeout(timeout)
-    }
+    return () => clearTimeout(timer)
   }, [])
-
-  // Créer l'iframe une seule fois et la conserver
-  useEffect(() => {
-    if (loading || !containerRef.current) return
-
-    // Vérifier si l'iframe existe déjà dans le container
-    if (containerRef.current.querySelector('iframe')) {
-      iframeRef.current = containerRef.current.querySelector('iframe') as HTMLIFrameElement
-      return
-    }
-
-    // Créer l'iframe Make.com
-    const iframe = document.createElement('iframe')
-    // URL de votre espace Make
-    iframe.src = process.env.NEXT_PUBLIC_MAKE_URL || 'https://eu1.make.com/organization/5837397/dashboard'
-    iframe.className = 'w-full h-full border-0 rounded-lg'
-    iframe.title = 'Make - Automatisation'
-    iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen')
-    iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox')
-    iframe.setAttribute('loading', 'eager')
-    iframe.style.width = '100%'
-    iframe.style.height = '100%'
-    iframe.style.border = '0'
-    iframe.style.borderRadius = '0.5rem'
-
-    containerRef.current.appendChild(iframe)
-    iframeRef.current = iframe
-    iframeCreatedRef.current = true
-
-    // Ne jamais supprimer l'iframe, même au unmount
-    return () => {
-      // Ne pas supprimer l'iframe pour préserver l'état
-    }
-  }, [loading])
-
-  if (loading) {
-    return (
-      <ProtectedRoute>
-        <MainLayout>
-          <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Chargement de Make...</p>
-            </div>
-          </div>
-        </MainLayout>
-      </ProtectedRoute>
-    )
-  }
 
   return (
     <ProtectedRoute>
       <MainLayout>
-        <div 
-          ref={containerRef}
-          className="w-full h-[calc(100vh-4rem)]"
-          style={{ position: 'relative' }}
-        />
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <div className="text-center max-w-md mx-auto p-8">
+            {redirecting ? (
+              <>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground mb-4">Redirection vers Make.com...</p>
+              </>
+            ) : (
+              <>
+                <ExternalLink className="w-16 h-16 text-primary mx-auto mb-6" />
+                <h2 className="text-2xl font-bold text-foreground mb-4">
+                  Make.com s'ouvre dans un nouvel onglet
+                </h2>
+                <p className="text-muted-foreground mb-6">
+                  Make.com bloque l'embedding dans une iframe pour des raisons de sécurité.
+                  Il s'ouvre dans un nouvel onglet pour une meilleure expérience.
+                </p>
+                <a
+                  href={MAKE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Ouvrir Make.com
+                </a>
+              </>
+            )}
+          </div>
+        </div>
       </MainLayout>
     </ProtectedRoute>
   )
