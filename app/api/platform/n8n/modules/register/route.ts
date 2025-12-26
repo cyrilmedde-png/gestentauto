@@ -9,10 +9,10 @@ import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
 export async function POST(request: NextRequest) {
   try {
     // Vérifier que l'utilisateur est un admin plateforme
-    const authResult = await verifyPlatformUser(request)
-    if (!authResult.success) {
+    const { isPlatform, error: authError } = await verifyPlatformUser(request)
+    if (!isPlatform) {
       return NextResponse.json(
-        { error: 'Non autorisé - Plateforme uniquement' },
+        { error: authError || 'Non autorisé - Plateforme uniquement' },
         { status: 403 }
       )
     }
