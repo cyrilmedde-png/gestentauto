@@ -33,15 +33,16 @@ export async function OPTIONS(request: NextRequest) {
  * Gère les requêtes vers /api/platform/make/proxy (sans chemin)
  */
 export async function GET(request: NextRequest) {
-  // Vérifier que l'utilisateur est un admin plateforme
-  const { isPlatform, error } = await verifyPlatformUser(request)
-  
-  if (!isPlatform || error) {
-    return NextResponse.json(
-      { error: 'Unauthorized - Platform admin access required', details: error },
-      { status: 403 }
-    )
-  }
+  try {
+    // Vérifier que l'utilisateur est un admin plateforme
+    const { isPlatform, error } = await verifyPlatformUser(request)
+    
+    if (!isPlatform || error) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Platform admin access required', details: error },
+        { status: 403, headers: getCorsHeaders(request.headers.get('origin')) }
+      )
+    }
 
   // Vérifier la configuration Make
   const configCheck = checkMakeConfig()
@@ -303,6 +304,19 @@ export async function GET(request: NextRequest) {
       { 
         status: 500,
         headers: getCorsHeaders(request.headers.get('origin')),
+      }
+    )
+  } catch (earlyError) {
+    // Erreur dans verifyPlatformUser ou checkMakeConfig
+    console.error('[Make Proxy Root] Erreur précoce:', earlyError)
+    return NextResponse.json(
+      { 
+        error: 'Erreur lors de la vérification d\'autorisation',
+        details: earlyError instanceof Error ? earlyError.message : 'Unknown error'
+      },
+      { 
+        status: 500,
+        headers: getCorsHeaders(request.headers.get('origin'))
       }
     )
   }
