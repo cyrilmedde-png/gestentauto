@@ -76,9 +76,11 @@ fi
 echo "✅ PM2 installé: $(which pm2)"
 echo ""
 
-# 4. Arrêter N8N dans PM2 s'il existe
-echo "4️⃣ Arrêt de N8N dans PM2..."
-echo "-----------------------------"
+# 4. Arrêter N8N et libérer le port 5678
+echo "4️⃣ Arrêt de N8N et libération du port 5678..."
+echo "----------------------------------------------"
+
+# Arrêter N8N dans PM2
 if pm2 list 2>/dev/null | grep -qi n8n; then
     echo "   📋 N8N trouvé dans PM2, arrêt..."
     pm2 stop n8n 2>/dev/null || true
@@ -87,6 +89,34 @@ if pm2 list 2>/dev/null | grep -qi n8n; then
 else
     echo "   ℹ️  N8N non trouvé dans PM2"
 fi
+
+# Vérifier et tuer les processus utilisant le port 5678
+if command -v lsof &> /dev/null; then
+    PORT_PID=$(lsof -ti:5678 2>/dev/null || echo "")
+    if [ -n "$PORT_PID" ]; then
+        echo "   ⚠️  Port 5678 utilisé par le processus $PORT_PID"
+        echo "   📝 Arrêt du processus..."
+        kill -9 $PORT_PID 2>/dev/null || true
+        sleep 1
+        echo "   ✅ Port 5678 libéré"
+    else
+        echo "   ✅ Port 5678 libre"
+    fi
+elif command -v ss &> /dev/null; then
+    PORT_PID=$(ss -tlnp 2>/dev/null | grep ":5678" | grep -oP 'pid=\K[0-9]+' | head -1 || echo "")
+    if [ -n "$PORT_PID" ]; then
+        echo "   ⚠️  Port 5678 utilisé par le processus $PORT_PID"
+        echo "   📝 Arrêt du processus..."
+        kill -9 $PORT_PID 2>/dev/null || true
+        sleep 1
+        echo "   ✅ Port 5678 libéré"
+    else
+        echo "   ✅ Port 5678 libre"
+    fi
+else
+    echo "   ⚠️  Impossible de vérifier le port 5678 (lsof/ss non disponible)"
+fi
+
 echo ""
 
 # 5. Créer la configuration PM2 correcte

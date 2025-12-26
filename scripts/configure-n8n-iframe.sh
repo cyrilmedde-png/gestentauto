@@ -72,13 +72,35 @@ echo "2️⃣ Configuration Nginx pour N8N..."
 echo "----------------------------------"
 
 NGINX_N8N_CONFIG=""
-if [ -f "/etc/nginx/sites-available/n8n" ]; then
-    NGINX_N8N_CONFIG="/etc/nginx/sites-available/n8n"
-elif [ -f "/etc/nginx/sites-available/n8n.talosprimes.com" ]; then
-    NGINX_N8N_CONFIG="/etc/nginx/sites-available/n8n.talosprimes.com"
-else
+# Chercher dans plusieurs emplacements possibles
+for config_file in \
+    "/etc/nginx/sites-available/n8n" \
+    "/etc/nginx/sites-available/n8n.talosprimes.com" \
+    "/etc/nginx/sites-enabled/n8n" \
+    "/etc/nginx/sites-enabled/n8n.talosprimes.com" \
+    "/etc/nginx/conf.d/n8n.conf" \
+    "/etc/nginx/nginx.conf"
+do
+    if [ -f "$config_file" ] && grep -q "n8n.talosprimes.com\|server_name.*n8n" "$config_file" 2>/dev/null; then
+        NGINX_N8N_CONFIG="$config_file"
+        break
+    fi
+done
+
+# Si pas trouvé, chercher dans tous les fichiers de sites-available
+if [ -z "$NGINX_N8N_CONFIG" ]; then
+    for config_file in /etc/nginx/sites-available/*; do
+        if [ -f "$config_file" ] && grep -q "n8n.talosprimes.com\|server_name.*n8n" "$config_file" 2>/dev/null; then
+            NGINX_N8N_CONFIG="$config_file"
+            break
+        fi
+    done
+fi
+
+if [ -z "$NGINX_N8N_CONFIG" ]; then
     echo "⚠️  Fichier de configuration Nginx pour N8N non trouvé"
     echo "   💡 Chercher dans /etc/nginx/sites-available/"
+    echo "   💡 Ou vérifier manuellement: grep -r 'n8n.talosprimes.com' /etc/nginx/"
 fi
 
 if [ -n "$NGINX_N8N_CONFIG" ]; then
@@ -89,11 +111,18 @@ if [ -n "$NGINX_N8N_CONFIG" ]; then
     cp "$NGINX_N8N_CONFIG" "$BACKUP_FILE"
     echo "✅ Sauvegarde créée: $BACKUP_FILE"
     
-    # Supprimer ou commenter X-Frame-Options SAMEORIGIN
-    if grep -q "X-Frame-Options.*SAMEORIGIN" "$NGINX_N8N_CONFIG"; then
-        echo "   📝 Suppression de X-Frame-Options SAMEORIGIN..."
-        sed -i 's|add_header X-Frame-Options "SAMEORIGIN"|# add_header X-Frame-Options "SAMEORIGIN"|g' "$NGINX_N8N_CONFIG"
-        echo "   ✅ X-Frame-Options SAMEORIGIN supprimé"
+    # Supprimer ou commenter X-Frame-Options SAMEORIGIN (toutes les variantes)
+    if grep -q "X-Frame-Options" "$NGINX_N8N_CONFIG"; then
+        echo "   📝 Suppression de X-Frame-Options..."
+        # Supprimer toutes les variantes de X-Frame-Options
+        sed -i 's|add_header X-Frame-Options "SAMEORIGIN".*|# add_header X-Frame-Options "SAMEORIGIN" always;|g' "$NGINX_N8N_CONFIG"
+        sed -i 's|add_header X-Frame-Options.*SAMEORIGIN.*|# add_header X-Frame-Options "SAMEORIGIN" always;|g' "$NGINX_N8N_CONFIG"
+        sed -i 's|add_header X-Frame-Options "DENY".*|# add_header X-Frame-Options "DENY" always;|g' "$NGINX_N8N_CONFIG"
+        # Supprimer les lignes commentées qui pourraient être réactivées
+        sed -i '/^[[:space:]]*#.*X-Frame-Options.*SAMEORIGIN/d' "$NGINX_N8N_CONFIG" 2>/dev/null || true
+        echo "   ✅ X-Frame-Options supprimé"
+    else
+        echo "   ℹ️  X-Frame-Options non trouvé (déjà supprimé ou non configuré)"
     fi
     
     # Ajouter Content-Security-Policy pour autoriser l'iframe depuis www.talosprimes.com
