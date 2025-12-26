@@ -209,11 +209,44 @@ pm2 list | grep -i n8n || echo "   ⚠️  N8N non trouvé dans PM2"
 
 echo ""
 
-# 7. Sauvegarder la configuration PM2
-echo "7️⃣ Sauvegarde de la configuration PM2..."
-echo "----------------------------------------"
+# 7. Sauvegarder et activer le démarrage automatique
+echo "7️⃣ Sauvegarde et activation du démarrage automatique..."
+echo "--------------------------------------------------------"
 pm2 save
 echo "✅ Configuration sauvegardée"
+
+# Activer le démarrage automatique PM2
+if pm2 startup 2>/dev/null | grep -q "sudo"; then
+    echo "   📝 Activation du démarrage automatique PM2..."
+    STARTUP_CMD=$(pm2 startup systemd -u root --hp /root 2>/dev/null | grep "sudo" | head -1)
+    if [ -n "$STARTUP_CMD" ]; then
+        echo "   💡 Exécutez cette commande pour activer le démarrage automatique:"
+        echo "      $STARTUP_CMD"
+    fi
+else
+    echo "   ✅ Démarrage automatique PM2 déjà configuré"
+fi
+
+# Activer N8N spécifiquement (au cas où)
+pm2 startup 2>/dev/null > /dev/null || true
+
+# Vérifier le statut
+echo ""
+echo "📋 Statut de démarrage automatique:"
+if pm2 list | grep -i n8n | grep -q "disabled"; then
+    echo "   ⚠️  N8N est toujours 'disabled'"
+    echo "   📝 Tentative de réactivation..."
+    pm2 save --force 2>/dev/null || true
+    # Essayer de réactiver via ecosystem
+    if [ -f "$HOME/.pm2/ecosystem.config.js" ]; then
+        pm2 delete n8n 2>/dev/null || true
+        pm2 start ecosystem.config.js
+        pm2 save
+    fi
+    echo "   ✅ N8N devrait maintenant être 'enabled'"
+else
+    echo "   ✅ N8N est 'enabled' (redémarrage automatique activé)"
+fi
 echo ""
 
 # 8. Vérifier que N8N fonctionne
