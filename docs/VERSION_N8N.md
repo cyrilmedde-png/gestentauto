@@ -42,3 +42,4 @@ n8n --version
 
 **Note** : La version 2.0.3 est fonctionnelle. La mise à jour vers 2.1.4 est optionnelle mais recommandée pour bénéficier des dernières corrections et fonctionnalités.
 
+

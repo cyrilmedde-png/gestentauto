@@ -320,3 +320,4 @@ echo "⚠️  Note: La version dans le panel N8N peut différer légèrement de 
 echo "    Vérifiez dans le panel: Settings > Version"
 echo ""
 
+

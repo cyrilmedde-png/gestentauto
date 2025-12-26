@@ -138,3 +138,4 @@ Si vous voyez les logs mais que certaines requêtes ne sont PAS interceptées :
 4. ⚠️ Si nécessaire, implémenter une interception plus précoce (service worker)
 
 
+

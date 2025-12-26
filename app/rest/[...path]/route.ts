@@ -40,6 +40,22 @@ export async function GET(
     ? resolvedParams.path.join('/')
     : ''
   
+  // EXCLUSION CRITIQUE : Ne JAMAIS intercepter /rest/push (WebSocket)
+  // Les WebSockets doivent passer directement par Nginx vers N8N
+  // Next.js ne supporte pas les WebSockets nativement
+  if (restPath === 'push') {
+    return NextResponse.json(
+      { 
+        error: 'WebSocket endpoint must be handled by Nginx directly',
+        message: 'This endpoint is for WebSocket connections and must be proxified directly by Nginx to N8N, not through Next.js'
+      },
+      { 
+        status: 426, // 426 Upgrade Required - indique qu'un upgrade WebSocket est nécessaire
+        headers: getCorsHeaders(request.headers.get('origin')),
+      }
+    )
+  }
+  
   // Pour /rest/login, on permet l'accès sans vérification (N8N gère sa propre auth)
   const isLoginRoute = restPath === 'login'
   
@@ -227,6 +243,20 @@ async function handleRestRequest(
   const restPath = resolvedParams.path && resolvedParams.path.length > 0 
     ? resolvedParams.path.join('/')
     : ''
+  
+  // EXCLUSION CRITIQUE : Ne JAMAIS intercepter /rest/push (WebSocket)
+  if (restPath === 'push') {
+    return NextResponse.json(
+      { 
+        error: 'WebSocket endpoint must be handled by Nginx directly',
+        message: 'This endpoint is for WebSocket connections and must be proxified directly by Nginx to N8N, not through Next.js'
+      },
+      { 
+        status: 426, // 426 Upgrade Required
+        headers: getCorsHeaders(request.headers.get('origin')),
+      }
+    )
+  }
   
   const isLoginRoute = restPath === 'login'
   

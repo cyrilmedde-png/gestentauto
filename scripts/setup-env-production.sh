@@ -112,3 +112,4 @@ echo "   2. Rebuild l'application: npm run build"
 echo "   3. Redémarrez: pm2 restart talosprime"
 
 
+

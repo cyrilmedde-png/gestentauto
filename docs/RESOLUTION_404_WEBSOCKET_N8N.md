@@ -236,3 +236,4 @@ Si tout fonctionne, vous devriez voir :
 - Pas d'erreurs dans la console du navigateur
 
 
+

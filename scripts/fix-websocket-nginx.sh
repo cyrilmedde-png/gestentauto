@@ -104,27 +104,31 @@ EOF
 else
     echo "📝 Ajout de la configuration WebSocket..."
     
+    # Déterminer le Host header
+    if echo "$N8N_PROXY" | grep -q "https://"; then
+        N8N_HOST="n8n.talosprimes.com"
+    else
+        N8N_HOST="\$host"
+    fi
+    
     # Trouver le bloc server pour www.talosprimes.com
-    # Ajouter la configuration WebSocket avant la fermeture du bloc
-    # Utiliser une variable shell pour passer N8N_PROXY à awk
-    awk -v n8n_proxy="$N8N_PROXY" -v n8n_host=$(echo "$N8N_PROXY" | sed 's|https\?://||' | cut -d: -f1) '
+    # IMPORTANT: Insérer /rest/push AVANT les autres locations /rest/ ou /api/
+    # pour que Nginx le traite en premier (ordre de priorité)
+    awk -v n8n_proxy="$N8N_PROXY" -v n8n_host="$N8N_HOST" '
     /server_name.*www\.talosprimes\.com/ || /server_name.*talosprimes\.com.*www\.talosprimes\.com/ {
         in_correct_block=1
     }
-    /^}/ && in_correct_block {
-        # Insérer la configuration WebSocket avant la fermeture
+    in_correct_block && /^[[:space:]]*location[[:space:]]+\/(rest|api)\// && !websocket_added {
+        # Insérer la configuration WebSocket AVANT la première location /rest/ ou /api/
         # IMPORTANT: Proxifier directement vers N8N, pas vers Next.js
         print "    # WebSocket pour N8N - proxifier directement vers N8N"
+        print "    # DOIT être AVANT les autres locations /rest/ pour être prioritaire"
         print "    location /rest/push {"
-        print "        proxy_pass " n8n_proxy ";"
+        print "        proxy_pass " n8n_proxy "/rest/push;"
         print "        proxy_http_version 1.1;"
         print "        proxy_set_header Upgrade $http_upgrade;"
         print "        proxy_set_header Connection \"upgrade\";"
-        if (n8n_proxy ~ /https:\/\//) {
-            print "        proxy_set_header Host n8n.talosprimes.com;"
-        } else {
-            print "        proxy_set_header Host $host;"
-        }
+        print "        proxy_set_header Host " n8n_host ";"
         print "        proxy_set_header X-Real-IP $remote_addr;"
         print "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
         print "        proxy_set_header X-Forwarded-Proto $scheme;"
@@ -132,12 +136,35 @@ else
         print "        proxy_send_timeout 86400;"
         print "    }"
         print ""
-        in_correct_block=0
+        websocket_added=1
+    }
+    /^}/ && in_correct_block && !websocket_added {
+        # Si aucune location /rest/ ou /api/ trouvée, insérer avant la fermeture
+        print "    # WebSocket pour N8N - proxifier directement vers N8N"
+        print "    location /rest/push {"
+        print "        proxy_pass " n8n_proxy "/rest/push;"
+        print "        proxy_http_version 1.1;"
+        print "        proxy_set_header Upgrade $http_upgrade;"
+        print "        proxy_set_header Connection \"upgrade\";"
+        print "        proxy_set_header Host " n8n_host ";"
+        print "        proxy_set_header X-Real-IP $remote_addr;"
+        print "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
+        print "        proxy_set_header X-Forwarded-Proto $scheme;"
+        print "        proxy_read_timeout 86400;"
+        print "        proxy_send_timeout 86400;"
+        print "    }"
+        print ""
+        websocket_added=1
     }
     { print }
     ' "$NGINX_CONFIG" > "${NGINX_CONFIG}.tmp" && mv "${NGINX_CONFIG}.tmp" "$NGINX_CONFIG"
     
-    echo "✅ Configuration WebSocket ajoutée"
+    if [ $? -eq 0 ]; then
+        echo "✅ Configuration WebSocket ajoutée AVANT les autres locations /rest/"
+    else
+        echo "❌ Erreur lors de l'ajout de la configuration WebSocket"
+        exit 1
+    fi
 fi
 
 # Tester la configuration

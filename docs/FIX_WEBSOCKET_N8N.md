@@ -111,3 +111,4 @@ sudo -u n8n pm2 logs n8n
 
 Ces erreurs n'affectent pas le fonctionnement de N8N.
 
+

@@ -145,3 +145,4 @@ sudo -u n8n npm install n8n@VERSION --save --save-exact
 sudo -u n8n pm2 restart n8n
 ```
 
+
