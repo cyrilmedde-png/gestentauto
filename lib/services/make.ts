@@ -73,7 +73,13 @@ export async function proxyMakeRequest(
   }
 
   // Parser l'URL
-  const urlObj = new URL(url)
+  let urlObj: URL
+  try {
+    urlObj = new URL(url)
+  } catch (error) {
+    throw new Error(`URL Make invalide: ${url} - ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+  
   const method = options.method || 'GET'
   const timeout = 30000 // 30 secondes pour les requêtes proxy
 

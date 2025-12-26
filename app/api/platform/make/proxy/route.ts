@@ -74,7 +74,16 @@ export async function GET(request: NextRequest) {
     
     // Pour le HTML, réécrire les URLs
     if (contentType.includes('text/html')) {
-      const htmlData = await response.text()
+      let htmlData: string
+      try {
+        htmlData = await response.text()
+      } catch (error) {
+        console.error('[Make Proxy Root] Erreur lors de la lecture du HTML:', error)
+        return NextResponse.json(
+          { error: 'Erreur lors de la lecture de la réponse Make.com' },
+          { status: 500, headers: getCorsHeaders(request.headers.get('origin')) }
+        )
+      }
       
       const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
       const protocol = request.headers.get('x-forwarded-proto') || 'https'
@@ -83,7 +92,16 @@ export async function GET(request: NextRequest) {
         : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.talosprimes.com')
       
       const proxyBase = `/api/platform/make/proxy`
-      const makeHost = new URL(MAKE_URL).hostname
+      let makeHost: string
+      try {
+        makeHost = new URL(MAKE_URL).hostname
+      } catch (error) {
+        console.error('[Make Proxy Root] Erreur lors du parsing de MAKE_URL:', error, MAKE_URL)
+        return NextResponse.json(
+          { error: 'Configuration Make invalide: URL mal formée' },
+          { status: 500, headers: getCorsHeaders(request.headers.get('origin')) }
+        )
+      }
       
       // Récupérer le token JWT depuis la session Supabase
       let authToken = ''
@@ -265,9 +283,27 @@ export async function GET(request: NextRequest) {
     return nextResponse
   } catch (error) {
     console.error('[Make Proxy Root] Erreur:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
+    // Logger les détails pour le debug
+    console.error('[Make Proxy Root] Détails erreur:', {
+      message: errorMessage,
+      stack: errorStack,
+      url: makeUrl,
+      hasCookies: !!requestCookies,
+    })
+    
     return NextResponse.json(
-      { error: 'Erreur lors du proxy vers Make.com', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { 
+        error: 'Erreur lors du proxy vers Make.com',
+        details: errorMessage,
+        url: makeUrl,
+      },
+      { 
+        status: 500,
+        headers: getCorsHeaders(request.headers.get('origin')),
+      }
     )
   }
 }

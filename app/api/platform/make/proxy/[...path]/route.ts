@@ -51,9 +51,27 @@ export async function GET(
   }
 
   // Construire l'URL Make
+  // MAKE_URL contient déjà un chemin, donc on doit construire l'URL correctement
   const { searchParams } = new URL(request.url)
   const queryString = searchParams.toString()
-  const makeUrl = `${MAKE_URL}${makePath}${queryString ? `?${queryString}` : ''}`
+  
+  // Si makePath est juste '/', utiliser MAKE_URL tel quel
+  // Sinon, construire l'URL en ajoutant le chemin
+  let makeUrl: string
+  try {
+    const makeUrlObj = new URL(MAKE_URL)
+    if (makePath === '/') {
+      makeUrl = MAKE_URL
+    } else {
+      // Extraire le chemin de base de MAKE_URL et ajouter makePath
+      const basePath = makeUrlObj.pathname
+      makeUrl = `${makeUrlObj.origin}${basePath}${makePath}`
+    }
+    makeUrl += queryString ? `?${queryString}` : ''
+  } catch {
+    // Fallback si MAKE_URL n'est pas une URL valide
+    makeUrl = `${MAKE_URL}${makePath}${queryString ? `?${queryString}` : ''}`
+  }
   
   // Extraire les cookies de session Make
   const requestCookies = request.headers.get('cookie') || ''
@@ -303,7 +321,19 @@ export async function POST(
     )
   }
 
-  const makeUrl = `${MAKE_URL}${makePath}`
+  // Construire l'URL Make pour POST
+  let makeUrl: string
+  try {
+    const makeUrlObj = new URL(MAKE_URL)
+    if (makePath === '/') {
+      makeUrl = MAKE_URL
+    } else {
+      const basePath = makeUrlObj.pathname
+      makeUrl = `${makeUrlObj.origin}${basePath}${makePath}`
+    }
+  } catch {
+    makeUrl = `${MAKE_URL}${makePath}`
+  }
   const body = await request.text()
   const requestCookies = request.headers.get('cookie') || ''
   
