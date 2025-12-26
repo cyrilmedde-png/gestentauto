@@ -77,7 +77,14 @@ export async function GET(
   
   // Extraire les cookies de session Make
   const requestCookies = request.headers.get('cookie') || ''
-  console.log('[Make Proxy Catch-all] Requesting:', { makeUrl, hasCookies: !!requestCookies })
+  const cookieCount = requestCookies ? requestCookies.split(';').length : 0
+  console.log('[Make Proxy Catch-all] Requesting:', { 
+    makeUrl, 
+    makePath,
+    hasCookies: !!requestCookies,
+    cookieCount,
+    cookiePreview: requestCookies ? requestCookies.substring(0, 100) + '...' : 'none'
+  })
   
   try {
     const response = await proxyMakeRequest(makeUrl, {

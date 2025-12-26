@@ -73,6 +73,9 @@ export async function proxyMakeRequest(
   // Ajouter les cookies de session Make si fournis
   if (cookies) {
     headersRecord['Cookie'] = cookies
+    console.log('[proxyMakeRequest] Cookies added, length:', cookies.length)
+  } else {
+    console.log('[proxyMakeRequest] No cookies provided')
   }
 
   // Parser l'URL
