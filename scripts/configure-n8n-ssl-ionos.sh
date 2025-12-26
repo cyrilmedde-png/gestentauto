@@ -128,24 +128,34 @@ if grep -q "server_name.*$N8N_DOMAIN" "$NGINX_CONFIG"; then
         exit 0
     fi
     
-    # Supprimer l'ancienne configuration
+    # Supprimer l'ancienne configuration (méthode plus robuste avec sed)
     echo "   📝 Suppression de l'ancienne configuration..."
-    # Créer un script temporaire pour supprimer le bloc server
-    TEMP_SCRIPT=$(mktemp)
-    cat > "$TEMP_SCRIPT" << 'PYTHON'
-import sys
-import re
-
-content = sys.stdin.read()
-# Supprimer le bloc server pour n8n.talosprimes.com
-pattern = r'server\s*\{[^}]*server_name[^}]*n8n\.talosprimes\.com[^}]*\}[^}]*\}'
-content = re.sub(pattern, '', content, flags=re.DOTALL)
-print(content, end='')
-PYTHON
     
-    python3 "$TEMP_SCRIPT" < "$NGINX_CONFIG" > "${NGINX_CONFIG}.tmp"
-    mv "${NGINX_CONFIG}.tmp" "$NGINX_CONFIG"
-    rm -f "$TEMP_SCRIPT"
+    # Utiliser awk pour supprimer les blocs server qui contiennent n8n.talosprimes.com
+    awk '
+    /^[[:space:]]*server[[:space:]]*\{/ {
+        in_server = 1
+        server_block = $0 "\n"
+        next
+    }
+    in_server {
+        server_block = server_block $0 "\n"
+        if ($0 ~ /\}/) {
+            brace_count = gsub(/\{/, "&", server_block) - gsub(/\}/, "&", server_block)
+            if (brace_count == 0) {
+                if (server_block !~ /server_name[^;]*n8n\.talosprimes\.com/) {
+                    printf "%s", server_block
+                }
+                in_server = 0
+                server_block = ""
+                next
+            }
+        }
+        next
+    }
+    { print }
+    ' "$NGINX_CONFIG" > "${NGINX_CONFIG}.tmp" && mv "${NGINX_CONFIG}.tmp" "$NGINX_CONFIG"
+    
     echo "   ✅ Ancienne configuration supprimée"
 fi
 
