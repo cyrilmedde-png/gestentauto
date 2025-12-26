@@ -8,11 +8,19 @@ Avec IONOS, le certificat SSL activé pour `talosprimes.com` couvre automatiquem
 
 ### Sur le serveur :
 
+**Version recommandée (v2 - plus robuste) :**
 ```bash
 cd /var/www/talosprime
 git pull origin main
+sudo bash scripts/configure-n8n-ssl-ionos-v2.sh
+```
+
+**Version originale :**
+```bash
 sudo bash scripts/configure-n8n-ssl-ionos.sh
 ```
+
+**💡 Recommandation : Utilisez la version v2** qui crée un fichier de configuration séparé pour n8n.talosprimes.com, évitant les problèmes de modification du fichier principal.
 
 Le script va :
 1. ✅ Trouver la configuration Nginx existante
