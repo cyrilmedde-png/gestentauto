@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Home, FileText, Users, Settings, Menu, UserPlus, Package, UserCheck, BarChart, Workflow, type LucideIcon } from 'lucide-react'
+import { Home, FileText, Users, Settings, Menu, UserPlus, Package, UserCheck, BarChart, Workflow, Zap, type LucideIcon } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
@@ -44,18 +44,23 @@ export function Sidebar() {
     return IconComponent || Package
   }
 
-  // Navigation de base (toujours visible)
+  // Navigation de base (toujours visible - fonctionnalités core)
   const baseNavItems = [
-    { icon: Home, label: 'Dashboard', href: '/platform/dashboard', moduleName: 'starter' },
-    { icon: Users, label: 'Clients', href: '/platform/clients', moduleName: 'starter' },
-    { icon: Users, label: 'Utilisateurs', href: '/platform/users', moduleName: 'starter' },
-    { icon: Package, label: 'Modules', href: '/platform/modules', moduleName: 'starter' },
-    { icon: Workflow, label: 'N8N', href: '/platform/n8n', moduleName: 'starter' },
-    { icon: BarChart, label: 'Analytics', href: '/platform/analytics', moduleName: 'starter' },
-    { icon: Settings, label: 'Paramètres', href: '/platform/settings', moduleName: 'starter' },
+    { icon: Home, label: 'Dashboard', href: '/platform/dashboard' },
+    { icon: Users, label: 'Clients', href: '/platform/clients' },
+    { icon: Users, label: 'Utilisateurs', href: '/platform/users' },
+    { icon: Package, label: 'Modules', href: '/platform/modules' },
+    { icon: BarChart, label: 'Analytics', href: '/platform/analytics' },
+    { icon: Settings, label: 'Paramètres', href: '/platform/settings' },
   ]
 
-  // Modules dynamiques (chargés depuis la base de données)
+  // Outils de création (toujours visibles - pour créer des workflows)
+  const creationTools = [
+    { icon: Workflow, label: 'N8N', href: '/platform/n8n' },
+    { icon: Zap, label: 'Make', href: '/platform/make' },
+  ]
+
+  // Modules dynamiques (workflows créés par N8N/Make)
   const dynamicNavItems = modules
     .filter(module => {
       // Filtrer les modules qui ont un route_slug et qui sont activés
@@ -83,8 +88,9 @@ export function Sidebar() {
   // Combiner tous les items de navigation
   const navItems = [
     ...baseNavItems,
+    ...creationTools,  // Outils de création après les items de base
     ...staticNavItems,
-    ...dynamicNavItems,
+    ...dynamicNavItems,  // Workflows créés par N8N/Make
   ]
 
   return (

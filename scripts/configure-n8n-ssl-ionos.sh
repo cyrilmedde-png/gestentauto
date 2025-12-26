@@ -19,10 +19,21 @@ DOMAIN="talosprimes.com"
 WWW_DOMAIN="www.talosprimes.com"
 N8N_DOMAIN="n8n.talosprimes.com"
 
-# Trouver le fichier de configuration Nginx principal
-echo "1️⃣ Recherche de la configuration Nginx..."
-echo "-------------------------------------------"
+# Créer un fichier de configuration séparé pour n8n (plus propre et simple)
+echo "1️⃣ Création d'un fichier de configuration séparé pour N8N..."
+echo "------------------------------------------------------------"
 
+NGINX_N8N_CONFIG="/etc/nginx/sites-available/n8n.talosprimes.com"
+NGINX_N8N_ENABLED="/etc/nginx/sites-enabled/n8n.talosprimes.com"
+
+# Si le fichier existe, créer une sauvegarde
+if [ -f "$NGINX_N8N_CONFIG" ]; then
+    BACKUP_FILE="${NGINX_N8N_CONFIG}.backup.$(date +%Y%m%d_%H%M%S)"
+    cp "$NGINX_N8N_CONFIG" "$BACKUP_FILE"
+    echo "✅ Sauvegarde créée: $BACKUP_FILE"
+fi
+
+# Trouver le certificat SSL en cherchant dans les configs existantes
 NGINX_CONFIG=""
 for config_file in \
     "/etc/nginx/sites-available/talosprime" \
@@ -33,32 +44,19 @@ for config_file in \
 do
     if [ -f "$config_file" ] && grep -q "talosprimes.com" "$config_file" 2>/dev/null; then
         NGINX_CONFIG="$config_file"
-        echo "✅ Configuration trouvée: $NGINX_CONFIG"
         break
     fi
 done
 
-# Si pas trouvé, chercher dans tous les fichiers
 if [ -z "$NGINX_CONFIG" ]; then
     for config_file in /etc/nginx/sites-available/* /etc/nginx/sites-enabled/*; do
         if [ -f "$config_file" ] && grep -q "talosprimes.com" "$config_file" 2>/dev/null; then
             NGINX_CONFIG="$config_file"
-            echo "✅ Configuration trouvée: $NGINX_CONFIG"
             break
         fi
     done
 fi
 
-if [ -z "$NGINX_CONFIG" ]; then
-    echo "❌ Aucune configuration Nginx trouvée pour talosprimes.com"
-    echo "   💡 Vérifiez: ls -la /etc/nginx/sites-available/"
-    exit 1
-fi
-
-# Créer une sauvegarde
-BACKUP_FILE="${NGINX_CONFIG}.backup.$(date +%Y%m%d_%H%M%S)"
-cp "$NGINX_CONFIG" "$BACKUP_FILE"
-echo "✅ Sauvegarde créée: $BACKUP_FILE"
 echo ""
 
 # Trouver le certificat SSL existant

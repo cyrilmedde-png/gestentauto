@@ -1,0 +1,299 @@
+{
+  "name": "Enregistrer Module Test",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "register-module",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "register-module-test"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "name",
+              "value": "test-module"
+            },
+            {
+              "name": "display_name",
+              "value": "Module Test"
+            },
+            {
+              "name": "description",
+              "value": "Module de test créé depuis N8N"
+            },
+            {
+              "name": "price_monthly",
+              "value": "19.99"
+            },
+            {
+              "name": "icon",
+              "value": "Package"
+            },
+            {
+              "name": "category",
+              "value": "custom"
+            },
+            {
+              "name": "features",
+              "value": "[\"Fonctionnalité 1\", \"Fonctionnalité 2\"]"
+            },
+            {
+              "name": "n8n_workflow_id",
+              "value": "={{ $workflow.id }}"
+            },
+            {
+              "name": "route_slug",
+              "value": "test-module"
+            },
+            {
+              "name": "table_name",
+              "value": "workflow_test_module"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-data",
+      "name": "Set - Données Module",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/platform/n8n/modules/register",
+        "authentication": "headerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-User-Id",
+              "value": "REMPLACER_PAR_VOTRE_USER_ID"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "http-request",
+      "name": "HTTP Request - Enregistrer Module",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-success",
+      "name": "IF - Succès ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "success-message",
+              "name": "message",
+              "value": "✅ Module enregistré avec succès !",
+              "type": "string"
+            },
+            {
+              "id": "module-data",
+              "name": "module",
+              "value": "={{ $json.module }}",
+              "type": "object"
+            },
+            {
+              "id": "status-code",
+              "name": "statusCode",
+              "value": "200",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-success",
+      "name": "Set - Message Succès",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error-message",
+              "name": "message",
+              "value": "❌ Erreur: {{ $json.error }}",
+              "type": "string"
+            },
+            {
+              "id": "error-details",
+              "name": "details",
+              "value": "={{ $json.details || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "status-code",
+              "name": "statusCode",
+              "value": "400",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-error",
+      "name": "Set - Message Erreur",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [1050, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set - Données Module",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Données Module": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Enregistrer Module",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Enregistrer Module": {
+      "main": [
+        [
+          {
+            "node": "IF - Succès ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Succès ?": {
+      "main": [
+        [
+          {
+            "node": "Set - Message Succès",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Message Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Message Succès": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Message Erreur": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-12-26T12:00:00.000Z",
+  "versionId": "1"
+}
+
