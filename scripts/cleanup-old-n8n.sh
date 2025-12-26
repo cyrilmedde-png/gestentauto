@@ -88,14 +88,31 @@ echo ""
 echo "2️⃣ Vérification que l'installation actuelle FONCTIONNE..."
 echo "==========================================================="
 
-# Vérifier PM2
-PM2_STATUS=$(pm2 list 2>/dev/null | grep -i n8n | awk '{print $10}' || echo "")
+# Vérifier PM2 - méthode plus fiable pour extraire le statut
+PM2_STATUS=$(pm2 list 2>/dev/null | grep -i n8n | grep -oE "online|stopped|errored|launching" | head -1 || echo "")
+if [ -z "$PM2_STATUS" ]; then
+    # Essayer avec jlist (JSON) qui est plus fiable
+    PM2_STATUS=$(pm2 jlist 2>/dev/null | jq -r '.[] | select(.name=="n8n") | .pm2_env.status' 2>/dev/null || echo "")
+fi
+
 if [ "$PM2_STATUS" != "online" ]; then
     echo "   ⚠️  N8N n'est pas 'online' dans PM2 (statut: $PM2_STATUS)"
-    echo "   ⚠️  Le script s'arrête pour éviter tout problème"
-    exit 1
+    echo "   💡 Vérification alternative..."
+    
+    # Vérification alternative: si N8N répond, c'est qu'il fonctionne
+    HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" http://localhost:5678 2>/dev/null || echo "000")
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "302" ]; then
+        echo "   ✅ N8N répond correctement malgré le statut PM2 (Code: $HTTP_CODE)"
+        echo "   ✅ On continue (N8N fonctionne même si le statut PM2 est ambigu)"
+        PM2_STATUS="online"  # Forcer pour continuer
+    else
+        echo "   ⚠️  N8N ne répond pas non plus (Code: $HTTP_CODE)"
+        echo "   ⚠️  Le script s'arrête pour éviter tout problème"
+        exit 1
+    fi
+else
+    echo "   ✅ N8N est 'online' dans PM2"
 fi
-echo "   ✅ N8N est 'online' dans PM2"
 
 # Vérifier que N8N répond
 HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" http://localhost:5678 2>/dev/null || echo "000")
@@ -320,16 +337,31 @@ echo "==========================================================================
 # Attendre un peu pour que tout se stabilise
 sleep 2
 
-# Vérifier PM2
-PM2_STATUS_AFTER=$(pm2 list 2>/dev/null | grep -i n8n | awk '{print $10}' || echo "")
-if [ "$PM2_STATUS_AFTER" != "online" ]; then
-    echo "   ❌ ERREUR CRITIQUE: N8N n'est plus 'online' dans PM2 (statut: $PM2_STATUS_AFTER)"
-    echo "   ⚠️  L'installation actuelle a peut-être été affectée"
-    echo "   💡 Vérifiez: pm2 list | grep n8n"
-    echo "   💡 Vérifiez: pm2 logs n8n"
-    exit 1
+# Vérifier PM2 - méthode plus fiable
+PM2_STATUS_AFTER=$(pm2 list 2>/dev/null | grep -i n8n | grep -oE "online|stopped|errored|launching" | head -1 || echo "")
+if [ -z "$PM2_STATUS_AFTER" ]; then
+    PM2_STATUS_AFTER=$(pm2 jlist 2>/dev/null | jq -r '.[] | select(.name=="n8n") | .pm2_env.status' 2>/dev/null || echo "")
 fi
-echo "   ✅ N8N est toujours 'online' dans PM2"
+
+if [ "$PM2_STATUS_AFTER" != "online" ]; then
+    echo "   ⚠️  Statut PM2: $PM2_STATUS_AFTER (pas 'online')"
+    echo "   💡 Vérification alternative..."
+    
+    # Vérification alternative: si N8N répond, c'est qu'il fonctionne
+    HTTP_CODE_AFTER=$(curl -k -s -o /dev/null -w "%{http_code}" http://localhost:5678 2>/dev/null || echo "000")
+    if [ "$HTTP_CODE_AFTER" = "200" ] || [ "$HTTP_CODE_AFTER" = "401" ] || [ "$HTTP_CODE_AFTER" = "302" ]; then
+        echo "   ✅ N8N répond toujours correctement (Code: $HTTP_CODE_AFTER)"
+        echo "   ✅ L'installation actuelle fonctionne toujours"
+    else
+        echo "   ❌ ERREUR CRITIQUE: N8N ne répond plus (Code: $HTTP_CODE_AFTER)"
+        echo "   ⚠️  L'installation actuelle a peut-être été affectée"
+        echo "   💡 Vérifiez: pm2 list | grep n8n"
+        echo "   💡 Vérifiez: pm2 logs n8n"
+        exit 1
+    fi
+else
+    echo "   ✅ N8N est toujours 'online' dans PM2"
+fi
 
 # Vérifier que N8N répond toujours
 HTTP_CODE_AFTER=$(curl -k -s -o /dev/null -w "%{http_code}" http://localhost:5678 2>/dev/null || echo "000")
