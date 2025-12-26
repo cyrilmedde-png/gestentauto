@@ -162,13 +162,25 @@ export async function GET(request: NextRequest) {
         const escapedAuthToken = (authToken || '').replace(/'/g, "\\'").replace(/\\/g, "\\\\")
         console.log('[Make Proxy Root] Auth token escaped, length:', escapedAuthToken.length)
         
-        // Remplacer les URLs par des URLs proxy
+        // Remplacer les URLs par des URLs proxy (sauf fichiers statiques)
         console.log('[Make Proxy Root] Replacing URLs in HTML...')
         console.log('[Make Proxy Root] HTML length before replacement:', htmlData.length)
+        const staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.ico', '.webp']
         let modifiedHtml = htmlData.replace(
           /(src|href|action)=["']([^"']+)["']/g,
           (match, attr, url) => {
             if (url.startsWith('data:') || url.startsWith('mailto:') || url.startsWith('#')) {
+              return match
+            }
+            
+            // Ne pas réécrire les fichiers statiques (CSS, JS, images, etc.)
+            const urlLower = url.toLowerCase()
+            if (staticExtensions.some(ext => urlLower.endsWith(ext) || urlLower.includes(ext + '?'))) {
+              return match
+            }
+            
+            // Ne pas réécrire les fichiers dans /zone/... (fichiers statiques Make.com)
+            if (url.includes('/zone/')) {
               return match
             }
             
@@ -220,12 +232,25 @@ export async function GET(request: NextRequest) {
       return false;
     }
     
-    // URLs relatives vers Make
+    // Ne pas proxifier les fichiers statiques (CSS, JS, images, fonts, etc.)
+    // Ces fichiers doivent être chargés directement depuis Make.com
+    const staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.ico', '.webp'];
+    const urlLower = url.toLowerCase();
+    if (staticExtensions.some(ext => urlLower.endsWith(ext) || urlLower.includes(ext + '?'))) {
+      return false;
+    }
+    
+    // Ne pas proxifier les fichiers dans /zone/... (fichiers statiques Make.com)
+    if (url.includes('/zone/')) {
+      return false;
+    }
+    
+    // URLs relatives vers Make (sauf fichiers statiques)
     if (url.startsWith('/') && !url.startsWith('//')) {
       return true;
     }
     
-    // URLs absolues vers Make.com
+    // URLs absolues vers Make.com (sauf fichiers statiques)
     try {
       const urlObj = new URL(url, window.location.origin);
       if (urlObj.hostname.endsWith('.make.com') || urlObj.hostname === makeHost) {
