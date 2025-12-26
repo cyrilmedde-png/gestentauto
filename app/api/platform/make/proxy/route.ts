@@ -145,19 +145,26 @@ export async function GET(request: NextRequest) {
         console.log('[Make Proxy Root] Getting auth token...')
         let authToken = ''
         try {
+          console.log('[Make Proxy Root] Creating Supabase client...')
           const supabase = await createServerClient(request)
+          console.log('[Make Proxy Root] Supabase client created, calling getSession()...')
           const { data: { session } } = await supabase.auth.getSession()
+          console.log('[Make Proxy Root] getSession() completed, session:', session ? 'exists' : 'null')
           authToken = session?.access_token || ''
           console.log('[Make Proxy Root] Auth token retrieved:', authToken ? 'present' : 'missing')
         } catch (error) {
-          console.warn('[Make Proxy Root] Failed to get session token:', error)
+          console.error('[Make Proxy Root] Failed to get session token:', error)
+          console.error('[Make Proxy Root] Error details:', error instanceof Error ? error.message : String(error))
         }
         
+        console.log('[Make Proxy Root] Escaping auth token...')
         // Échapper le token pour le script (gérer le cas où authToken est vide)
         const escapedAuthToken = (authToken || '').replace(/'/g, "\\'").replace(/\\/g, "\\\\")
+        console.log('[Make Proxy Root] Auth token escaped, length:', escapedAuthToken.length)
         
         // Remplacer les URLs par des URLs proxy
         console.log('[Make Proxy Root] Replacing URLs in HTML...')
+        console.log('[Make Proxy Root] HTML length before replacement:', htmlData.length)
         let modifiedHtml = htmlData.replace(
           /(src|href|action)=["']([^"']+)["']/g,
           (match, attr, url) => {
@@ -191,6 +198,7 @@ export async function GET(request: NextRequest) {
             return match
           }
         )
+        console.log('[Make Proxy Root] URLs replaced in HTML, new length:', modifiedHtml.length)
         
         // Injecter le script d'interception pour les requêtes fetch/XHR
         console.log('[Make Proxy Root] Creating interception script...')
