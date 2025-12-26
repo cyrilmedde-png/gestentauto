@@ -92,14 +92,26 @@ export async function GET(request: NextRequest) {
           'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9',
         },
       }, requestCookies || undefined)
-
+      
+      // Log IMMÉDIATEMENT après le await pour s'assurer qu'on arrive ici
+      console.log('[Make Proxy Root] ========== proxyMakeRequest RETURNED ==========')
+      console.log('[Make Proxy Root] Response object:', {
+        status: response?.status,
+        statusText: response?.statusText,
+        hasHeaders: !!response?.headers,
+        hasBody: !!response?.body,
+      })
       const contentType = response.headers.get('content-type') || 'application/octet-stream'
+      console.log('[Make Proxy Root] Content-Type:', contentType)
       
       // Pour le HTML, réécrire les URLs
       if (contentType.includes('text/html')) {
+        console.log('[Make Proxy Root] Processing HTML response...')
         let htmlData: string
         try {
+          console.log('[Make Proxy Root] Reading response text...')
           htmlData = await response.text()
+          console.log('[Make Proxy Root] HTML data read, length:', htmlData.length)
         } catch (error) {
           console.error('[Make Proxy Root] Erreur lors de la lecture du HTML:', error)
           return NextResponse.json(
@@ -108,16 +120,19 @@ export async function GET(request: NextRequest) {
           )
         }
         
+        console.log('[Make Proxy Root] Building base URL and proxy config...')
         const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
         const protocol = request.headers.get('x-forwarded-proto') || 'https'
         const baseUrl = host 
           ? `${protocol}://${host}`
           : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.talosprimes.com')
+        console.log('[Make Proxy Root] Base URL:', baseUrl)
         
         const proxyBase = `/api/platform/make/proxy`
         let makeHost: string
         try {
           makeHost = new URL(MAKE_URL).hostname
+          console.log('[Make Proxy Root] Make host:', makeHost)
         } catch (error) {
           console.error('[Make Proxy Root] Erreur lors du parsing de MAKE_URL:', error, MAKE_URL)
           return NextResponse.json(
@@ -127,11 +142,13 @@ export async function GET(request: NextRequest) {
         }
         
         // Récupérer le token JWT depuis la session Supabase
+        console.log('[Make Proxy Root] Getting auth token...')
         let authToken = ''
         try {
           const supabase = await createServerClient(request)
           const { data: { session } } = await supabase.auth.getSession()
           authToken = session?.access_token || ''
+          console.log('[Make Proxy Root] Auth token retrieved:', authToken ? 'present' : 'missing')
         } catch (error) {
           console.warn('[Make Proxy Root] Failed to get session token:', error)
         }
@@ -140,6 +157,7 @@ export async function GET(request: NextRequest) {
         const escapedAuthToken = (authToken || '').replace(/'/g, "\\'").replace(/\\/g, "\\\\")
         
         // Remplacer les URLs par des URLs proxy
+        console.log('[Make Proxy Root] Replacing URLs in HTML...')
         let modifiedHtml = htmlData.replace(
           /(src|href|action)=["']([^"']+)["']/g,
           (match, attr, url) => {
@@ -175,6 +193,7 @@ export async function GET(request: NextRequest) {
         )
         
         // Injecter le script d'interception pour les requêtes fetch/XHR
+        console.log('[Make Proxy Root] Creating interception script...')
         const escapedProxyBase = baseUrl + proxyBase
         const escapedMakeHost = makeHost
         
@@ -260,12 +279,15 @@ export async function GET(request: NextRequest) {
 </script>`
         
         // Injecter le script juste avant </body> ou à la fin du HTML
+        console.log('[Make Proxy Root] Injecting interception script...')
         modifiedHtml = modifiedHtml.replace('</body>', interceptionScript + '</body>')
         if (!modifiedHtml.includes(interceptionScript)) {
           modifiedHtml += interceptionScript
         }
+        console.log('[Make Proxy Root] HTML modified, new length:', modifiedHtml.length)
         
         // Créer la réponse avec les headers modifiés
+        console.log('[Make Proxy Root] Creating NextResponse...')
         const responseHeaders = new Headers(response.headers)
         responseHeaders.delete('content-security-policy')
         responseHeaders.delete('x-frame-options')
@@ -273,6 +295,7 @@ export async function GET(request: NextRequest) {
         
         // Transmettre les cookies Set-Cookie de Make
         const setCookieHeaders = response.headers.getSetCookie()
+        console.log('[Make Proxy Root] Set-Cookie headers count:', setCookieHeaders?.length || 0)
         const nextResponse = new NextResponse(modifiedHtml, {
           status: response.status,
           headers: responseHeaders,
@@ -284,10 +307,12 @@ export async function GET(request: NextRequest) {
           })
         }
         
+        console.log('[Make Proxy Root] Returning NextResponse with status:', nextResponse.status)
         return nextResponse
       }
 
       // Pour les autres types de contenu, retourner directement
+      console.log('[Make Proxy Root] Non-HTML response, returning as-is...')
       const responseHeaders = new Headers(response.headers)
       responseHeaders.delete('content-security-policy')
       responseHeaders.delete('x-frame-options')
@@ -305,6 +330,7 @@ export async function GET(request: NextRequest) {
         })
       }
       
+      console.log('[Make Proxy Root] Returning NextResponse (non-HTML) with status:', nextResponse.status)
       return nextResponse
     } catch (error) {
       console.error('[Make Proxy Root] Erreur:', error)
