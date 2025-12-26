@@ -22,14 +22,24 @@ elif [ -f "/etc/nginx/sites-available/talosprimes" ]; then
     NGINX_CONFIG="/etc/nginx/sites-available/talosprimes"
 else
     echo -e "${RED}   ❌ Fichier de configuration Nginx non trouvé${NC}"
-    exit 1
+    echo -e "${YELLOW}   ⚠️  Ce script doit être exécuté sur le serveur Linux${NC}"
+    echo -e "${YELLOW}   ⚠️  Les fichiers Nginx sont dans /etc/nginx/sites-available/${NC}"
+    echo ""
+    echo -e "${YELLOW}   💡 Pour continuer le diagnostic partiel (sans Nginx), le script va continuer...${NC}"
+    echo ""
+    NGINX_CONFIG=""
 fi
 
-echo -e "${GREEN}   ✅ Fichier trouvé: $NGINX_CONFIG${NC}"
-echo ""
+if [ -n "$NGINX_CONFIG" ]; then
+    echo -e "${GREEN}   ✅ Fichier trouvé: $NGINX_CONFIG${NC}"
+    echo ""
+fi
 
 # Vérifier si /rest/push existe
-if grep -q "location /rest/push" "$NGINX_CONFIG"; then
+if [ -z "$NGINX_CONFIG" ]; then
+    echo -e "${YELLOW}   ⚠️  Impossible de vérifier Nginx (fichier non trouvé)${NC}"
+    echo -e "${YELLOW}   💡 Exécutez ce script sur le serveur: sudo bash scripts/diagnostic-complet-websocket.sh${NC}"
+elif grep -q "location /rest/push" "$NGINX_CONFIG"; then
     echo -e "${GREEN}   ✅ location /rest/push existe${NC}"
     echo ""
     echo "   📋 Configuration actuelle:"
@@ -77,8 +87,9 @@ fi
 echo ""
 
 # Vérifier l'ordre des locations (CRITIQUE)
-echo "   📋 Ordre des locations /rest dans Nginx:"
-REST_LOCATIONS=$(grep -n "location /rest" "$NGINX_CONFIG" | head -10)
+if [ -n "$NGINX_CONFIG" ]; then
+    echo "   📋 Ordre des locations /rest dans Nginx:"
+    REST_LOCATIONS=$(grep -n "location /rest" "$NGINX_CONFIG" | head -10)
 if [ -n "$REST_LOCATIONS" ]; then
     echo "$REST_LOCATIONS" | sed 's/^/      /'
     echo ""
@@ -95,8 +106,11 @@ if [ -n "$REST_LOCATIONS" ]; then
             echo -e "${YELLOW}      /rest/push doit être AVANT /rest/ ou /api/ pour être prioritaire${NC}"
         fi
     fi
+    else
+        echo -e "${YELLOW}   ⚠️  Aucune location /rest trouvée${NC}"
+    fi
 else
-    echo -e "${YELLOW}   ⚠️  Aucune location /rest trouvée${NC}"
+    echo -e "${YELLOW}   ⚠️  Impossible de vérifier l'ordre (Nginx non trouvé)${NC}"
 fi
 
 echo ""
@@ -170,11 +184,16 @@ echo ""
 # 5. Vérifier la configuration Nginx (syntaxe)
 echo "5️⃣ Test de la configuration Nginx:"
 echo "-----------------------------------"
-if nginx -t 2>&1 | grep -q "syntax is ok"; then
-    echo -e "${GREEN}   ✅ Configuration Nginx valide${NC}"
+if command -v nginx &> /dev/null; then
+    if nginx -t 2>&1 | grep -q "syntax is ok"; then
+        echo -e "${GREEN}   ✅ Configuration Nginx valide${NC}"
+    else
+        echo -e "${RED}   ❌ Erreur dans la configuration Nginx:${NC}"
+        nginx -t 2>&1 | sed 's/^/      /'
+    fi
 else
-    echo -e "${RED}   ❌ Erreur dans la configuration Nginx:${NC}"
-    nginx -t 2>&1 | sed 's/^/      /'
+    echo -e "${YELLOW}   ⚠️  Nginx non installé ou non dans le PATH${NC}"
+    echo -e "${YELLOW}   💡 Ce script doit être exécuté sur le serveur Linux${NC}"
 fi
 
 echo ""
@@ -188,13 +207,21 @@ echo ""
 PROBLEMS=0
 
 # Vérifier les problèmes critiques
-if ! grep -q "location /rest/push" "$NGINX_CONFIG"; then
+if [ -z "$NGINX_CONFIG" ]; then
+    echo -e "${YELLOW}⚠️  IMPOSSIBLE DE VÉRIFIER NGINX: Fichier de configuration non trouvé${NC}"
+    echo "   💡 Ce script doit être exécuté sur le serveur Linux"
+    echo "   💡 Les fichiers Nginx sont dans /etc/nginx/sites-available/"
+    echo ""
+    echo "   📋 Pour exécuter sur le serveur:"
+    echo "      ssh user@votre-serveur"
+    echo "      cd /var/www/talosprime"
+    echo "      sudo bash scripts/diagnostic-complet-websocket.sh"
+    PROBLEMS=$((PROBLEMS + 1))
+elif ! grep -q "location /rest/push" "$NGINX_CONFIG"; then
     echo -e "${RED}❌ PROBLÈME CRITIQUE: location /rest/push manquante${NC}"
     echo "   Solution: sudo ./scripts/fix-websocket-nginx.sh"
     PROBLEMS=$((PROBLEMS + 1))
-fi
-
-if grep -A 10 "location /rest/push" "$NGINX_CONFIG" 2>/dev/null | grep -q "localhost:3000\|127.0.0.1:3000"; then
+elif grep -A 10 "location /rest/push" "$NGINX_CONFIG" 2>/dev/null | grep -q "localhost:3000\|127.0.0.1:3000"; then
     echo -e "${RED}❌ PROBLÈME CRITIQUE: /rest/push proxifie vers Next.js${NC}"
     echo "   Solution: sudo ./scripts/fix-websocket-nginx.sh"
     PROBLEMS=$((PROBLEMS + 1))
