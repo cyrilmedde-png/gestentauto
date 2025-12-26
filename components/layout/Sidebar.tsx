@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Home, FileText, Users, Settings, Menu, UserPlus, Package, UserCheck, BarChart, Workflow } from 'lucide-react'
+import { Home, FileText, Users, Settings, Menu, UserPlus, Package, UserCheck, BarChart, Workflow, type LucideIcon } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
+import { useModules } from '@/lib/hooks/useModules'
+import * as Icons from 'lucide-react'
 
 export function Sidebar() {
   const { signOut } = useAuth()
@@ -28,22 +30,61 @@ export function Sidebar() {
     setIsSidebarExpanded(isExpanded || isMobileOpen)
   }, [isExpanded, isMobileOpen, setIsSidebarExpanded])
 
+  // Charger les modules activés
+  const { modules, activeModuleNames, hasModule, loading: modulesLoading } = useModules()
+
   // Fermer le menu mobile au changement de route
   const handleLinkClick = () => {
     setIsMobileOpen(false)
   }
 
-  // Navigation plateforme - tous les modules doivent suivre /platform/nom-du-module
+  // Fonction pour obtenir l'icône depuis le nom
+  const getIcon = (iconName: string): LucideIcon => {
+    const IconComponent = (Icons as any)[iconName] as LucideIcon
+    return IconComponent || Package
+  }
+
+  // Navigation de base (toujours visible)
+  const baseNavItems = [
+    { icon: Home, label: 'Dashboard', href: '/platform/dashboard', moduleName: 'starter' },
+    { icon: Users, label: 'Clients', href: '/platform/clients', moduleName: 'starter' },
+    { icon: Users, label: 'Utilisateurs', href: '/platform/users', moduleName: 'starter' },
+    { icon: Package, label: 'Modules', href: '/platform/modules', moduleName: 'starter' },
+    { icon: Workflow, label: 'N8N', href: '/platform/n8n', moduleName: 'starter' },
+    { icon: BarChart, label: 'Analytics', href: '/platform/analytics', moduleName: 'starter' },
+    { icon: Settings, label: 'Paramètres', href: '/platform/settings', moduleName: 'starter' },
+  ]
+
+  // Modules dynamiques (chargés depuis la base de données)
+  const dynamicNavItems = modules
+    .filter(module => {
+      // Filtrer les modules qui ont un route_slug et qui sont activés
+      if (!module.route_slug) return false
+      return hasModule(module.name)
+    })
+    .map(module => ({
+      icon: getIcon(module.icon),
+      label: module.display_name,
+      href: `/platform/workflows/${module.route_slug}`,
+      moduleName: module.name,
+    }))
+
+  // Modules statiques avec vérification d'accès
+  const staticNavItems = [
+    { icon: UserPlus, label: 'Leads', href: '/platform/leads', moduleName: 'leads' },
+    { icon: UserCheck, label: 'Onboarding', href: '/platform/onboarding', moduleName: 'starter' },
+  ].filter(item => {
+    // Le module "starter" est toujours accessible
+    if (item.moduleName === 'starter') return true
+    // Vérifier l'accès pour les autres modules
+    return hasModule(item.moduleName)
+  })
+
+  // Combiner tous les items de navigation
   const navItems = [
-    { icon: Home, label: 'Dashboard', href: '/platform/dashboard' },
-    { icon: UserPlus, label: 'Leads', href: '/platform/leads' },
-    { icon: UserCheck, label: 'Onboarding', href: '/platform/onboarding' },
-    { icon: Users, label: 'Clients', href: '/platform/clients' },
-    { icon: Users, label: 'Utilisateurs', href: '/platform/users' },
-    { icon: Package, label: 'Modules', href: '/platform/modules' },
-    { icon: Workflow, label: 'N8N', href: '/platform/n8n' },
-    { icon: BarChart, label: 'Analytics', href: '/platform/analytics' },
-    { icon: Settings, label: 'Paramètres', href: '/platform/settings' },
+    ...baseNavItems,
+    ...staticNavItems,
+    ...dynamicNavItems,
   ]
 
   return (
