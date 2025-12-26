@@ -33,7 +33,21 @@ export async function OPTIONS(request: NextRequest) {
  * Gère les requêtes vers /api/platform/make/proxy (sans chemin)
  */
 export async function GET(request: NextRequest) {
-  console.log('[Make Proxy Root] GET request received')
+  // Log immédiatement pour confirmer que la fonction est appelée
+  try {
+    console.log('[Make Proxy Root] ========== GET request received ==========')
+    console.log('[Make Proxy Root] URL:', request.url)
+    console.log('[Make Proxy Root] Method:', request.method)
+    console.log('[Make Proxy Root] Headers:', {
+      host: request.headers.get('host'),
+      cookie: request.headers.get('cookie') ? 'present' : 'missing',
+      authorization: request.headers.get('authorization') ? 'present' : 'missing',
+    })
+  } catch (logError) {
+    // Même les logs peuvent échouer, donc on continue
+    console.error('[Make Proxy Root] Error in initial logging:', logError)
+  }
+  
   try {
     // Vérifier que l'utilisateur est un admin plateforme
     console.log('[Make Proxy Root] Verifying platform user...')
