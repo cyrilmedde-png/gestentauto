@@ -128,33 +128,50 @@ if grep -q "server_name.*$N8N_DOMAIN" "$NGINX_CONFIG"; then
         exit 0
     fi
     
-    # Supprimer l'ancienne configuration (méthode plus robuste avec sed)
+    # Supprimer l'ancienne configuration
     echo "   📝 Suppression de l'ancienne configuration..."
     
-    # Utiliser awk pour supprimer les blocs server qui contiennent n8n.talosprimes.com
-    awk '
-    /^[[:space:]]*server[[:space:]]*\{/ {
-        in_server = 1
-        server_block = $0 "\n"
-        next
-    }
-    in_server {
-        server_block = server_block $0 "\n"
-        if ($0 ~ /\}/) {
-            brace_count = gsub(/\{/, "&", server_block) - gsub(/\}/, "&", server_block)
-            if (brace_count == 0) {
-                if (server_block !~ /server_name[^;]*n8n\.talosprimes\.com/) {
-                    printf "%s", server_block
-                }
-                in_server = 0
-                server_block = ""
-                next
-            }
-        }
-        next
-    }
-    { print }
-    ' "$NGINX_CONFIG" > "${NGINX_CONFIG}.tmp" && mv "${NGINX_CONFIG}.tmp" "$NGINX_CONFIG"
+    # Méthode simple: trouver les numéros de ligne et supprimer le bloc
+    # Trouver la ligne de début du bloc server
+    START_LINE=$(grep -n "server_name.*$N8N_DOMAIN" "$NGINX_CONFIG" | head -1 | cut -d: -f1)
+    
+    if [ -n "$START_LINE" ]; then
+        # Remonter pour trouver le début du bloc "server {"
+        while [ "$START_LINE" -gt 1 ]; do
+            LINE_CONTENT=$(sed -n "${START_LINE}p" "$NGINX_CONFIG")
+            if echo "$LINE_CONTENT" | grep -q "^[[:space:]]*server[[:space:]]*{"; then
+                break
+            fi
+            START_LINE=$((START_LINE - 1))
+        done
+        
+        # Trouver la fin du bloc (trouver la fermeture correspondante)
+        BRACE_COUNT=0
+        END_LINE=$START_LINE
+        TOTAL_LINES=$(wc -l < "$NGINX_CONFIG")
+        
+        while [ "$END_LINE" -le "$TOTAL_LINES" ]; do
+            LINE_CONTENT=$(sed -n "${END_LINE}p" "$NGINX_CONFIG")
+            OPEN_BRACES=$(echo "$LINE_CONTENT" | grep -o '{' | wc -l)
+            CLOSE_BRACES=$(echo "$LINE_CONTENT" | grep -o '}' | wc -l)
+            BRACE_COUNT=$((BRACE_COUNT + OPEN_BRACES - CLOSE_BRACES))
+            
+            if [ "$BRACE_COUNT" -eq 0 ] && [ "$END_LINE" -gt "$START_LINE" ]; then
+                break
+            fi
+            END_LINE=$((END_LINE + 1))
+        done
+        
+        # Supprimer le bloc
+        if [ -n "$START_LINE" ] && [ -n "$END_LINE" ] && [ "$END_LINE" -gt "$START_LINE" ]; then
+            sed -i "${START_LINE},${END_LINE}d" "$NGINX_CONFIG"
+            echo "   ✅ Bloc server supprimé (lignes $START_LINE-$END_LINE)"
+        else
+            echo "   ⚠️  Impossible de trouver les limites du bloc, tentative de suppression manuelle..."
+            # Méthode de secours: supprimer toutes les lignes contenant n8n.talosprimes.com et les lignes suivantes jusqu'à }
+            sed -i "/server_name.*$N8N_DOMAIN/,/^[[:space:]]*}/d" "$NGINX_CONFIG"
+        fi
+    fi
     
     echo "   ✅ Ancienne configuration supprimée"
 fi
