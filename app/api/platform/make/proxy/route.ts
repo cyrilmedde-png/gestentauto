@@ -296,19 +296,23 @@ export async function GET(request: NextRequest) {
         
         // Créer la réponse avec les headers modifiés
         console.log('[Make Proxy Root] Creating NextResponse...')
-        const responseHeaders = new Headers(response.headers)
-        responseHeaders.delete('content-security-policy')
-        responseHeaders.delete('x-frame-options')
-        responseHeaders.set('Content-Security-Policy', "frame-ancestors 'self' https://www.talosprimes.com")
         
-        // Transmettre les cookies Set-Cookie de Make
+        // Ne copier que les headers nécessaires (comme dans N8N)
+        // Ne pas copier tous les headers car certains peuvent être incompatibles (Content-Length, Transfer-Encoding, etc.)
         const setCookieHeaders = response.headers.getSetCookie()
         console.log('[Make Proxy Root] Set-Cookie headers count:', setCookieHeaders?.length || 0)
+        
         const nextResponse = new NextResponse(modifiedHtml, {
           status: response.status,
-          headers: responseHeaders,
+          headers: {
+            'Content-Type': contentType,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Content-Security-Policy': "frame-ancestors 'self' https://www.talosprimes.com",
+            ...getCorsHeaders(request.headers.get('origin')),
+          },
         })
         
+        // Transmettre les cookies Set-Cookie de Make
         if (setCookieHeaders && setCookieHeaders.length > 0) {
           setCookieHeaders.forEach(cookie => {
             nextResponse.headers.append('Set-Cookie', cookie)
@@ -321,17 +325,19 @@ export async function GET(request: NextRequest) {
 
       // Pour les autres types de contenu, retourner directement
       console.log('[Make Proxy Root] Non-HTML response, returning as-is...')
-      const responseHeaders = new Headers(response.headers)
-      responseHeaders.delete('content-security-policy')
-      responseHeaders.delete('x-frame-options')
       
-      // Transmettre les cookies Set-Cookie
+      // Ne copier que les headers nécessaires
       const setCookieHeaders = response.headers.getSetCookie()
       const nextResponse = new NextResponse(response.body, {
         status: response.status,
-        headers: responseHeaders,
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          ...getCorsHeaders(request.headers.get('origin')),
+        },
       })
       
+      // Transmettre les cookies Set-Cookie
       if (setCookieHeaders && setCookieHeaders.length > 0) {
         setCookieHeaders.forEach(cookie => {
           nextResponse.headers.append('Set-Cookie', cookie)
