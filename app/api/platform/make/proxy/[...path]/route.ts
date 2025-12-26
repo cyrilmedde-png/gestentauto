@@ -31,6 +31,10 @@ export async function GET(
     ? `/${resolvedParams.path.join('/')}` 
     : '/'
   
+  console.log('[Make Proxy Catch-all] ========== GET request received ==========')
+  console.log('[Make Proxy Catch-all] Path:', makePath)
+  console.log('[Make Proxy Catch-all] Full URL:', request.url)
+  
   // Vérifier que l'utilisateur est un admin plateforme
   const { isPlatform, error } = await verifyPlatformUser(request)
   
