@@ -82,13 +82,9 @@ export async function GET(
   // Extraire les cookies de session Make
   const requestCookies = request.headers.get('cookie') || ''
   const cookieCount = requestCookies ? requestCookies.split(';').length : 0
-  console.log('[Make Proxy Catch-all] Requesting:', { 
-    makeUrl, 
-    makePath,
-    hasCookies: !!requestCookies,
-    cookieCount,
-    cookiePreview: requestCookies ? requestCookies.substring(0, 100) + '...' : 'none'
-  })
+  console.log('[Make Proxy Catch-all] Requesting URL:', makeUrl)
+  console.log('[Make Proxy Catch-all] Path:', makePath)
+  console.log('[Make Proxy Catch-all] Cookies:', cookieCount, 'cookies')
   
   try {
     const response = await proxyMakeRequest(makeUrl, {
@@ -100,12 +96,16 @@ export async function GET(
       },
     }, requestCookies || undefined)
 
-    console.log('[Make Proxy Catch-all] Response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      contentType: response.headers.get('content-type'),
-      url: makeUrl,
-    })
+    console.log('[Make Proxy Catch-all] Response status:', response.status, response.statusText)
+    console.log('[Make Proxy Catch-all] Response contentType:', response.headers.get('content-type'))
+    console.log('[Make Proxy Catch-all] Response URL:', makeUrl)
+    
+    // Si le status est une erreur, logger les détails
+    if (response.status >= 400) {
+      console.error('[Make Proxy Catch-all] ❌ ERROR from Make.com - Status:', response.status)
+      console.error('[Make Proxy Catch-all] ❌ Requested URL:', makeUrl)
+      console.error('[Make Proxy Catch-all] ❌ Path:', makePath)
+    }
 
     const contentType = response.headers.get('content-type') || 'application/octet-stream'
     
