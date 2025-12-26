@@ -77,6 +77,7 @@ export async function GET(
   
   // Extraire les cookies de session Make
   const requestCookies = request.headers.get('cookie') || ''
+  console.log('[Make Proxy Catch-all] Requesting:', { makeUrl, hasCookies: !!requestCookies })
   
   try {
     const response = await proxyMakeRequest(makeUrl, {
@@ -87,6 +88,13 @@ export async function GET(
         'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9',
       },
     }, requestCookies || undefined)
+
+    console.log('[Make Proxy Catch-all] Response received:', {
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get('content-type'),
+      url: makeUrl,
+    })
 
     const contentType = response.headers.get('content-type') || 'application/octet-stream'
     
@@ -288,10 +296,19 @@ export async function GET(
     
     return nextResponse
   } catch (error) {
-    console.error('[Make Proxy] Erreur:', error)
+    console.error('[Make Proxy Catch-all] Erreur lors du proxy:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      makeUrl,
+      makePath,
+    })
     return NextResponse.json(
-      { error: 'Erreur lors du proxy vers Make.com', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { 
+        error: 'Erreur lors du proxy vers Make.com', 
+        details: error instanceof Error ? error.message : 'Unknown error',
+        url: makeUrl,
+      },
+      { status: 502, headers: getCorsHeaders(request.headers.get('origin')) }
     )
   }
 }
