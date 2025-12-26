@@ -78,3 +78,4 @@ echo "   2. Les logs Nginx: sudo tail -f /var/log/nginx/error.log"
 echo "   3. Que N8N est accessible: curl -k https://n8n.talosprimes.com"
 echo ""
 
+

@@ -151,3 +151,4 @@ CREATE POLICY "Users can insert settings in their company"
 -- Ces politiques seront créées quand ces modules seront implémentés
 
 
+

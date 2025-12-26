@@ -214,3 +214,4 @@ SELECT COUNT(*) FROM leads;
 4. **Les routes API client respectent les RLS** - Filtrage automatique par `company_id`
 
 
+

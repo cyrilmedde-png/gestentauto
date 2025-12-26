@@ -55,3 +55,4 @@ Une fois les scripts SQL exécutés :
 3. Supprimer le code de fallback (optionnel, pour nettoyer)
 
 
+

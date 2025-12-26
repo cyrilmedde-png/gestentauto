@@ -50,3 +50,4 @@ echo "🔧 Prochaine étape : Configurer SSL avec Let's Encrypt"
 echo "   Commande : sudo certbot --nginx -d $DOMAIN -d $DOMAIN_ALT"
 
 
+

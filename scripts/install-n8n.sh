@@ -644,3 +644,4 @@ echo "   3. Importez l'exemple de webhook dans N8N si nécessaire"
 echo ""
 
 
+

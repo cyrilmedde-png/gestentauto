@@ -219,3 +219,4 @@ echo "   2. Les logs Nginx: sudo tail -f /var/log/nginx/error.log"
 echo "   3. Que N8N est accessible: curl -k $N8N_PROXY"
 echo ""
 
+

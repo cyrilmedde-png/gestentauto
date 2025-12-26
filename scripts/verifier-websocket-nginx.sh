@@ -153,3 +153,4 @@ echo "3. Vérifiez que N8N écoute bien sur le port 5678"
 echo "4. Testez la connexion WebSocket: wscat -c wss://www.talosprimes.com/rest/push"
 echo ""
 
+

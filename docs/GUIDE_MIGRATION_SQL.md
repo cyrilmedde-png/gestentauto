@@ -168,3 +168,4 @@ Une fois les scripts SQL exécutés :
 - Architecture : `docs/ARCHITECTURE_PLATEFORME_CLIENT.md`
 
 
+

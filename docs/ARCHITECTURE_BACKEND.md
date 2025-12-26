@@ -222,3 +222,4 @@ curl http://localhost:3000/api/platform/users?company_id=xxx
 - Migration progressive recommandée vers les nouvelles routes
 
 
+

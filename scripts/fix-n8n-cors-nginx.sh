@@ -171,3 +171,4 @@ echo "Les requêtes telemetry vers n8n.talosprimes.com devraient maintenant fonc
 echo ""
 echo "Sauvegarde créée: $BACKUP_FILE"
 
+

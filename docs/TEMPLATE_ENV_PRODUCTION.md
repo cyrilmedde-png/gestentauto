@@ -118,3 +118,4 @@ TWILIO_PHONE_NUMBER=+33612345678
 4. Les variables `NEXT_PUBLIC_*` sont exposées côté client, ne mettez pas de secrets dedans
 5. `SUPABASE_SERVICE_ROLE_KEY` est SECRÈTE, ne jamais l'exposer
 
+

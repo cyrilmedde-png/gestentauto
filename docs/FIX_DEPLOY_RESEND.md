@@ -69,3 +69,4 @@ L'application devrait maintenant démarrer sans erreur.
 À chaque fois qu'un nouveau package est ajouté à `package.json`, le script de déploiement installera automatiquement les nouvelles dépendances grâce à cette mise à jour.
 
 
+

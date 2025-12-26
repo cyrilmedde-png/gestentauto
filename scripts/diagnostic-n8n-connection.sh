@@ -144,3 +144,4 @@ echo "   → Problème de réseau/firewall entre Next.js et N8N"
 echo "   → Vérifiez que N8N écoute sur le bon port"
 echo ""
 
+

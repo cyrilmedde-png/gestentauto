@@ -256,3 +256,4 @@ Voir les [tarifs complets Twilio](https://www.twilio.com/sms/pricing)
 - [ ] Opt-out pour les SMS (RGPD)
 
 
+

@@ -99,3 +99,4 @@ Après ces corrections :
 - `database/diagnostic_tables.sql` : Script de diagnostic
 
 
+

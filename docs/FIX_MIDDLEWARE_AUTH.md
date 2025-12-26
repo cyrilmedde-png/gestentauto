@@ -85,3 +85,4 @@ Les erreurs possibles :
 - **"Platform not configured"** → Vérifier que `platform_company_id` est défini dans les settings
 
 
+

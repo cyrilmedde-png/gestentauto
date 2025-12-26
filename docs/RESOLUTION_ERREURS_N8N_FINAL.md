@@ -137,3 +137,4 @@ Si vous voyez les logs mais que certaines requêtes ne sont PAS interceptées :
 3. ⚠️ Vérifier les logs console pour diagnostiquer les requêtes non interceptées
 4. ⚠️ Si nécessaire, implémenter une interception plus précoce (service worker)
 
+

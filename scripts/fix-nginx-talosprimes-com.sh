@@ -160,3 +160,4 @@ echo "   2. L'ordre des blocs server dans Nginx"
 echo "   3. Qu'il n'y a pas de cache DNS ou navigateur"
 echo ""
 
+

@@ -93,3 +93,4 @@ echo "   2. Si l'erreur persiste, vérifiez les logs:"
 echo "      pm2 logs talosprime --err --lines 30"
 echo ""
 
+

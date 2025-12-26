@@ -576,3 +576,4 @@ echo "  - Vérifier Nginx: nginx -t && systemctl status nginx"
 echo "  - Vérifier les certificats SSL: certbot certificates"
 echo ""
 
+

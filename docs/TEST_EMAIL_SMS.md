@@ -215,3 +215,4 @@ Pour tester le workflow complet avec emails et SMS automatiques :
 Voir `docs/TEST_ONBOARDING.md` pour les détails complets.
 
 
+

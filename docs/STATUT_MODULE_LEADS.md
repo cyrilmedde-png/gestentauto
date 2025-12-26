@@ -206,3 +206,4 @@ Si vous voulez que les leads remplissent eux-mêmes le questionnaire :
 **Prochaine étape logique** : Créer les formulaires dans la page de détail pour compléter le workflow côté interface utilisateur.
 
 
+

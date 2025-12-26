@@ -77,3 +77,4 @@ LEFT JOIN companies c ON pna.company_id = c.id
 ORDER BY pna.created_at DESC;
 
 
+

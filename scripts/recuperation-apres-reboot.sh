@@ -200,3 +200,4 @@ echo "   pm2 logs talosprime"
 echo "   tail -f /var/log/nginx/error.log"
 echo ""
 
+

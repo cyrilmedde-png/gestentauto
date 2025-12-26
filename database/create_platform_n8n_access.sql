@@ -58,3 +58,4 @@ COMMENT ON COLUMN platform_n8n_access.has_n8n_access IS 'Indique si l''utilisate
 COMMENT ON COLUMN platform_n8n_access.access_level IS 'Niveau d''accès : admin (plein accès), editor (modification), viewer (lecture seule)';
 
 
+

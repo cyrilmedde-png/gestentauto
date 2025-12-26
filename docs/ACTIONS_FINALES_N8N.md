@@ -151,3 +151,4 @@ Après toutes les actions :
 5. `sudo ./scripts/verifier-websocket-nginx.sh`
 6. Vérifier dans le navigateur
 
+

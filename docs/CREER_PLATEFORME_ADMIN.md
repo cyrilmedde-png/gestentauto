@@ -82,3 +82,4 @@ Le script marque la plateforme avec :
 - Vérifier avec la requête SELECT à la fin du script
 
 
+

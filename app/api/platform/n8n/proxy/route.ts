@@ -159,6 +159,12 @@ export async function GET(request: NextRequest) {
   function shouldProxy(url) {
     if (!url || typeof url !== 'string') return false;
     
+    // EXCLUSION CRITIQUE : Ne JAMAIS proxifier les WebSockets (/rest/push)
+    // Les WebSockets doivent passer directement par Nginx, pas par Next.js
+    if (url.includes('/rest/push') || url.includes('ws://') || url.includes('wss://')) {
+      return false;
+    }
+    
     // EXCLUSION PRIORITAIRE : Ne JAMAIS proxifier les domaines externes
     // Vérifier d'abord par string pour éviter les erreurs de parsing
     const urlLower = url.toLowerCase();
@@ -169,6 +175,7 @@ export async function GET(request: NextRequest) {
     }
     
     // URLs relatives vers N8N (inclut /rest/telemetry/..., /icons/...)
+    // MAIS PAS /rest/push (exclu ci-dessus)
     if (url.startsWith('/rest/') || 
         url.startsWith('/assets/') || 
         url.startsWith('/types/') ||
@@ -199,12 +206,14 @@ export async function GET(request: NextRequest) {
       }
       
       // Proxifier toutes les URLs vers n8n.talosprimes.com
-      if (hostname === n8nHost || hostname === 'n8n.talosprimes.com') {
+      // SAUF /rest/push (WebSocket - doit passer par Nginx directement)
+      if ((hostname === n8nHost || hostname === 'n8n.talosprimes.com') && !urlObj.pathname.includes('/rest/push')) {
         return true;
       }
       
       // Proxifier les sous-domaines talosprimes.com sauf les domaines externes
-      if (hostname.endsWith('.talosprimes.com')) {
+      // SAUF /rest/push (WebSocket - doit passer par Nginx directement)
+      if (hostname.endsWith('.talosprimes.com') && !urlObj.pathname.includes('/rest/push')) {
         return !externalDomains.some(d => hostname.includes(d));
       }
       
