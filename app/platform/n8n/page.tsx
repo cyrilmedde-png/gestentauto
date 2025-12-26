@@ -1,48 +1,17 @@
 'use client'
 
-import { useEffect, useState, useRef, useMemo, memo } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
-// Mémoriser l'iframe pour éviter les re-renders
-const N8NIframe = memo(({ isVisible }: { isVisible: boolean }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const hasLoadedRef = useRef(false)
-
-  // Initialiser l'iframe une seule fois
-  useEffect(() => {
-    if (!hasLoadedRef.current && iframeRef.current) {
-      hasLoadedRef.current = true
-    }
-  }, [])
-
-  return (
-    <iframe
-      ref={iframeRef}
-      key="n8n-iframe-persistent" // Key fixe
-      src="https://n8n.talosprimes.com"
-      className="w-full h-full border-0 rounded-lg"
-      title="N8N - Automatisation"
-      allow="clipboard-read; clipboard-write; fullscreen"
-      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-      loading="eager" // Force le chargement immédiat
-      style={{ 
-        display: isVisible ? 'block' : 'none',
-        // Empêcher le navigateur de suspendre l'iframe
-        contentVisibility: 'visible'
-      } as React.CSSProperties}
-    />
-  )
-})
-
-N8NIframe.displayName = 'N8NIframe'
-
 export default function N8NPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [isVisible, setIsVisible] = useState(true)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const mountedRef = useRef(false)
+  const iframeCreatedRef = useRef(false)
 
   useEffect(() => {
     mountedRef.current = true
@@ -54,28 +23,44 @@ export default function N8NPage() {
       }
     }, 2000)
 
-    // Gérer la visibilité sans re-render
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        setIsVisible(true)
-      } else {
-        setIsVisible(false)
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true })
-
     return () => {
       mountedRef.current = false
       clearTimeout(timeout)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
 
-  // Mémoriser le contenu pour éviter les re-renders
-  const iframeContent = useMemo(() => (
-    <N8NIframe isVisible={isVisible} />
-  ), [isVisible])
+  // Créer l'iframe une seule fois et la conserver
+  useEffect(() => {
+    if (loading || !containerRef.current) return
+
+    // Vérifier si l'iframe existe déjà dans le container
+    if (containerRef.current.querySelector('iframe')) {
+      iframeRef.current = containerRef.current.querySelector('iframe') as HTMLIFrameElement
+      return
+    }
+
+    // Créer l'iframe une seule fois
+    const iframe = document.createElement('iframe')
+    iframe.src = 'https://n8n.talosprimes.com'
+    iframe.className = 'w-full h-full border-0 rounded-lg'
+    iframe.title = 'N8N - Automatisation'
+    iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen')
+    iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox')
+    iframe.setAttribute('loading', 'eager')
+    iframe.style.width = '100%'
+    iframe.style.height = '100%'
+    iframe.style.border = '0'
+    iframe.style.borderRadius = '0.5rem'
+
+    containerRef.current.appendChild(iframe)
+    iframeRef.current = iframe
+    iframeCreatedRef.current = true
+
+    // Ne jamais supprimer l'iframe, même au unmount
+    return () => {
+      // Ne pas supprimer l'iframe pour préserver l'état
+    }
+  }, [loading])
 
   if (loading) {
     return (
@@ -95,9 +80,11 @@ export default function N8NPage() {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <div className="w-full h-[calc(100vh-4rem)]">
-          {iframeContent}
-        </div>
+        <div 
+          ref={containerRef}
+          className="w-full h-[calc(100vh-4rem)]"
+          style={{ position: 'relative' }}
+        />
       </MainLayout>
     </ProtectedRoute>
   )
