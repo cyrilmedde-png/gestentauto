@@ -44,117 +44,117 @@ export async function GET(request: NextRequest) {
       )
     }
 
-  // Vérifier la configuration Make
-  const configCheck = checkMakeConfig()
-  if (!configCheck.valid) {
-    return NextResponse.json(
-      { error: 'Configuration Make invalide', details: configCheck.error },
-      { status: 500 }
-    )
-  }
+    // Vérifier la configuration Make
+    const configCheck = checkMakeConfig()
+    if (!configCheck.valid) {
+      return NextResponse.json(
+        { error: 'Configuration Make invalide', details: configCheck.error },
+        { status: 500, headers: getCorsHeaders(request.headers.get('origin')) }
+      )
+    }
 
-  // Construire l'URL Make (racine)
-  const { searchParams } = new URL(request.url)
-  const queryString = searchParams.toString()
-  const makeUrl = `${MAKE_URL}${queryString ? `?${queryString}` : ''}`
-  
-  // Extraire les cookies de session Make
-  const requestCookies = request.headers.get('cookie') || ''
-  
-  try {
-    const response = await proxyMakeRequest(makeUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': request.headers.get('user-agent') || 'TalosPrime-Platform',
-        'Accept': request.headers.get('accept') || '*/*',
-        'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9',
-      },
-    }, requestCookies || undefined)
-
-    const contentType = response.headers.get('content-type') || 'application/octet-stream'
+    // Construire l'URL Make (racine)
+    const { searchParams } = new URL(request.url)
+    const queryString = searchParams.toString()
+    const makeUrl = `${MAKE_URL}${queryString ? `?${queryString}` : ''}`
     
-    // Pour le HTML, réécrire les URLs
-    if (contentType.includes('text/html')) {
-      let htmlData: string
-      try {
-        htmlData = await response.text()
-      } catch (error) {
-        console.error('[Make Proxy Root] Erreur lors de la lecture du HTML:', error)
-        return NextResponse.json(
-          { error: 'Erreur lors de la lecture de la réponse Make.com' },
-          { status: 500, headers: getCorsHeaders(request.headers.get('origin')) }
-        )
-      }
+    // Extraire les cookies de session Make
+    const requestCookies = request.headers.get('cookie') || ''
+    
+    try {
+      const response = await proxyMakeRequest(makeUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': request.headers.get('user-agent') || 'TalosPrime-Platform',
+          'Accept': request.headers.get('accept') || '*/*',
+          'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9',
+        },
+      }, requestCookies || undefined)
+
+      const contentType = response.headers.get('content-type') || 'application/octet-stream'
       
-      const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
-      const protocol = request.headers.get('x-forwarded-proto') || 'https'
-      const baseUrl = host 
-        ? `${protocol}://${host}`
-        : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.talosprimes.com')
-      
-      const proxyBase = `/api/platform/make/proxy`
-      let makeHost: string
-      try {
-        makeHost = new URL(MAKE_URL).hostname
-      } catch (error) {
-        console.error('[Make Proxy Root] Erreur lors du parsing de MAKE_URL:', error, MAKE_URL)
-        return NextResponse.json(
-          { error: 'Configuration Make invalide: URL mal formée' },
-          { status: 500, headers: getCorsHeaders(request.headers.get('origin')) }
-        )
-      }
-      
-      // Récupérer le token JWT depuis la session Supabase
-      let authToken = ''
-      try {
-        const supabase = await createServerClient(request)
-        const { data: { session } } = await supabase.auth.getSession()
-        authToken = session?.access_token || ''
-      } catch (error) {
-        console.warn('[Make Proxy Root] Failed to get session token:', error)
-      }
-      
-      // Remplacer les URLs par des URLs proxy
-      let modifiedHtml = htmlData.replace(
-        /(src|href|action)=["']([^"']+)["']/g,
-        (match, attr, url) => {
-          if (url.startsWith('data:') || url.startsWith('mailto:') || url.startsWith('#')) {
-            return match
-          }
-          
-          if (url.startsWith('http://') || url.startsWith('https://')) {
-            try {
-              const urlObj = new URL(url)
-              const currentHost = host || new URL(baseUrl).hostname
-              
-              if (urlObj.hostname === currentHost || 
-                  urlObj.hostname === makeHost || 
-                  urlObj.hostname.endsWith('.make.com') ||
-                  urlObj.hostname.endsWith('.talosprimes.com')) {
-                const path = urlObj.pathname.startsWith('/') ? urlObj.pathname.substring(1) : urlObj.pathname
-                return `${attr}="${baseUrl}${proxyBase}/${path}${urlObj.search}"`
-              }
-              return match
-            } catch {
+      // Pour le HTML, réécrire les URLs
+      if (contentType.includes('text/html')) {
+        let htmlData: string
+        try {
+          htmlData = await response.text()
+        } catch (error) {
+          console.error('[Make Proxy Root] Erreur lors de la lecture du HTML:', error)
+          return NextResponse.json(
+            { error: 'Erreur lors de la lecture de la réponse Make.com' },
+            { status: 500, headers: getCorsHeaders(request.headers.get('origin')) }
+          )
+        }
+        
+        const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
+        const protocol = request.headers.get('x-forwarded-proto') || 'https'
+        const baseUrl = host 
+          ? `${protocol}://${host}`
+          : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.talosprimes.com')
+        
+        const proxyBase = `/api/platform/make/proxy`
+        let makeHost: string
+        try {
+          makeHost = new URL(MAKE_URL).hostname
+        } catch (error) {
+          console.error('[Make Proxy Root] Erreur lors du parsing de MAKE_URL:', error, MAKE_URL)
+          return NextResponse.json(
+            { error: 'Configuration Make invalide: URL mal formée' },
+            { status: 500, headers: getCorsHeaders(request.headers.get('origin')) }
+          )
+        }
+        
+        // Récupérer le token JWT depuis la session Supabase
+        let authToken = ''
+        try {
+          const supabase = await createServerClient(request)
+          const { data: { session } } = await supabase.auth.getSession()
+          authToken = session?.access_token || ''
+        } catch (error) {
+          console.warn('[Make Proxy Root] Failed to get session token:', error)
+        }
+        
+        // Remplacer les URLs par des URLs proxy
+        let modifiedHtml = htmlData.replace(
+          /(src|href|action)=["']([^"']+)["']/g,
+          (match, attr, url) => {
+            if (url.startsWith('data:') || url.startsWith('mailto:') || url.startsWith('#')) {
               return match
             }
+            
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+              try {
+                const urlObj = new URL(url)
+                const currentHost = host || new URL(baseUrl).hostname
+                
+                if (urlObj.hostname === currentHost || 
+                    urlObj.hostname === makeHost || 
+                    urlObj.hostname.endsWith('.make.com') ||
+                    urlObj.hostname.endsWith('.talosprimes.com')) {
+                  const path = urlObj.pathname.startsWith('/') ? urlObj.pathname.substring(1) : urlObj.pathname
+                  return `${attr}="${baseUrl}${proxyBase}/${path}${urlObj.search}"`
+                }
+                return match
+              } catch {
+                return match
+              }
+            }
+            
+            // URLs relatives
+            if (url.startsWith('/')) {
+              return `${attr}="${baseUrl}${proxyBase}${url}"`
+            }
+            
+            return match
           }
-          
-          // URLs relatives
-          if (url.startsWith('/')) {
-            return `${attr}="${baseUrl}${proxyBase}${url}"`
-          }
-          
-          return match
-        }
-      )
-      
-      // Injecter le script d'interception pour les requêtes fetch/XHR
-      const escapedProxyBase = baseUrl + proxyBase
-      const escapedMakeHost = makeHost
-      const escapedAuthToken = authToken.replace(/'/g, "\\'").replace(/\\/g, "\\\\")
-      
-      const interceptionScript = `
+        )
+        
+        // Injecter le script d'interception pour les requêtes fetch/XHR
+        const escapedProxyBase = baseUrl + proxyBase
+        const escapedMakeHost = makeHost
+        const escapedAuthToken = authToken.replace(/'/g, "\\'").replace(/\\/g, "\\\\")
+        
+        const interceptionScript = `
 <script>
 (function() {
   const proxyBase = '${escapedProxyBase}';
@@ -234,22 +234,43 @@ export async function GET(request: NextRequest) {
   };
 })();
 </script>`
-      
-      // Injecter le script juste avant </body> ou à la fin du HTML
-      modifiedHtml = modifiedHtml.replace('</body>', interceptionScript + '</body>')
-      if (!modifiedHtml.includes(interceptionScript)) {
-        modifiedHtml += interceptionScript
+        
+        // Injecter le script juste avant </body> ou à la fin du HTML
+        modifiedHtml = modifiedHtml.replace('</body>', interceptionScript + '</body>')
+        if (!modifiedHtml.includes(interceptionScript)) {
+          modifiedHtml += interceptionScript
+        }
+        
+        // Créer la réponse avec les headers modifiés
+        const responseHeaders = new Headers(response.headers)
+        responseHeaders.delete('content-security-policy')
+        responseHeaders.delete('x-frame-options')
+        responseHeaders.set('Content-Security-Policy', "frame-ancestors 'self' https://www.talosprimes.com")
+        
+        // Transmettre les cookies Set-Cookie de Make
+        const setCookieHeaders = response.headers.getSetCookie()
+        const nextResponse = new NextResponse(modifiedHtml, {
+          status: response.status,
+          headers: responseHeaders,
+        })
+        
+        if (setCookieHeaders && setCookieHeaders.length > 0) {
+          setCookieHeaders.forEach(cookie => {
+            nextResponse.headers.append('Set-Cookie', cookie)
+          })
+        }
+        
+        return nextResponse
       }
-      
-      // Créer la réponse avec les headers modifiés
+
+      // Pour les autres types de contenu, retourner directement
       const responseHeaders = new Headers(response.headers)
       responseHeaders.delete('content-security-policy')
       responseHeaders.delete('x-frame-options')
-      responseHeaders.set('Content-Security-Policy', "frame-ancestors 'self' https://www.talosprimes.com")
       
-      // Transmettre les cookies Set-Cookie de Make
+      // Transmettre les cookies Set-Cookie
       const setCookieHeaders = response.headers.getSetCookie()
-      const nextResponse = new NextResponse(modifiedHtml, {
+      const nextResponse = new NextResponse(response.body, {
         status: response.status,
         headers: responseHeaders,
       })
@@ -261,51 +282,31 @@ export async function GET(request: NextRequest) {
       }
       
       return nextResponse
-    }
-
-    // Pour les autres types de contenu, retourner directement
-    const responseHeaders = new Headers(response.headers)
-    responseHeaders.delete('content-security-policy')
-    responseHeaders.delete('x-frame-options')
-    
-    // Transmettre les cookies Set-Cookie
-    const setCookieHeaders = response.headers.getSetCookie()
-    const nextResponse = new NextResponse(response.body, {
-      status: response.status,
-      headers: responseHeaders,
-    })
-    
-    if (setCookieHeaders && setCookieHeaders.length > 0) {
-      setCookieHeaders.forEach(cookie => {
-        nextResponse.headers.append('Set-Cookie', cookie)
-      })
-    }
-    
-    return nextResponse
-  } catch (error) {
-    console.error('[Make Proxy Root] Erreur:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    const errorStack = error instanceof Error ? error.stack : undefined
-    
-    // Logger les détails pour le debug
-    console.error('[Make Proxy Root] Détails erreur:', {
-      message: errorMessage,
-      stack: errorStack,
-      url: makeUrl,
-      hasCookies: !!requestCookies,
-    })
-    
-    return NextResponse.json(
-      { 
-        error: 'Erreur lors du proxy vers Make.com',
-        details: errorMessage,
+    } catch (error) {
+      console.error('[Make Proxy Root] Erreur:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const errorStack = error instanceof Error ? error.stack : undefined
+      
+      // Logger les détails pour le debug
+      console.error('[Make Proxy Root] Détails erreur:', {
+        message: errorMessage,
+        stack: errorStack,
         url: makeUrl,
-      },
-      { 
-        status: 500,
-        headers: getCorsHeaders(request.headers.get('origin')),
-      }
-    )
+        hasCookies: !!requestCookies,
+      })
+      
+      return NextResponse.json(
+        { 
+          error: 'Erreur lors du proxy vers Make.com',
+          details: errorMessage,
+          url: makeUrl,
+        },
+        { 
+          status: 500,
+          headers: getCorsHeaders(request.headers.get('origin')),
+        }
+      )
+    }
   } catch (earlyError) {
     // Erreur dans verifyPlatformUser ou checkMakeConfig
     console.error('[Make Proxy Root] Erreur précoce:', earlyError)
@@ -321,4 +322,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-
