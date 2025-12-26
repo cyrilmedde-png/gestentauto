@@ -42,8 +42,11 @@ export async function proxyMakeRequest(
   options: RequestInit = {},
   cookies?: string
 ): Promise<Response> {
+  console.log('[proxyMakeRequest] Starting proxy request to:', url)
+  
   const configCheck = checkMakeConfig()
   if (!configCheck.valid) {
+    console.error('[proxyMakeRequest] Config check failed:', configCheck.error)
     throw new Error(configCheck.error || 'Configuration Make invalide')
   }
 
@@ -76,19 +79,28 @@ export async function proxyMakeRequest(
   let urlObj: URL
   try {
     urlObj = new URL(url)
+    console.log('[proxyMakeRequest] Parsed URL:', {
+      hostname: urlObj.hostname,
+      port: urlObj.port || 443,
+      path: urlObj.pathname + urlObj.search,
+    })
   } catch (error) {
+    console.error('[proxyMakeRequest] URL parsing failed:', error)
     throw new Error(`URL Make invalide: ${url} - ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
   
   const method = options.method || 'GET'
   const timeout = 30000 // 30 secondes pour les requêtes proxy
+  console.log('[proxyMakeRequest] Request config:', { method, timeout, hasCookies: !!cookies })
 
   // Créer un agent HTTPS
   const agent = new https.Agent({
     rejectUnauthorized: true, // Make.com utilise des certificats valides
   })
+  console.log('[proxyMakeRequest] HTTPS agent created')
 
   try {
+    console.log('[proxyMakeRequest] Creating https.request...')
     // Utiliser https.request() au lieu de fetch()
     const responseData = await new Promise<{
       statusCode: number
@@ -107,6 +119,11 @@ export async function proxyMakeRequest(
           timeout,
         },
         (res) => {
+          console.log('[proxyMakeRequest] Response received:', {
+            statusCode: res.statusCode,
+            statusMessage: res.statusMessage,
+            headersCount: Object.keys(res.headers).length,
+          })
           const chunks: Buffer[] = []
           const responseHeaders: Record<string, string> = {}
           
@@ -131,6 +148,7 @@ export async function proxyMakeRequest(
           })
 
           res.on('end', () => {
+            console.log('[proxyMakeRequest] Response end, body size:', Buffer.concat(chunks).length)
             resolve({
               statusCode: res.statusCode || 200,
               statusMessage: res.statusMessage || '',
@@ -140,16 +158,19 @@ export async function proxyMakeRequest(
           })
 
           res.on('error', (error) => {
+            console.error('[proxyMakeRequest] Response error:', error)
             reject(error)
           })
         }
       )
 
       req.on('error', (error) => {
+        console.error('[proxyMakeRequest] Request error:', error)
         reject(error)
       })
 
       req.on('timeout', () => {
+        console.error('[proxyMakeRequest] Request timeout after', timeout, 'ms')
         req.destroy()
         reject(new Error('Timeout'))
       })
@@ -168,10 +189,13 @@ export async function proxyMakeRequest(
       }
 
       req.setTimeout(timeout)
+      console.log('[proxyMakeRequest] Sending request...')
       req.end()
     })
+    console.log('[proxyMakeRequest] Promise created, waiting for response...')
 
     // Convertir la réponse en objet Response compatible
+    console.log('[proxyMakeRequest] Converting response to Response object...')
     const bufferCopy = Buffer.from(responseData.body)
     const arrayBuffer = bufferCopy.buffer.slice(
       bufferCopy.byteOffset,
@@ -226,8 +250,10 @@ export async function proxyMakeRequest(
       headers: responseHeaders,
     })
 
+    console.log('[proxyMakeRequest] Response created successfully, status:', response.status)
     return response
   } catch (error) {
+    console.error('[proxyMakeRequest] Exception caught:', error)
     if (error instanceof Error) {
       const msg = error.message
       if (msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND')) {
