@@ -56,27 +56,21 @@ export async function GET(
   const queryString = searchParams.toString()
   
   // Si makePath est juste '/', utiliser MAKE_URL tel quel
-  // Pour les fichiers statiques à la racine (CSS, JS, etc.), utiliser seulement l'origin
+  // Pour tous les autres chemins, utiliser l'origin directement (les fichiers statiques sont à la racine)
   let makeUrl: string
   try {
     const makeUrlObj = new URL(MAKE_URL)
     if (makePath === '/') {
       makeUrl = MAKE_URL
     } else {
-      // Si le chemin ressemble à un fichier statique (CSS, JS, etc.), utiliser seulement l'origin
-      // Sinon, préfixer avec le basePath de MAKE_URL
-      const isStaticFile = /\.(css|js|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|ico)$/i.test(makePath)
-      if (isStaticFile) {
-        // Fichiers statiques sont à la racine de Make.com
-        makeUrl = `${makeUrlObj.origin}${makePath}`
-      } else {
-        // Autres chemins, utiliser le basePath de MAKE_URL
-        const basePath = makeUrlObj.pathname
-        makeUrl = `${makeUrlObj.origin}${basePath}${makePath}`
-      }
+      // Pour tous les chemins, utiliser directement l'origin (fichiers statiques à la racine de Make.com)
+      // Les chemins relatifs à la page (comme /organization/5837397/dashboard/something) 
+      // doivent être traités comme des chemins absolus depuis l'origin
+      makeUrl = `${makeUrlObj.origin}${makePath}`
     }
     makeUrl += queryString ? `?${queryString}` : ''
-  } catch {
+  } catch (error) {
+    console.error('[Make Proxy Catch-all] Error building URL:', error)
     // Fallback si MAKE_URL n'est pas une URL valide
     makeUrl = `${MAKE_URL}${makePath}${queryString ? `?${queryString}` : ''}`
   }
