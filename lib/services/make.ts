@@ -102,10 +102,27 @@ export async function proxyMakeRequest(
   })
   console.log('[proxyMakeRequest] HTTPS agent created')
 
-  try {
-    console.log('[proxyMakeRequest] Creating https.request...')
-    // Utiliser https.request() au lieu de fetch()
-    const responseData = await new Promise<{
+  const requestMethod = options.method || 'GET'
+  
+  // Fonction récursive pour suivre les redirections
+  const followRedirects = async (
+    currentUrl: string,
+    currentHeaders: Record<string, string>,
+    redirectCount: number = 0,
+    maxRedirects: number = 5
+  ): Promise<{
+    statusCode: number
+    statusMessage: string
+    headers: Record<string, string>
+    body: Buffer
+  }> => {
+    if (redirectCount > maxRedirects) {
+      throw new Error(`Too many redirects (max ${maxRedirects})`)
+    }
+
+    const parsedUrl = new URL(currentUrl)
+    
+    return new Promise<{
       statusCode: number
       statusMessage: string
       headers: Record<string, string>
@@ -113,12 +130,12 @@ export async function proxyMakeRequest(
     }>((resolve, reject) => {
       const req = https.request(
         {
-          hostname: urlObj.hostname,
-          port: urlObj.port || 443,
-          path: urlObj.pathname + urlObj.search,
-          method,
+          hostname: parsedUrl.hostname,
+          port: parsedUrl.port || 443,
+          path: parsedUrl.pathname + parsedUrl.search,
+          method: redirectCount > 0 ? 'GET' : requestMethod, // Toujours GET pour les redirections
           agent,
-          headers: headersRecord,
+          headers: currentHeaders,
           timeout,
         },
         (res) => {
@@ -126,7 +143,34 @@ export async function proxyMakeRequest(
             statusCode: res.statusCode,
             statusMessage: res.statusMessage,
             headersCount: Object.keys(res.headers).length,
+            redirectCount,
           })
+          
+          // Suivre les redirections 301, 302, 303, 307, 308
+          if (res.statusCode && [301, 302, 303, 307, 308].includes(res.statusCode)) {
+            const location = res.headers.location
+            if (location) {
+              try {
+                const redirectUrl = new URL(location, currentUrl).href
+                console.log('[proxyMakeRequest] Following redirect:', res.statusCode, '->', redirectUrl)
+                // Copier les cookies pour la redirection
+                const redirectHeaders = { ...currentHeaders }
+                const setCookie = res.headers['set-cookie']
+                if (setCookie) {
+                  redirectHeaders['Cookie'] = Array.isArray(setCookie) ? setCookie.join('; ') : setCookie
+                }
+                req.destroy()
+                return followRedirects(redirectUrl, redirectHeaders, redirectCount + 1, maxRedirects)
+                  .then(resolve)
+                  .catch(reject)
+              } catch (error) {
+                console.error('[proxyMakeRequest] Error following redirect:', error)
+                reject(error)
+                return
+              }
+            }
+          }
+          
           const chunks: Buffer[] = []
           const responseHeaders: Record<string, string> = {}
           
@@ -178,8 +222,8 @@ export async function proxyMakeRequest(
         reject(new Error('Timeout'))
       })
 
-      // Envoyer le body si présent (POST, PUT, etc.)
-      if (options.body) {
+      // Envoyer le body si présent (POST, PUT, etc.) - seulement pour la requête initiale
+      if (redirectCount === 0 && options.body) {
         if (typeof options.body === 'string') {
           req.write(options.body)
         } else if (options.body instanceof Buffer) {
@@ -195,7 +239,12 @@ export async function proxyMakeRequest(
       console.log('[proxyMakeRequest] Sending request...')
       req.end()
     })
-    console.log('[proxyMakeRequest] Promise created, waiting for response...')
+  }
+
+  try {
+    console.log('[proxyMakeRequest] Starting request with redirect following...')
+    const responseData = await followRedirects(url, headersRecord)
+    console.log('[proxyMakeRequest] Request completed, processing response...')
 
     // Convertir la réponse en objet Response compatible
     console.log('[proxyMakeRequest] Converting response to Response object...')
