@@ -58,7 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (authUser) {
         try {
-          const fullUser = await getCurrentUser()
+          // Timeout de 3 secondes pour getCurrentUser
+          const fullUserPromise = getCurrentUser()
+          const timeoutPromise = new Promise<null>((resolve) => {
+            setTimeout(() => resolve(null), 3000)
+          })
+          
+          const fullUser = await Promise.race([fullUserPromise, timeoutPromise])
           setUser(fullUser)
         } catch (userError) {
           console.error('Error loading full user data:', userError)
@@ -86,12 +92,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    // Timeout de sécurité : si le chargement prend plus de 5 secondes, arrêter le loading
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        console.warn('AuthProvider: Timeout - arrêt du loading après 5 secondes')
+        setLoading(false)
+      }
+    }, 5000)
+
     // Récupérer l'utilisateur initial
-    loadUser()
+    loadUser().finally(() => {
+      clearTimeout(timeoutId)
+    })
 
     // Écouter les changements d'authentification
+    let subscription: { unsubscribe: () => void } | null = null
     try {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
           // Ignorer TOKEN_REFRESHED pour éviter les boucles, on ne recharge que sur SIGNED_IN
           if (event === 'SIGNED_IN') {
@@ -102,15 +119,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       )
-
-      return () => {
-        subscription.unsubscribe()
-      }
+      subscription = authSubscription
     } catch (error) {
       console.error('Error setting up auth state change listener:', error)
       setLoading(false)
     }
-  }, [loadUser])
+
+    return () => {
+      clearTimeout(timeoutId)
+      if (subscription) {
+        subscription.unsubscribe()
+      }
+    }
+  }, [loadUser, loading])
 
   const handleSignOut = async () => {
     try {
