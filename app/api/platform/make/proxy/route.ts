@@ -104,12 +104,13 @@ export async function GET(request: NextRequest) {
     
     try {
       console.log('[Make Proxy Root] Starting proxy request...')
+      // Ne pas passer de headers personnalisés - proxyMakeRequest utilisera un User-Agent de navigateur
       const response = await proxyMakeRequest(makeUrl, {
         method: 'GET',
         headers: {
-          'User-Agent': request.headers.get('user-agent') || 'TalosPrime-Platform',
-          'Accept': request.headers.get('accept') || '*/*',
-          'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9',
+          'Accept': request.headers.get('accept') || 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Referer': request.headers.get('referer') || undefined,
         },
       }, requestCookies || undefined)
       
