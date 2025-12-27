@@ -135,20 +135,16 @@ export async function GET(
       // Remplacer les URLs par des URLs proxy (sauf fichiers statiques)
       const staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.ico', '.webp']
       
-      // Supprimer ou modifier les balises <base href> qui pourraient pointer vers Make.com
+      // TOUJOURS remplacer les balises <base href> par notre proxy
+      // Les balises <base> peuvent causer des problèmes de résolution d'URL
       let modifiedHtml = htmlData.replace(
         /<base\s+[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi,
         (match, href) => {
-          try {
-            const urlObj = new URL(href, baseUrl)
-            if (urlObj.hostname.endsWith('.make.com')) {
-              // Supprimer la balise base ou la remplacer par notre proxy
-              return `<!-- base href removed and replaced with proxy --><base href="${baseUrl}${proxyBase}/">`
-            }
-          } catch (e) {
-            // Si l'URL est invalide, laisser la balise telle quelle
-          }
-          return match
+          console.log('[Make Proxy Catch-all] 🔍 Balise <base> trouvée avec href:', href)
+          // TOUJOURS remplacer par notre proxy pour éviter les problèmes de résolution d'URL
+          const newBase = `${baseUrl}${proxyBase}/`
+          console.log('[Make Proxy Catch-all] ✅ Remplacement de <base> par:', newBase)
+          return `<!-- base href replaced with proxy --><base href="${newBase}">`
         }
       )
       
