@@ -19,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
   const [loading, setLoading] = useState(true)
   const isLoadingUserRef = useRef(false)
+  const loadingRef = useRef(true)
 
   const loadUser = useCallback(async () => {
     // Éviter les appels multiples simultanés
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoadingUserRef.current = true
     try {
       setLoading(true)
+      loadingRef.current = true
       
       // Vérifier si Supabase est configuré
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -79,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSupabaseUser(null)
     } finally {
       setLoading(false)
+      loadingRef.current = false
       isLoadingUserRef.current = false
     }
   }, [])
@@ -94,9 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Timeout de sécurité : si le chargement prend plus de 5 secondes, arrêter le loading
     const timeoutId = setTimeout(() => {
-      if (loading) {
+      if (loadingRef.current) {
         console.warn('AuthProvider: Timeout - arrêt du loading après 5 secondes')
         setLoading(false)
+        loadingRef.current = false
       }
     }, 5000)
 
