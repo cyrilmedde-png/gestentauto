@@ -1,5 +1,10 @@
 'use client'
 
+// Forcer la route en mode dynamique pour éviter le pré-rendu statique
+// Cela garantit que la page est toujours rendue côté serveur avec l'authentification
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
