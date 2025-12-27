@@ -103,3 +103,4 @@ supabase/migrations/install_modules_subscriptions.sql
 ### Erreur RLS
 ✅ Vérifier que l'utilisateur a un `company_id` dans la table `users`
 
+

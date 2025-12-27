@@ -35,3 +35,4 @@ echo "✅ Diagnostic terminé"
 
 
 
+

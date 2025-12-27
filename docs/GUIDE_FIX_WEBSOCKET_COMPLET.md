@@ -229,3 +229,4 @@ Si les problèmes persistent après avoir suivi ce guide :
 3. Vérifiez les logs N8N : `pm2 logs n8n --lines 100`
 4. Vérifiez les logs Next.js : `pm2 logs talosprime --lines 100`
 
+

@@ -148,3 +148,4 @@ BEGIN
   RAISE NOTICE '✅ RLS et politiques configurées';
 END $$;
 
+

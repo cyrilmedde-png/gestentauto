@@ -228,3 +228,4 @@ WHERE name = 'test-module';
 - **Icônes Lucide** : https://lucide.dev/icons/
 - **N8N Documentation** : https://docs.n8n.io/
 
+

@@ -22,3 +22,4 @@ BEGIN
   RAISE NOTICE '✅ Index créé pour les recherches Make';
 END $$;
 
+

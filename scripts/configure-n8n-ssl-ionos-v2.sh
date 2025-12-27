@@ -242,3 +242,4 @@ echo "💡 Note: IONOS couvre automatiquement les sous-domaines"
 echo "   avec le certificat SSL du domaine principal."
 echo ""
 
+
