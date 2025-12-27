@@ -1,9 +1,8 @@
 'use client'
 
-// Forcer la route en mode dynamique pour éviter le pré-rendu statique
-// Cela garantit que la page est toujours rendue côté serveur avec l'authentification
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+// Note: Les exports de configuration (dynamic, revalidate) ne peuvent pas être utilisés
+// dans les composants client. Le rendu dynamique est géré par ProtectedPlatformRoute
+// qui vérifie l'authentification côté client.
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
