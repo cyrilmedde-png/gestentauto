@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation'
+import { unstable_noStore } from 'next/cache'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import MakePageClient from './make-page-client'
 
-// Forcer le rendu dynamique
+// Forcer le rendu dynamique - utiliser plusieurs méthodes pour être sûr
 export const dynamic = 'force-dynamic'
 
 /**
@@ -11,6 +12,13 @@ export const dynamic = 'force-dynamic'
  * Vérifie l'authentification et les permissions côté serveur avant de rendre le client component
  */
 export default async function MakePage() {
+  // Forcer le rendu dynamique avec unstable_noStore et cookies
+  unstable_noStore()
+  
+  // Utiliser cookies() pour forcer le rendu dynamique (Next.js détecte l'utilisation de cookies)
+  const { cookies } = await import('next/headers')
+  await cookies() // Juste pour forcer le rendu dynamique
+  
   // Vérifier l'authentification (sans request pour server components)
   const supabase = await createServerClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()

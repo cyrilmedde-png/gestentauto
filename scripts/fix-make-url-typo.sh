@@ -18,13 +18,19 @@ BACKUP_FILE=".env.production.backup.$(date +%Y%m%d_%H%M%S)"
 cp .env.production "$BACKUP_FILE"
 echo "✅ Sauvegarde créée: $BACKUP_FILE"
 
-# Corriger la typo eul -> eu1
-if grep -q "eul\.make\.com" .env.production; then
+# Corriger la typo eul -> eu1 (chercher avec et sans échappement)
+echo "🔍 Recherche de la typo 'eul' dans .env.production..."
+if grep -i "eul\.make\.com\|eul.make.com" .env.production > /dev/null 2>&1; then
     echo "🔍 Typo trouvée: eul.make.com -> eu1.make.com"
-    sed -i 's/eul\.make\.com/eu1.make.com/g' .env.production
+    # Utiliser perl pour une substitution plus robuste
+    perl -i -pe 's/eul\.make\.com/eu1.make.com/gi' .env.production
+    echo "✅ Typo corrigée"
+elif grep -i "eul" .env.production | grep -i "make" > /dev/null 2>&1; then
+    echo "🔍 Variante de typo trouvée (sans point): eul -> eu1"
+    perl -i -pe 's/eul/eu1/gi if /make/i' .env.production
     echo "✅ Typo corrigée"
 else
-    echo "ℹ️  Aucune typo 'eul' trouvée"
+    echo "ℹ️  Aucune typo 'eul' trouvée (vérification manuelle recommandée)"
 fi
 
 # Afficher les URLs Make actuelles
