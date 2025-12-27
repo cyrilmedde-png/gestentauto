@@ -229,23 +229,36 @@ export async function proxyMakeRequest(
       })
     }
     
-    // Supprimer ou modifier Content-Security-Policy pour autoriser l'iframe
-    // On remplace frame-ancestors pour autoriser notre domaine
-    const cspHeader = responseData.headers['content-security-policy']
-    if (cspHeader) {
-      // Remplacer frame-ancestors pour autoriser notre domaine
-      const modifiedCSP = cspHeader
+    // Supprimer complètement Content-Security-Policy de Make.com et le remplacer
+    // On doit TOUJOURS définir notre propre CSP qui autorise le framing
+    // Chercher le CSP dans les headers (peut être en minuscules ou majuscules)
+    const cspKeys = Object.keys(responseData.headers).filter(key => 
+      key.toLowerCase() === 'content-security-policy'
+    )
+    
+    // Le CSP est déjà exclu car nous ne l'ajoutons pas dans la boucle ci-dessus
+    // Maintenant, TOUJOURS définir notre propre CSP qui autorise le framing
+    const originalCSP = responseData.headers['content-security-policy'] || 
+                       responseData.headers['Content-Security-Policy'] ||
+                       responseData.headers[cspKeys[0]]
+    
+    if (originalCSP) {
+      // Supprimer frame-ancestors de l'ancien CSP et ajouter le nôtre
+      const modifiedCSP = String(originalCSP)
         .replace(/frame-ancestors[^;]*;?/gi, '')
         .trim()
         .replace(/;;+/g, ';')
         .replace(/^;|;$/g, '')
-      responseHeaders.set('Content-Security-Policy', `${modifiedCSP}; frame-ancestors 'self' https://www.talosprimes.com`)
+      const newCSP = modifiedCSP 
+        ? `${modifiedCSP}; frame-ancestors 'self' https://www.talosprimes.com`
+        : `frame-ancestors 'self' https://www.talosprimes.com`
+      responseHeaders.set('Content-Security-Policy', newCSP)
+    } else {
+      // Si Make.com n'a pas de CSP, on en ajoute un minimal qui autorise le framing
+      responseHeaders.set('Content-Security-Policy', "frame-ancestors 'self' https://www.talosprimes.com")
     }
     
-    // Supprimer X-Frame-Options si présent
-    if (responseData.headers['x-frame-options']) {
-      // Ne pas inclure X-Frame-Options dans les headers de réponse
-    }
+    // Supprimer X-Frame-Options si présent (déjà exclu car nous ne l'ajoutons pas depuis responseData.headers)
     
     const response = new Response(arrayBuffer, {
       status: responseData.statusCode,

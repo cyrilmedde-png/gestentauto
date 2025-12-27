@@ -308,6 +308,46 @@ export async function GET(request: NextRequest) {
     }
     return originalOpen.apply(this, arguments);
   };
+  
+  // Intercepter les redirections JavaScript vers Make.com
+  // Empêcher window.location de rediriger directement vers Make.com
+  const originalLocation = window.location;
+  const originalReplace = originalLocation.replace.bind(originalLocation);
+  const originalAssign = originalLocation.assign.bind(originalLocation);
+  
+  function redirectToProxy(url) {
+    if (typeof url === 'string') {
+      try {
+        const urlObj = new URL(url, window.location.origin);
+        // Si c'est une redirection vers Make.com, rediriger vers notre proxy
+        if (urlObj.hostname.endsWith('.make.com')) {
+          const path = urlObj.pathname + urlObj.search;
+          return proxyBase + (path.startsWith('/') ? path : '/' + path);
+        }
+      } catch (e) {
+        // Si l'URL est invalide, retourner l'URL originale
+      }
+    }
+    return url;
+  }
+  
+  Object.defineProperty(window, 'location', {
+    get: function() {
+      return originalLocation;
+    },
+    set: function(url) {
+      originalLocation.href = redirectToProxy(url);
+    }
+  });
+  
+  // Intercepter location.replace() et location.assign()
+  originalLocation.replace = function(url) {
+    originalReplace(redirectToProxy(url));
+  };
+  
+  originalLocation.assign = function(url) {
+    originalAssign(redirectToProxy(url));
+  };
 })();
 </script>`
         
