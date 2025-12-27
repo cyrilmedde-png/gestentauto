@@ -134,7 +134,25 @@ export async function GET(
       
       // Remplacer les URLs par des URLs proxy (sauf fichiers statiques)
       const staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.ico', '.webp']
+      
+      // Supprimer ou modifier les balises <base href> qui pourraient pointer vers Make.com
       let modifiedHtml = htmlData.replace(
+        /<base\s+[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi,
+        (match, href) => {
+          try {
+            const urlObj = new URL(href, baseUrl)
+            if (urlObj.hostname.endsWith('.make.com')) {
+              // Supprimer la balise base ou la remplacer par notre proxy
+              return `<!-- base href removed and replaced with proxy --><base href="${baseUrl}${proxyBase}/">`
+            }
+          } catch (e) {
+            // Si l'URL est invalide, laisser la balise telle quelle
+          }
+          return match
+        }
+      )
+      
+      modifiedHtml = modifiedHtml.replace(
         /(src|href|action)=["']([^"']+)["']/g,
         (match, attr, url) => {
           if (url.startsWith('data:') || url.startsWith('mailto:') || url.startsWith('#')) {
@@ -277,11 +295,8 @@ export async function GET(
   };
   
   // Intercepter les redirections JavaScript vers Make.com
-  // Empêcher window.location de rediriger directement vers Make.com
-  const originalLocation = window.location;
-  const originalReplace = originalLocation.replace.bind(originalLocation);
-  const originalAssign = originalLocation.assign.bind(originalLocation);
-  
+  // Note: On ne peut pas redéfinir window.location (propriété non-configurable)
+  // On intercepte uniquement replace() et assign()
   function redirectToProxy(url) {
     if (typeof url === 'string') {
       try {
@@ -298,16 +313,11 @@ export async function GET(
     return url;
   }
   
-  Object.defineProperty(window, 'location', {
-    get: function() {
-      return originalLocation;
-    },
-    set: function(url) {
-      originalLocation.href = redirectToProxy(url);
-    }
-  });
-  
   // Intercepter location.replace() et location.assign()
+  const originalLocation = window.location;
+  const originalReplace = originalLocation.replace.bind(originalLocation);
+  const originalAssign = originalLocation.assign.bind(originalLocation);
+  
   originalLocation.replace = function(url) {
     originalReplace(redirectToProxy(url));
   };
