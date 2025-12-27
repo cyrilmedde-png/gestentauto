@@ -270,9 +270,13 @@ export async function proxyMakeRequest(
     // Créer un objet Headers pour gérer Set-Cookie correctement
     const responseHeaders = new Headers()
     
-    // Ajouter tous les headers sauf Set-Cookie (qui sera géré séparément)
+    // Ajouter tous les headers sauf Set-Cookie, Content-Encoding et Content-Security-Policy
+    // Content-Encoding est retiré car on ne décompresse pas le contenu
     Object.keys(responseData.headers).forEach((key) => {
-      if (key.toLowerCase() !== 'set-cookie' && key.toLowerCase() !== 'content-security-policy') {
+      const lowerKey = key.toLowerCase()
+      if (lowerKey !== 'set-cookie' && 
+          lowerKey !== 'content-security-policy' && 
+          lowerKey !== 'content-encoding') {
         responseHeaders.set(key, responseData.headers[key])
       }
     })
