@@ -112,6 +112,27 @@ export async function GET(request: NextRequest) {
           console.log('[Make Proxy Root] Reading response text...')
           htmlData = await response.text()
           console.log('[Make Proxy Root] HTML data read, length:', htmlData.length)
+        
+        // Vérifier si le HTML contient des redirections vers www.make.com
+        if (htmlData.includes('www.make.com')) {
+          console.warn('[Make Proxy Root] ⚠️ HTML contient des références à www.make.com')
+          const wwwMakeMatches = htmlData.match(/www\.make\.com[^"'\s]*/g)
+          if (wwwMakeMatches) {
+            console.warn('[Make Proxy Root] Références trouvées:', wwwMakeMatches.slice(0, 5))
+          }
+        }
+        
+        // Vérifier les balises base
+        const baseMatches = htmlData.match(/<base[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi)
+        if (baseMatches) {
+          console.warn('[Make Proxy Root] ⚠️ Balises <base> trouvées:', baseMatches)
+        }
+        
+        // Vérifier les redirections JavaScript
+        const jsRedirectMatches = htmlData.match(/window\.location\s*[=\.]|location\.href\s*=|location\.replace|location\.assign/gi)
+        if (jsRedirectMatches) {
+          console.warn('[Make Proxy Root] ⚠️ Redirections JavaScript trouvées:', jsRedirectMatches.slice(0, 5))
+        }
         } catch (error) {
           console.error('[Make Proxy Root] Erreur lors de la lecture du HTML:', error)
           return NextResponse.json(
