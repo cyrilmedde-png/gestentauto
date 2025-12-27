@@ -9,6 +9,7 @@ export function ProtectedPlatformRoute({ children }: { children: React.ReactNode
   const router = useRouter()
   const [isPlatform, setIsPlatform] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (authLoading) {
@@ -63,22 +64,63 @@ export function ProtectedPlatformRoute({ children }: { children: React.ReactNode
         }
         setIsPlatform(true)
         setLoading(false)
+        setError(null)
       })
       .catch((error) => {
         console.error('Error checking user type:', error)
-        // En cas d'erreur, rediriger vers le dashboard client par sécurité
-        router.push('/dashboard')
+        setError(error instanceof Error ? error.message : 'Erreur inconnue')
+        setLoading(false)
+        // Ne pas rediriger immédiatement, afficher l'erreur
       })
   }, [user, authLoading, router])
 
-  if (authLoading || loading || !user || !isPlatform) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-muted-foreground">Chargement...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="text-muted-foreground">Vérification de l'authentification...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="text-muted-foreground">Vérification des permissions...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="text-destructive mb-4">Erreur: {error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user || !isPlatform) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="text-muted-foreground">Redirection...</div>
+        </div>
       </div>
     )
   }
 
   return <>{children}</>
 }
-

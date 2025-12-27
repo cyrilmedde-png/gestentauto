@@ -1,8 +1,5 @@
 'use client'
 
-// Composant client pour la page Make
-// L'authentification est vérifiée côté serveur dans page.tsx
-
 import { useEffect, useState, useRef } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 
@@ -11,17 +8,16 @@ export default function MakePageClient() {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const mountedRef = useRef(false)
-  const iframeCreatedRef = useRef(false)
 
   useEffect(() => {
     mountedRef.current = true
     
-    // Timeout de sécurité pour le chargement
+    // Réduire le timeout à 1 seconde au lieu de 2
     const timeout = setTimeout(() => {
       if (mountedRef.current) {
         setLoading(false)
       }
-    }, 2000)
+    }, 1000)
 
     return () => {
       mountedRef.current = false
@@ -52,9 +48,15 @@ export default function MakePageClient() {
     iframe.style.border = '0'
     iframe.style.borderRadius = '0.5rem'
 
+    // Écouter le chargement de l'iframe pour arrêter le loading
+    iframe.onload = () => {
+      if (mountedRef.current) {
+        setLoading(false)
+      }
+    }
+
     containerRef.current.appendChild(iframe)
     iframeRef.current = iframe
-    iframeCreatedRef.current = true
 
     // Ne jamais supprimer l'iframe, même au unmount
     return () => {
@@ -85,4 +87,3 @@ export default function MakePageClient() {
     </MainLayout>
   )
 }
-
