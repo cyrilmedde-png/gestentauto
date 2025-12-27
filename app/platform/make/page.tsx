@@ -8,7 +8,7 @@ export const revalidate = 0
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { ProtectedPlatformRoute } from '@/components/auth/ProtectedPlatformRoute'
 
 export default function MakePage() {
   const router = useRouter()
@@ -69,7 +69,7 @@ export default function MakePage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
+      <ProtectedPlatformRoute>
         <MainLayout>
           <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
             <div className="text-center">
@@ -78,12 +78,12 @@ export default function MakePage() {
             </div>
           </div>
         </MainLayout>
-      </ProtectedRoute>
+      </ProtectedPlatformRoute>
     )
   }
 
   return (
-    <ProtectedRoute>
+    <ProtectedPlatformRoute>
       <MainLayout>
         <div 
           ref={containerRef}
@@ -91,7 +91,7 @@ export default function MakePage() {
           style={{ position: 'relative' }}
         />
       </MainLayout>
-    </ProtectedRoute>
+    </ProtectedPlatformRoute>
   )
 }
 
