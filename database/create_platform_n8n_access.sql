@@ -61,3 +61,4 @@ COMMENT ON COLUMN platform_n8n_access.access_level IS 'Niveau d''accès : admin 
 
 
 
+

@@ -230,3 +230,4 @@ Si les problèmes persistent après avoir suivi ce guide :
 4. Vérifiez les logs Next.js : `pm2 logs talosprime --lines 100`
 
 
+

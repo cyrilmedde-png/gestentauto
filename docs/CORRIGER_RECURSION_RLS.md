@@ -42,3 +42,4 @@ La fonction `public.user_company_id()` utilise `SECURITY DEFINER`, ce qui signif
 
 
 
+

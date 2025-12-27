@@ -76,3 +76,4 @@ echo "💡 Si la route n'est pas compilée dans .next, exécutez:"
 echo "   npm run build && pm2 restart talosprime"
 
 
+
