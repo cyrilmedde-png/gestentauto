@@ -225,6 +225,12 @@ export async function GET(
       return false;
     }
     
+    // Corriger les URLs mal formées qui manquent /proxy
+    // Par exemple: /api/platform/make/api/v2/... -> /api/platform/make/proxy/api/v2/...
+    if (url.includes('/api/platform/make/api/')) {
+      return true;
+    }
+    
     // URLs relatives vers Make (sauf fichiers statiques)
     if (url.startsWith('/') && !url.startsWith('//')) {
       return true;
@@ -236,8 +242,15 @@ export async function GET(
       if (urlObj.hostname.endsWith('.make.com') || urlObj.hostname === makeHost) {
         return true;
       }
+      // Corriger aussi les URLs absolues mal formées
+      if (urlObj.pathname.includes('/api/platform/make/api/')) {
+        return true;
+      }
     } catch {
       if (url.includes('.make.com') || url.includes(makeHost)) {
+        return true;
+      }
+      if (url.includes('/api/platform/make/api/')) {
         return true;
       }
     }
@@ -246,11 +259,25 @@ export async function GET(
   }
   
   function toProxyUrl(url) {
+    // Corriger les URLs mal formées qui manquent /proxy
+    // Par exemple: /api/platform/make/api/v2/... -> /api/platform/make/proxy/api/v2/...
+    if (url.includes('/api/platform/make/api/')) {
+      url = url.replace('/api/platform/make/api/', '/api/platform/make/proxy/api/');
+    }
+    
     if (url.startsWith('http://') || url.startsWith('https://')) {
       try {
         const urlObj = new URL(url);
-        return proxyBase + (urlObj.pathname || '/') + (urlObj.search || '');
+        // Corriger aussi dans le pathname si nécessaire
+        if (urlObj.pathname.includes('/api/platform/make/api/')) {
+          urlObj.pathname = urlObj.pathname.replace('/api/platform/make/api/', '/api/platform/make/proxy/api/');
+        }
+        return proxyBase + urlObj.pathname + (urlObj.search || '');
       } catch {
+        // Corriger dans l'URL brute
+        if (url.includes('/api/platform/make/api/')) {
+          url = url.replace('/api/platform/make/api/', '/api/platform/make/proxy/api/');
+        }
         const httpsIndex = url.indexOf('://');
         if (httpsIndex !== -1) {
           const pathStart = url.indexOf('/', httpsIndex + 3);
