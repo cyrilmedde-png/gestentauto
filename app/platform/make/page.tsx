@@ -3,6 +3,10 @@ import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import MakePageClient from './make-page-client'
 
+// Forcer le rendu dynamique pour éviter le pré-rendu statique
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 /**
  * Wrapper serveur pour vérifier l'authentification avant de rendre la page client
  * Cela évite que Next.js considère la page comme 404 pendant le chargement
