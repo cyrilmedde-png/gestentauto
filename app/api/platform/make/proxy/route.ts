@@ -188,16 +188,15 @@ export async function GET(request: NextRequest) {
         console.log('[Make Proxy Root] HTML length before replacement:', htmlData.length)
         const staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.ico', '.webp']
         
-        // TOUJOURS remplacer les balises <base href> par notre proxy
-        // Les balises <base> peuvent causer des problèmes de résolution d'URL
+        // SUPPRIMER complètement les balises <base href>
+        // Les balises <base> causent des problèmes de résolution d'URL et créent des duplications
+        // Nous réécrivons déjà toutes les URLs dans le HTML, donc pas besoin de <base>
         let modifiedHtml = htmlData.replace(
           /<base\s+[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi,
           (match, href) => {
             console.log('[Make Proxy Root] 🔍 Balise <base> trouvée avec href:', href)
-            // TOUJOURS remplacer par notre proxy pour éviter les problèmes de résolution d'URL
-            const newBase = `${baseUrl}${proxyBase}/`
-            console.log('[Make Proxy Root] ✅ Remplacement de <base> par:', newBase)
-            return `<!-- base href replaced with proxy --><base href="${newBase}">`
+            console.log('[Make Proxy Root] ✅ Suppression de <base> (les URLs sont déjà réécrites)')
+            return '<!-- base href removed to prevent URL duplication -->'
           }
         )
         
