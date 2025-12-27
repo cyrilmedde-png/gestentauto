@@ -12,18 +12,16 @@ export const dynamic = 'force-dynamic'
  * Vérifie l'authentification et les permissions côté serveur avant de rendre le client component
  */
 export default async function MakePage() {
-  // Forcer le rendu dynamique avec unstable_noStore et cookies
+  // Forcer le rendu dynamique avec unstable_noStore
   unstable_noStore()
   
-  // Utiliser cookies() pour forcer le rendu dynamique (Next.js détecte l'utilisation de cookies)
-  const { cookies } = await import('next/headers')
-  await cookies() // Juste pour forcer le rendu dynamique
-  
   // Vérifier l'authentification (sans request pour server components)
+  // createServerClient() utilise cookies() en interne, ce qui force le rendu dynamique
   const supabase = await createServerClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   
   if (authError || !user) {
+    console.log('[MakePage] User not authenticated, redirecting to login')
     redirect('/auth/login')
   }
 
