@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
 import { checkMakeConfig, proxyMakeRequest } from '@/lib/services/make'
 
-const MAKE_URL = process.env.NEXT_PUBLIC_MAKE_URL || process.env.MAKE_URL || 'https://eu1.make.com/organization/5837397/dashboard'
+const MAKE_URL = process.env.NEXT_PUBLIC_MAKE_URL || process.env.MAKE_URL || 'https://www.make.com/en'
 
 /**
  * Route catch-all pour /api/platform/make/api/*
@@ -161,5 +161,6 @@ export async function OPTIONS(request: NextRequest) {
     },
   })
 }
+
 
 
