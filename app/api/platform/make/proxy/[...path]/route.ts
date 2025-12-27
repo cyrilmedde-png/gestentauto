@@ -3,7 +3,7 @@ import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
 import { checkMakeConfig, proxyMakeRequest } from '@/lib/services/make'
 import { createServerClient } from '@/lib/supabase/server'
 
-const MAKE_URL = process.env.NEXT_PUBLIC_MAKE_URL || process.env.MAKE_URL || 'https://www.make.com/en'
+const MAKE_URL = process.env.NEXT_PUBLIC_MAKE_URL || process.env.MAKE_URL || 'https://eu1.make.com/organization/5837397/dashboard'
 
 /**
  * Fonction pour créer les headers CORS

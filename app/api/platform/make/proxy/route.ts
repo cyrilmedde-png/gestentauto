@@ -3,7 +3,7 @@ import { verifyPlatformUser } from '@/lib/middleware/platform-auth'
 import { checkMakeConfig, proxyMakeRequest } from '@/lib/services/make'
 import { createServerClient } from '@/lib/supabase/server'
 
-const MAKE_URL = process.env.NEXT_PUBLIC_MAKE_URL || process.env.MAKE_URL || 'https://www.make.com/en'
+const MAKE_URL = process.env.NEXT_PUBLIC_MAKE_URL || process.env.MAKE_URL || 'https://eu1.make.com/organization/5837397/dashboard'
 
 /**
  * Fonction pour créer les headers CORS
@@ -101,7 +101,8 @@ export async function GET(request: NextRequest) {
     
     // Pour les pages publiques Make.com, ne pas envoyer de cookies de session
     // Les cookies de notre application ne sont pas valides pour Make.com
-    const isPublicPage = makeUrl.includes('www.make.com') || makeUrl.includes('make.com/en')
+    // L'URL d'organisation est une page privée, donc on envoie les cookies
+    const isPublicPage = makeUrl.includes('www.make.com/en') || makeUrl.includes('make.com/en')
     const requestCookies = isPublicPage ? undefined : (request.headers.get('cookie') || '')
     
     if (isPublicPage) {
