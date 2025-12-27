@@ -99,8 +99,16 @@ export async function GET(request: NextRequest) {
     const makeUrl = `${MAKE_URL}${queryString ? `?${queryString}` : ''}`
     console.log('[Make Proxy Root] Proxying to Make URL:', makeUrl)
     
-    // Extraire les cookies de session Make
-    const requestCookies = request.headers.get('cookie') || ''
+    // Pour les pages publiques Make.com, ne pas envoyer de cookies de session
+    // Les cookies de notre application ne sont pas valides pour Make.com
+    const isPublicPage = makeUrl.includes('www.make.com') || makeUrl.includes('make.com/en')
+    const requestCookies = isPublicPage ? undefined : (request.headers.get('cookie') || '')
+    
+    if (isPublicPage) {
+      console.log('[Make Proxy Root] Public page detected - not sending cookies')
+    } else {
+      console.log('[Make Proxy Root] Private page - sending cookies')
+    }
     
     try {
       console.log('[Make Proxy Root] Starting proxy request...')
