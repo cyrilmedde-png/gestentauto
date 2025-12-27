@@ -254,6 +254,8 @@ export async function GET(request: NextRequest) {
         const interceptionScript = `
 <script>
 (function() {
+  console.log('[Make Proxy Interception] 🚀 Script d\'interception Make.com initialisé');
+  console.log('[Make Proxy Interception] proxyBase:', '${escapedProxyBase}');
   const proxyBase = '${escapedProxyBase}';
   const makeHost = '${escapedMakeHost}';
   const authToken = '${escapedAuthToken}';
@@ -348,14 +350,23 @@ export async function GET(request: NextRequest) {
   const originalFetch = window.fetch;
   window.fetch = function(url, options) {
     options = options || {};
-    if (typeof url === 'string' && shouldProxy(url)) {
-      const proxyUrl = toProxyUrl(url);
-      const modifiedOptions = { ...options, credentials: 'include', headers: { ...(options.headers || {}) } };
-      if (authToken) {
-        modifiedOptions.headers['Authorization'] = 'Bearer ' + authToken;
-        modifiedOptions.headers['X-Supabase-Auth-Token'] = authToken;
+    if (typeof url === 'string') {
+      const originalUrl = url;
+      // Corriger les URLs mal formées qui manquent /proxy AVANT shouldProxy
+      if (url.includes('/api/platform/make/api/')) {
+        url = url.replace('/api/platform/make/api/', '/api/platform/make/proxy/api/');
+        console.log('[Make Proxy Interception] 🔧 URL corrigée (fetch):', originalUrl, '->', url);
       }
-      return originalFetch.call(this, proxyUrl, modifiedOptions);
+      if (shouldProxy(url)) {
+        const proxyUrl = toProxyUrl(url);
+        console.log('[Make Proxy Interception] ✅ fetch intercepté:', url, '->', proxyUrl);
+        const modifiedOptions = { ...options, credentials: 'include', headers: { ...(options.headers || {}) } };
+        if (authToken) {
+          modifiedOptions.headers['Authorization'] = 'Bearer ' + authToken;
+          modifiedOptions.headers['X-Supabase-Auth-Token'] = authToken;
+        }
+        return originalFetch.call(this, proxyUrl, modifiedOptions);
+      }
     }
     return originalFetch.call(this, url, options);
   };
@@ -363,9 +374,18 @@ export async function GET(request: NextRequest) {
   const originalOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url) {
     const args = Array.prototype.slice.call(arguments, 2);
-    if (typeof url === 'string' && shouldProxy(url)) {
-      this._makeProxyUrl = toProxyUrl(url);
-      return originalOpen.apply(this, [method, this._makeProxyUrl].concat(args));
+    if (typeof url === 'string') {
+      const originalUrl = url;
+      // Corriger les URLs mal formées qui manquent /proxy AVANT shouldProxy
+      if (url.includes('/api/platform/make/api/')) {
+        url = url.replace('/api/platform/make/api/', '/api/platform/make/proxy/api/');
+        console.log('[Make Proxy Interception] 🔧 URL corrigée (XHR):', originalUrl, '->', url);
+      }
+      if (shouldProxy(url)) {
+        this._makeProxyUrl = toProxyUrl(url);
+        console.log('[Make Proxy Interception] ✅ XHR intercepté:', url, '->', this._makeProxyUrl);
+        return originalOpen.apply(this, [method, this._makeProxyUrl].concat(args));
+      }
     }
     return originalOpen.apply(this, arguments);
   };
