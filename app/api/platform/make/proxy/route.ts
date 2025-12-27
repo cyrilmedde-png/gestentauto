@@ -248,13 +248,14 @@ export async function GET(request: NextRequest) {
         
         // Injecter le script d'interception pour les requêtes fetch/XHR
         console.log('[Make Proxy Root] Creating interception script...')
-        const escapedProxyBase = baseUrl + proxyBase
-        const escapedMakeHost = makeHost
+        // Échapper correctement toutes les variables pour éviter les erreurs de syntaxe JavaScript
+        const escapedProxyBase = (baseUrl + proxyBase).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r')
+        const escapedMakeHost = makeHost.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r')
         
         const interceptionScript = `
 <script>
 (function() {
-  console.log('[Make Proxy Interception] 🚀 Script d\'interception Make.com initialisé');
+  console.log('[Make Proxy Interception] 🚀 Script d\\'interception Make.com initialisé');
   console.log('[Make Proxy Interception] proxyBase:', '${escapedProxyBase}');
   const proxyBase = '${escapedProxyBase}';
   const makeHost = '${escapedMakeHost}';

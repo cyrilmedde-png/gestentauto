@@ -193,14 +193,15 @@ export async function GET(
       )
       
       // Injecter le script d'interception
-      const escapedProxyBase = baseUrl + proxyBase
-      const escapedMakeHost = makeHost
-      const escapedAuthToken = authToken.replace(/'/g, "\\'").replace(/\\/g, "\\\\")
+      // Échapper correctement toutes les variables pour éviter les erreurs de syntaxe JavaScript
+      const escapedProxyBase = (baseUrl + proxyBase).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r')
+      const escapedMakeHost = makeHost.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r')
+      const escapedAuthToken = (authToken || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r')
       
       const interceptionScript = `
 <script>
 (function() {
-  console.log('[Make Proxy Interception] 🚀 Script d\'interception Make.com initialisé');
+  console.log('[Make Proxy Interception] 🚀 Script d\\'interception Make.com initialisé');
   console.log('[Make Proxy Interception] proxyBase:', '${escapedProxyBase}');
   const proxyBase = '${escapedProxyBase}';
   const makeHost = '${escapedMakeHost}';
