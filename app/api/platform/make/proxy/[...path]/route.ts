@@ -294,54 +294,9 @@ export async function GET(
     return originalOpen.apply(this, arguments);
   };
   
-  // Intercepter les redirections JavaScript vers Make.com
-  // Note: On ne peut pas redéfinir window.location (propriété non-configurable)
-  // On intercepte uniquement replace() et assign() pour éviter les redirections directes vers Make.com
-  function redirectToProxy(url) {
-    if (typeof url === 'string') {
-      try {
-        const urlObj = new URL(url, window.location.origin);
-        // Si c'est une redirection vers Make.com, rediriger vers notre proxy
-        if (urlObj.hostname.endsWith('.make.com')) {
-          const path = urlObj.pathname + urlObj.search;
-          const proxyPath = proxyBase + (path.startsWith('/') ? path : '/' + path);
-          console.log('[Make Proxy Interception] Redirecting Make.com URL to proxy:', url, '->', proxyPath);
-          return proxyPath;
-        }
-      } catch (e) {
-        console.warn('[Make Proxy Interception] Error parsing URL:', url, e);
-      }
-    }
-    return url;
-  }
-  
-  // Intercepter location.replace() et location.assign() seulement si elles pointent vers Make.com
-  // Note: window.location.href = ... ne peut pas être intercepté de manière fiable
-  try {
-    const originalLocation = window.location;
-    if (originalLocation && originalLocation.replace && originalLocation.assign) {
-      const originalReplace = originalLocation.replace.bind(originalLocation);
-      const originalAssign = originalLocation.assign.bind(originalLocation);
-      
-      originalLocation.replace = function(url) {
-        const proxiedUrl = redirectToProxy(url);
-        if (proxiedUrl !== url) {
-          console.log('[Make Proxy Interception] Intercepted location.replace:', url);
-        }
-        originalReplace(proxiedUrl);
-      };
-      
-      originalLocation.assign = function(url) {
-        const proxiedUrl = redirectToProxy(url);
-        if (proxiedUrl !== url) {
-          console.log('[Make Proxy Interception] Intercepted location.assign:', url);
-        }
-        originalAssign(proxiedUrl);
-      };
-    }
-  } catch (e) {
-    console.warn('[Make Proxy Interception] Could not intercept location methods:', e);
-  }
+  // Note: L'interception de window.location est problématique car c'est une propriété non-configurable
+  // Le vrai problème est le CSP qui doit être géré côté serveur via le proxy
+  // L'interception JavaScript est désactivée pour éviter les erreurs
 })();
 </script>`
       
