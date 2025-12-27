@@ -51,11 +51,31 @@ export async function GET(request: NextRequest) {
   try {
     // Vérifier que l'utilisateur est un admin plateforme
     console.log('[Make Proxy Root] Verifying platform user...')
+    console.log('[Make Proxy Root] Request cookies:', {
+      hasCookies: !!request.headers.get('cookie'),
+      cookieLength: request.headers.get('cookie')?.length || 0,
+      cookiePreview: request.headers.get('cookie')?.substring(0, 100) || 'none',
+    })
+    
     const { isPlatform, error } = await verifyPlatformUser(request)
     console.log('[Make Proxy Root] Platform user verification result:', { isPlatform, error })
     
     if (!isPlatform || error) {
-      console.log('[Make Proxy Root] Unauthorized:', error)
+      console.error('[Make Proxy Root] ❌ Unauthorized:', {
+        isPlatform,
+        error,
+        hasCookies: !!request.headers.get('cookie'),
+        url: request.url,
+      })
+      
+      // Si c'est une erreur d'authentification (pas de session), retourner 401 au lieu de 403
+      if (error?.includes('Not authenticated') || error?.includes('Please log in')) {
+        return NextResponse.json(
+          { error: 'Authentication required. Please log in.', details: error },
+          { status: 401, headers: getCorsHeaders(request.headers.get('origin')) }
+        )
+      }
+      
       return NextResponse.json(
         { error: 'Unauthorized - Platform admin access required', details: error },
         { status: 403, headers: getCorsHeaders(request.headers.get('origin')) }
