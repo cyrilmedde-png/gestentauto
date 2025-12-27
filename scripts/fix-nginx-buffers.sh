@@ -112,8 +112,17 @@ fi
 # Vérifier la syntaxe nginx
 echo ""
 echo "🔍 Vérification de la syntaxe nginx..."
-if nginx -t 2>&1 | grep -q "syntax is ok"; then
+NGINX_TEST_OUTPUT=$(nginx -t 2>&1)
+NGINX_EXIT_CODE=$?
+
+# Vérifier si la syntaxe est OK (nginx -t retourne 0 et contient "syntax is ok" ou "test is successful")
+if [ $NGINX_EXIT_CODE -eq 0 ] && (echo "$NGINX_TEST_OUTPUT" | grep -q "syntax is ok\|test is successful"); then
     echo "✅ Syntaxe nginx valide"
+    # Afficher les warnings s'il y en a (mais ne pas les considérer comme des erreurs)
+    if echo "$NGINX_TEST_OUTPUT" | grep -q "warn"; then
+        echo "⚠️  Warnings détectés (non bloquants):"
+        echo "$NGINX_TEST_OUTPUT" | grep "warn" | head -5
+    fi
     
     # Recharger nginx
     echo ""
@@ -128,9 +137,11 @@ if nginx -t 2>&1 | grep -q "syntax is ok"; then
     fi
 else
     echo "❌ Erreur de syntaxe nginx!"
+    echo "Sortie complète:"
+    echo "$NGINX_TEST_OUTPUT"
+    echo ""
     echo "Restauration de la sauvegarde..."
     cp "$BACKUP_FILE" "$NGINX_CONFIG"
-    nginx -t
     exit 1
 fi
 
