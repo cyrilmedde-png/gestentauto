@@ -40,15 +40,24 @@ export async function createServerClient(request?: NextRequest) {
             }
           })
           
-          // Log pour déboguer (seulement en développement ou si cookie auth recherché)
-          if (name.includes('auth') || name.includes('token') || name.includes('supabase')) {
-            console.log('[createServerClient] Cookie lookup:', {
-              requestedName: name,
-              found: !!cookies[name],
-              allCookieKeys: Object.keys(cookies),
-              cookiePreview: cookies[name] ? cookies[name].substring(0, 50) + '...' : 'not found',
-              cookieHeaderLength: cookieHeader.length,
-            })
+          // Log seulement pour le cookie principal (sans suffixe .0, .1, etc.)
+          // Ignorer les cookies fragmentés qui n'existent pas (normal)
+          const isMainCookie = !name.match(/\.\d+$/) // Pas de suffixe .0, .1, etc.
+          const isAuthCookie = name.includes('auth') || name.includes('token') || name.includes('supabase')
+          const cookieFound = !!cookies[name]
+          
+          // Logger seulement le cookie principal :
+          // - En développement : toujours
+          // - En production : seulement si non trouvé (erreur)
+          if (isAuthCookie && isMainCookie) {
+            const shouldLog = process.env.NODE_ENV === 'development' || !cookieFound
+            if (shouldLog) {
+              console.log('[createServerClient] Cookie lookup:', {
+                requestedName: name,
+                found: cookieFound,
+                cookiePreview: cookieFound ? cookies[name].substring(0, 50) + '...' : 'not found',
+              })
+            }
           }
           
           return cookies[name] || undefined
