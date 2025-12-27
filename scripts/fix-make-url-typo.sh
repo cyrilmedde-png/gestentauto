@@ -18,20 +18,24 @@ BACKUP_FILE=".env.production.backup.$(date +%Y%m%d_%H%M%S)"
 cp .env.production "$BACKUP_FILE"
 echo "✅ Sauvegarde créée: $BACKUP_FILE"
 
-# Corriger la typo eul -> eu1 (chercher avec et sans échappement)
-echo "🔍 Recherche de la typo 'eul' dans .env.production..."
-if grep -i "eul\.make\.com\|eul.make.com" .env.production > /dev/null 2>&1; then
-    echo "🔍 Typo trouvée: eul.make.com -> eu1.make.com"
-    # Utiliser perl pour une substitution plus robuste
+# Corriger la typo eul -> eu1 (corriger directement sans chercher)
+echo "🔍 Recherche et correction de la typo 'eul' dans .env.production..."
+
+# Chercher la typo
+if grep -iE "eul.*make|make.*eul" .env.production > /dev/null 2>&1; then
+    echo "🔍 Typo trouvée, correction en cours..."
+    # Utiliser perl pour corriger toutes les occurrences
     perl -i -pe 's/eul\.make\.com/eu1.make.com/gi' .env.production
-    echo "✅ Typo corrigée"
-elif grep -i "eul" .env.production | grep -i "make" > /dev/null 2>&1; then
-    echo "🔍 Variante de typo trouvée (sans point): eul -> eu1"
-    perl -i -pe 's/eul/eu1/gi if /make/i' .env.production
-    echo "✅ Typo corrigée"
+    perl -i -pe 's/(https?:\/\/)eul\.make\.com/$1eu1.make.com/gi' .env.production
+    echo "✅ Typo corrigée (eul -> eu1)"
 else
-    echo "ℹ️  Aucune typo 'eul' trouvée (vérification manuelle recommandée)"
+    echo "ℹ️  Aucune typo 'eul' trouvée dans les URLs Make.com"
 fi
+
+# Correction forcée pour être sûr (corriger même si pas trouvé, c'est idempotent)
+echo "🔧 Correction forcée pour être sûr..."
+perl -i -pe 's/eul\.make\.com/eu1.make.com/gi' .env.production
+perl -i -pe 's/(NEXT_PUBLIC_MAKE_URL|MAKE_URL)=.*eul\.make\.com/$1=https:\/\/eu1.make.com\/organization\/5837397\/dashboard/gi' .env.production || true
 
 # Afficher les URLs Make actuelles
 echo ""
