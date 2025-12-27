@@ -228,13 +228,13 @@ export async function GET(
       return false;
     }
     
-    // Corriger les URLs mal formées qui manquent /proxy
-    // Par exemple: /api/platform/make/api/v2/... -> /api/platform/make/proxy/api/v2/...
+    // NE PLUS proxifier /api/platform/make/api/... car nous avons maintenant une route dédiée
+    // Ces URLs seront gérées directement par /api/platform/make/api/[...path]
     if (url.includes('/api/platform/make/api/')) {
-      return true;
+      return false; // Laisser la requête passer directement sans transformation
     }
     
-    // URLs relatives vers Make (sauf fichiers statiques)
+    // URLs relatives vers Make (sauf fichiers statiques et /api/platform/make/api/)
     if (url.startsWith('/') && !url.startsWith('//')) {
       return true;
     }
@@ -243,17 +243,17 @@ export async function GET(
     try {
       const urlObj = new URL(url, window.location.origin);
       if (urlObj.hostname.endsWith('.make.com') || urlObj.hostname === makeHost) {
-        return true;
-      }
-      // Corriger aussi les URLs absolues mal formées
-      if (urlObj.pathname.includes('/api/platform/make/api/')) {
+        // Mais ne pas proxifier si c'est /api/platform/make/api/
+        if (urlObj.pathname.includes('/api/platform/make/api/')) {
+          return false;
+        }
         return true;
       }
     } catch {
       if (url.includes('.make.com') || url.includes(makeHost)) {
-        return true;
-      }
-      if (url.includes('/api/platform/make/api/')) {
+        if (url.includes('/api/platform/make/api/')) {
+          return false;
+        }
         return true;
       }
     }
@@ -262,24 +262,28 @@ export async function GET(
   }
   
   function toProxyUrl(url) {
-    // Corriger les URLs mal formées qui manquent /proxy
-    // Par exemple: /api/platform/make/api/v2/... -> /api/platform/make/proxy/api/v2/...
-    if (url.includes('/api/platform/make/api/')) {
-      url = url.replace('/api/platform/make/api/', '/api/platform/make/proxy/api/');
+    // NE PLUS transformer /api/platform/make/api/... car nous avons maintenant une route dédiée
+    // Laisser ces URLs telles quelles pour utiliser /api/platform/make/api/[...path]
+    
+    // Si l'URL commence déjà par /api/platform/make/api/, la laisser telle quelle
+    if (url.startsWith('/api/platform/make/api/')) {
+      return url;
     }
     
     if (url.startsWith('http://') || url.startsWith('https://')) {
       try {
         const urlObj = new URL(url);
-        // Corriger aussi dans le pathname si nécessaire
+        // Ne pas transformer si c'est déjà une URL vers /api/platform/make/api/
         if (urlObj.pathname.includes('/api/platform/make/api/')) {
-          urlObj.pathname = urlObj.pathname.replace('/api/platform/make/api/', '/api/platform/make/proxy/api/');
+          // Extraire juste le chemin pour utiliser la nouvelle route
+          return urlObj.pathname + (urlObj.search || '');
         }
         return proxyBase + urlObj.pathname + (urlObj.search || '');
       } catch {
-        // Corriger dans l'URL brute
+        // Ne pas transformer si c'est déjà vers /api/platform/make/api/
         if (url.includes('/api/platform/make/api/')) {
-          url = url.replace('/api/platform/make/api/', '/api/platform/make/proxy/api/');
+          const pathStart = url.indexOf('/api/platform/make/api/');
+          return url.substring(pathStart);
         }
         const httpsIndex = url.indexOf('://');
         if (httpsIndex !== -1) {
@@ -298,11 +302,11 @@ export async function GET(
   window.fetch = function(url, options) {
     options = options || {};
     if (typeof url === 'string') {
-      const originalUrl = url;
-      // Corriger les URLs mal formées qui manquent /proxy AVANT shouldProxy
+      // NE PLUS transformer /api/platform/make/api/... - laisser passer directement
+      // Ces URLs seront gérées par /api/platform/make/api/[...path]
       if (url.includes('/api/platform/make/api/')) {
-        url = url.replace('/api/platform/make/api/', '/api/platform/make/proxy/api/');
-        console.log('[Make Proxy Interception] 🔧 URL corrigée (fetch):', originalUrl, '->', url);
+        // Laisser la requête passer directement sans interception
+        return originalFetch.call(this, url, options);
       }
       if (shouldProxy(url)) {
         const proxyUrl = toProxyUrl(url);
@@ -322,11 +326,11 @@ export async function GET(
   XMLHttpRequest.prototype.open = function(method, url) {
     const args = Array.prototype.slice.call(arguments, 2);
     if (typeof url === 'string') {
-      const originalUrl = url;
-      // Corriger les URLs mal formées qui manquent /proxy AVANT shouldProxy
+      // NE PLUS transformer /api/platform/make/api/... - laisser passer directement
+      // Ces URLs seront gérées par /api/platform/make/api/[...path]
       if (url.includes('/api/platform/make/api/')) {
-        url = url.replace('/api/platform/make/api/', '/api/platform/make/proxy/api/');
-        console.log('[Make Proxy Interception] 🔧 URL corrigée (XHR):', originalUrl, '->', url);
+        // Laisser la requête passer directement sans interception
+        return originalOpen.apply(this, arguments);
       }
       if (shouldProxy(url)) {
         this._makeProxyUrl = toProxyUrl(url);
