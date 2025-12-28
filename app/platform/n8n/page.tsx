@@ -4,32 +4,57 @@ import { useEffect, useState, useRef } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
+// Stocker l'iframe globalement pour éviter la recréation
+let globalIframe: HTMLIFrameElement | null = null
+let globalIframeContainer: HTMLDivElement | null = null
+
 export default function N8NPage() {
   const [loading, setLoading] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
-  const iframeRef = useRef<HTMLIFrameElement | null>(null)
-  const isInitializedRef = useRef(false)
+  const mountedRef = useRef(false)
 
-  // Timeout de sécurité pour le chargement
   useEffect(() => {
+    mountedRef.current = true
+    
+    // Timeout de sécurité pour le chargement
     const timeout = setTimeout(() => {
-      setLoading(false)
+      if (mountedRef.current) {
+        setLoading(false)
+      }
     }, 2000)
 
     return () => {
+      mountedRef.current = false
       clearTimeout(timeout)
     }
   }, [])
 
-  // Créer l'iframe une seule fois quand le container est disponible
+  // Créer/récupérer l'iframe une seule fois
   useEffect(() => {
-    if (loading || !containerRef.current || isInitializedRef.current) return
+    if (loading || !containerRef.current) return
+
+    // Si l'iframe globale existe déjà, la réutiliser
+    if (globalIframe && globalIframeContainer && globalIframeContainer.parentNode) {
+      // L'iframe existe déjà ailleurs, la déplacer ici si nécessaire
+      if (containerRef.current !== globalIframeContainer) {
+        // Si l'iframe est dans un autre container, la déplacer
+        if (globalIframe.parentNode && globalIframe.parentNode !== containerRef.current) {
+          containerRef.current.appendChild(globalIframe)
+        } else if (!containerRef.current.contains(globalIframe)) {
+          containerRef.current.appendChild(globalIframe)
+        }
+      }
+      globalIframeContainer = containerRef.current
+      setLoading(false)
+      return
+    }
 
     // Vérifier si l'iframe existe déjà dans le container
     const existingIframe = containerRef.current.querySelector('iframe') as HTMLIFrameElement | null
     if (existingIframe) {
-      iframeRef.current = existingIframe
-      isInitializedRef.current = true
+      globalIframe = existingIframe
+      globalIframeContainer = containerRef.current
+      setLoading(false)
       return
     }
 
@@ -47,8 +72,9 @@ export default function N8NPage() {
     iframe.style.borderRadius = '0.5rem'
 
     containerRef.current.appendChild(iframe)
-    iframeRef.current = iframe
-    isInitializedRef.current = true
+    globalIframe = iframe
+    globalIframeContainer = containerRef.current
+    setLoading(false)
 
     // Ne jamais supprimer l'iframe
     return () => {
