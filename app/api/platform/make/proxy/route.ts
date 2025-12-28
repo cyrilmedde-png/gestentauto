@@ -49,25 +49,32 @@ export async function GET(request: NextRequest) {
   }
   
   try {
-    // Vérifier que l'utilisateur est un admin plateforme
-    console.log('[Make Proxy Root] Verifying platform user...')
+    // Construire l'URL Make AVANT toute vérification pour déterminer si c'est une page publique
+    const { searchParams } = new URL(request.url)
+    const queryString = searchParams.toString()
+    const makeUrl = `${MAKE_URL}${queryString ? `?${queryString}` : ''}`
+    
+    // Vérifier si c'est une page publique Make.com (détection améliorée)
+    const isPublicPage = makeUrl.includes('www.make.com/en') || 
+                         makeUrl.includes('make.com/en') ||
+                         makeUrl.includes('/en/login') ||
+                         makeUrl.includes('/en/signup') ||
+                         makeUrl.includes('/en/') ||
+                         MAKE_URL.includes('www.make.com/en') ||
+                         MAKE_URL.includes('/en/login')
+    
+    console.log('[Make Proxy Root] makeUrl:', makeUrl)
+    console.log('[Make Proxy Root] MAKE_URL:', MAKE_URL)
+    console.log('[Make Proxy Root] isPublicPage:', isPublicPage)
     console.log('[Make Proxy Root] Request cookies:', {
       hasCookies: !!request.headers.get('cookie'),
       cookieLength: request.headers.get('cookie')?.length || 0,
       cookiePreview: request.headers.get('cookie')?.substring(0, 100) || 'none',
     })
     
-    // Vérifier si c'est une page publique Make.com
-    const { searchParams } = new URL(request.url)
-    const queryString = searchParams.toString()
-    const makeUrl = `${MAKE_URL}${queryString ? `?${queryString}` : ''}`
-    const isPublicPage = makeUrl.includes('www.make.com/en') || 
-                         makeUrl.includes('make.com/en') ||
-                         makeUrl.includes('/en/login') ||
-                         makeUrl.includes('/en/signup')
-    
     // Pour les pages publiques, ne pas vérifier l'authentification (permet de tester)
     if (!isPublicPage) {
+      console.log('[Make Proxy Root] Page privée détectée - vérification de l\'authentification...')
       const { isPlatform, error } = await verifyPlatformUser(request)
       console.log('[Make Proxy Root] Platform user verification result:', { isPlatform, error })
       
@@ -93,7 +100,7 @@ export async function GET(request: NextRequest) {
         )
       }
     } else {
-      console.log('[Make Proxy Root] ⚠️ Page publique détectée - vérification d\'authentification ignorée pour test')
+      console.log('[Make Proxy Root] ✅ Page publique détectée - vérification d\'authentification ignorée pour test')
     }
 
     // Vérifier la configuration Make
@@ -107,11 +114,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Construire l'URL Make (racine) - déjà fait plus haut pour la vérification
+    // L'URL Make est déjà construite plus haut
     console.log('[Make Proxy Root] Proxying to Make URL:', makeUrl)
     
     // Pour les pages publiques Make.com, ne pas envoyer de cookies de session
     // Les cookies de notre application ne sont pas valides pour Make.com
+    // isPublicPage est déjà défini plus haut
     const requestCookies = isPublicPage ? undefined : (request.headers.get('cookie') || '')
     
     if (isPublicPage) {
