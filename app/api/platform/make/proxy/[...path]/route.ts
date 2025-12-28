@@ -403,7 +403,7 @@ export async function GET(
       responseHeaders.delete('x-frame-options')
       responseHeaders.set('Content-Security-Policy', "frame-ancestors 'self' https://www.talosprimes.com")
       
-      // Transmettre les cookies Set-Cookie de Make
+      // Filtrer et transmettre uniquement les cookies Set-Cookie compatibles avec notre domaine
       const setCookieHeaders = response.headers.getSetCookie()
       const nextResponse = new NextResponse(modifiedHtml, {
         status: response.status,
@@ -411,7 +411,19 @@ export async function GET(
       })
       
       if (setCookieHeaders && setCookieHeaders.length > 0) {
-        setCookieHeaders.forEach(cookie => {
+        const filteredSetCookieHeaders = setCookieHeaders.filter(cookie => {
+          const domainMatch = cookie.match(/Domain=([^;]+)/i)
+          if (domainMatch) {
+            const domain = domainMatch[1].toLowerCase()
+            if (domain.includes('.make.com')) {
+              console.log(`[Make Proxy Catch-all] 🚫 Filtering Set-Cookie with incompatible domain: ${cookie}`)
+              return false
+            }
+          }
+          return true
+        })
+        
+        filteredSetCookieHeaders.forEach(cookie => {
           nextResponse.headers.append('Set-Cookie', cookie)
         })
       }
@@ -562,10 +574,22 @@ export async function POST(
       },
     })
     
-    // Transmettre les cookies Set-Cookie de Make
+    // Filtrer et transmettre uniquement les cookies Set-Cookie compatibles avec notre domaine
     const setCookieHeaders = response.headers.getSetCookie()
     if (setCookieHeaders && setCookieHeaders.length > 0) {
-      setCookieHeaders.forEach(cookie => {
+      const filteredSetCookieHeaders = setCookieHeaders.filter(cookie => {
+        const domainMatch = cookie.match(/Domain=([^;]+)/i)
+        if (domainMatch) {
+          const domain = domainMatch[1].toLowerCase()
+          if (domain.includes('.make.com')) {
+            console.log(`[Make Proxy Catch-all POST] 🚫 Filtering Set-Cookie with incompatible domain: ${cookie}`)
+            return false
+          }
+        }
+        return true
+      })
+      
+      filteredSetCookieHeaders.forEach(cookie => {
         nextResponse.headers.append('Set-Cookie', cookie)
       })
     }
