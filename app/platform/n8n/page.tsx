@@ -10,16 +10,26 @@ export default function N8NPage() {
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const isInitializedRef = useRef(false)
 
+  // Timeout de sécurité pour le chargement
   useEffect(() => {
-    // Créer l'iframe une seule fois, jamais la recréer
-    if (isInitializedRef.current || !containerRef.current) return
+    const timeout = setTimeout(() => {
+      setLoading(false)
+    }, 2000)
 
-    // Vérifier si l'iframe existe déjà (au cas où le DOM persiste)
+    return () => {
+      clearTimeout(timeout)
+    }
+  }, [])
+
+  // Créer l'iframe une seule fois quand le container est disponible
+  useEffect(() => {
+    if (loading || !containerRef.current || isInitializedRef.current) return
+
+    // Vérifier si l'iframe existe déjà dans le container
     const existingIframe = containerRef.current.querySelector('iframe') as HTMLIFrameElement | null
     if (existingIframe) {
       iframeRef.current = existingIframe
       isInitializedRef.current = true
-      setLoading(false)
       return
     }
 
@@ -36,40 +46,15 @@ export default function N8NPage() {
     iframe.style.border = '0'
     iframe.style.borderRadius = '0.5rem'
 
-    // Événement onload pour arrêter le loading
-    iframe.onload = () => {
-      setLoading(false)
-    }
-
-    // Timeout de sécurité
-    const timeout = setTimeout(() => {
-      setLoading(false)
-    }, 3000)
-
     containerRef.current.appendChild(iframe)
     iframeRef.current = iframe
     isInitializedRef.current = true
 
-    // Cleanup : Ne JAMAIS supprimer l'iframe, seulement le timeout
+    // Ne jamais supprimer l'iframe
     return () => {
-      clearTimeout(timeout)
-      // NE PAS supprimer l'iframe ici - elle doit persister
+      // Ne pas supprimer l'iframe pour préserver l'état
     }
-  }, []) // Dépendances vides = exécute une seule fois
-
-  // Gérer le changement d'onglet pour préserver l'iframe
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      // Ne rien faire - juste préserver l'iframe
-      // L'iframe N8N gère elle-même la reconnexion WebSocket
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [])
+  }, [loading])
 
   if (loading) {
     return (
