@@ -60,16 +60,25 @@ export async function GET(
   }
   
   // Vérifier si c'est une page publique Make.com (détection améliorée)
-  const isPublicPage = makeUrl.includes('www.make.com/en') || 
-                       makeUrl.includes('make.com/en') ||
-                       makeUrl.includes('/en/login') ||
-                       makeUrl.includes('/en/signup') ||
-                       makeUrl.includes('/en/') ||
-                       MAKE_URL.includes('www.make.com/en') ||
-                       MAKE_URL.includes('/en/login')
+  // Vérifier d'abord MAKE_URL lui-même, puis makeUrl
+  const isMakeUrlBasePublic = MAKE_URL.includes('www.make.com/en') || 
+                              MAKE_URL.includes('make.com/en') ||
+                              MAKE_URL.includes('/en/login') ||
+                              MAKE_URL.includes('/en/signup') ||
+                              MAKE_URL.includes('/en/')
+  
+  const isMakeUrlPathPublic = makeUrl.includes('www.make.com/en') || 
+                              makeUrl.includes('make.com/en') ||
+                              makeUrl.includes('/en/login') ||
+                              makeUrl.includes('/en/signup') ||
+                              makeUrl.includes('/en/')
+  
+  const isPublicPage = isMakeUrlBasePublic || isMakeUrlPathPublic
   
   console.log('[Make Proxy Catch-all] makeUrl:', makeUrl)
   console.log('[Make Proxy Catch-all] MAKE_URL:', MAKE_URL)
+  console.log('[Make Proxy Catch-all] isMakeUrlBasePublic:', isMakeUrlBasePublic)
+  console.log('[Make Proxy Catch-all] isMakeUrlPathPublic:', isMakeUrlPathPublic)
   console.log('[Make Proxy Catch-all] isPublicPage:', isPublicPage)
   
   // Pour les pages publiques, ne pas vérifier l'authentification (permet de tester)
