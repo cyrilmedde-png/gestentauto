@@ -93,7 +93,7 @@ export default function N8NPage() {
     // Cleanup : Ne JAMAIS supprimer l'iframe, juste la cacher
     return () => {
       clearTimeout(timeout)
-      if (iframe && iframe.parentNode === containerRef.current) {
+      if (iframe && containerRef.current && iframe.parentNode === containerRef.current) {
         // Déplacer l'iframe vers le body et la cacher au lieu de la supprimer
         containerRef.current.removeChild(iframe)
         iframe.style.position = 'fixed'
