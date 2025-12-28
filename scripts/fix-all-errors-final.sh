@@ -1,0 +1,241 @@
+#!/bin/bash
+
+# Script de correction FINALE pour TOUTES les erreurs
+# Corrige: InvariantError, Failed to find Server Action, typo eul.make.com, etc.
+
+set -e
+
+echo "🔧 Correction FINALE de TOUTES les erreurs"
+echo ""
+
+# Vérifier qu'on est dans le bon répertoire
+if [ ! -f "package.json" ]; then
+    echo "❌ Erreur: Exécutez ce script depuis la racine du projet"
+    exit 1
+fi
+
+# 0. CORRIGER LE TYPO DANS .env.production AVANT TOUT
+echo "🔧 ÉTAPE 0: Correction du typo eul.make.com dans .env.production..."
+if [ -f ".env.production" ]; then
+    # Backup
+    cp .env.production .env.production.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
+    
+    # Corriger le typo
+    if grep -q "eul\.make\.com\|eul.make.com" .env.production 2>/dev/null; then
+        echo "⚠️  Typo détectée: eul.make.com -> eu1.make.com"
+        perl -i -pe 's/eul\.make\.com/eu1.make.com/gi' .env.production
+        perl -i -pe 's/(https?:\/\/)eul\.make\.com/$1eu1.make.com/gi' .env.production
+        echo "✅ Typo corrigée"
+    else
+        echo "✅ Pas de typo détectée"
+    fi
+    
+    # Afficher les URLs Make actuelles
+    echo "📋 URLs Make.com dans .env.production:"
+    grep -E "MAKE_URL|NEXT_PUBLIC_MAKE_URL" .env.production 2>/dev/null || echo "  (aucune URL Make trouvée)"
+else
+    echo "⚠️  .env.production n'existe pas (normal si vous utilisez les variables d'environnement système)"
+fi
+echo ""
+
+# 1. Arrêter PM2 COMPLÈTEMENT
+echo "⏸️  ÉTAPE 1: Arrêt complet de PM2..."
+pm2 stop talosprime 2>/dev/null || true
+pm2 delete talosprime 2>/dev/null || true
+echo "✅ PM2 arrêté"
+echo ""
+
+# 2. Supprimer TOUS les processus node qui pourraient bloquer
+echo "🔍 ÉTAPE 2: Nettoyage des processus node..."
+pkill -f "next start" 2>/dev/null || true
+pkill -f "node.*talosprime" 2>/dev/null || true
+sleep 2
+echo "✅ Processus nettoyés"
+echo ""
+
+# 3. NETTOYAGE ULTRA-AGRESSIF de tous les caches
+echo "🧹 ÉTAPE 3: Nettoyage ULTRA-AGRESSIF de tous les caches..."
+rm -rf .next
+rm -rf .next/cache
+rm -rf node_modules/.cache
+rm -rf .turbo
+rm -rf node_modules/.next
+rm -rf .swc
+rm -rf .vercel
+rm -rf out
+rm -rf build
+rm -rf dist
+find . -name ".next" -type d -exec rm -rf {} + 2>/dev/null || true
+find . -name "*.tsbuildinfo" -delete 2>/dev/null || true
+find . -name ".turbo" -type d -exec rm -rf {} + 2>/dev/null || true
+echo "✅ Tous les caches supprimés"
+echo ""
+
+# 4. Vérifier que la page Make existe et est correcte
+echo "🔍 ÉTAPE 4: Vérification de la page Make..."
+if [ ! -f "app/platform/make/page.tsx" ]; then
+    echo "❌ ERREUR: app/platform/make/page.tsx n'existe pas!"
+    exit 1
+fi
+
+# Vérifier que c'est bien un client component
+if ! grep -q "'use client'" app/platform/make/page.tsx; then
+    echo "❌ ERREUR: La page n'est pas un client component!"
+    exit 1
+fi
+
+# Vérifier qu'elle exporte bien une fonction par défaut
+if ! grep -q "export default function MakePage" app/platform/make/page.tsx; then
+    echo "❌ ERREUR: La page n'exporte pas MakePage par défaut!"
+    exit 1
+fi
+
+echo "✅ Page Make vérifiée et correcte"
+echo ""
+
+# 5. Vérifier qu'il n'y a pas de fichiers orphelins
+echo "🔍 ÉTAPE 5: Vérification des fichiers orphelins..."
+if [ -f "app/platform/make/layout.tsx" ]; then
+    echo "⚠️  ATTENTION: layout.tsx existe, suppression..."
+    rm -f app/platform/make/layout.tsx
+fi
+if [ -f "app/platform/make/make-page-client.tsx" ]; then
+    echo "⚠️  ATTENTION: make-page-client.tsx existe, suppression..."
+    rm -f app/platform/make/make-page-client.tsx
+fi
+echo "✅ Fichiers orphelins supprimés"
+echo ""
+
+# 6. NETTOYER les logs PM2 pour un départ propre
+echo "🧹 ÉTAPE 6: Nettoyage des logs PM2..."
+pm2 flush 2>/dev/null || true
+echo "✅ Logs nettoyés"
+echo ""
+
+# 7. Rebuild COMPLET avec vérifications
+echo "🔨 ÉTAPE 7: Rebuild complet de l'application..."
+BUILD_LOG="/tmp/nextjs-build-$(date +%Y%m%d_%H%M%S).log"
+if npm run build 2>&1 | tee "$BUILD_LOG"; then
+    echo ""
+    echo "✅ Build réussi!"
+else
+    echo ""
+    echo "❌ ERREUR lors du build!"
+    echo "📋 Logs du build disponibles dans: $BUILD_LOG"
+    exit 1
+fi
+echo ""
+
+# 8. Vérifier que la route apparaît dans le build
+echo "🔍 ÉTAPE 8: Vérification que la route /platform/make est dans le build..."
+if grep -q "/platform/make" "$BUILD_LOG"; then
+    echo "✅ Route /platform/make trouvée dans le build:"
+    grep "/platform/make" "$BUILD_LOG" | head -1
+else
+    echo "⚠️  Route /platform/make non trouvée dans les logs du build"
+    echo "📋 Recherche dans les fichiers générés..."
+    if [ -f ".next/BUILD_ID" ]; then
+        echo "✅ BUILD_ID existe"
+    fi
+fi
+echo ""
+
+# 9. Vérifier que les fichiers build existent
+echo "🔍 ÉTAPE 9: Vérification des fichiers build générés..."
+if [ -f ".next/server/app/platform/make/page.js" ]; then
+    echo "✅ .next/server/app/platform/make/page.js existe"
+    ls -lh .next/server/app/platform/make/page.js
+else
+    echo "❌ .next/server/app/platform/make/page.js n'existe pas!"
+    echo "📋 Contenu du dossier .next/server/app/platform/:"
+    ls -la .next/server/app/platform/ 2>/dev/null || echo "  (dossier inexistant)"
+    exit 1
+fi
+
+# Vérifier que le manifest client existe (peut ne pas exister pour les routes statiques)
+if [ -f ".next/server/app/platform/make/page_client-reference-manifest.js" ]; then
+    echo "✅ Manifest client existe"
+else
+    echo "ℹ️  Manifest client non trouvé (normal si route statique)"
+fi
+echo ""
+
+# 10. Vérifier qu'il n'y a PAS de dossier pages/ (Pages Router)
+echo "🔍 ÉTAPE 10: Vérification qu'il n'y a pas de Pages Router..."
+if [ -d ".next/server/pages" ]; then
+    echo "⚠️  ATTENTION: Dossier .next/server/pages existe (Pages Router)"
+    echo "   Ceci peut causer des conflits. Suppression..."
+    rm -rf .next/server/pages
+    echo "✅ Dossier pages/ supprimé"
+else
+    echo "✅ Pas de Pages Router (normal pour App Router)"
+fi
+echo ""
+
+# 11. Redémarrer PM2 PROPREMENT avec les nouvelles variables d'environnement
+echo "🔄 ÉTAPE 11: Redémarrage propre de PM2..."
+
+# Vérifier si PM2 est déjà configuré
+if pm2 list | grep -q "talosprime"; then
+    pm2 restart talosprime --update-env
+else
+    # Créer la commande PM2 si elle n'existe pas
+    cd "$(pwd)"
+    pm2 start npm --name talosprime -- start --update-env
+fi
+
+sleep 3
+pm2 save 2>/dev/null || true
+echo "✅ PM2 redémarré"
+echo ""
+
+# 12. Attendre que l'application démarre complètement
+echo "⏳ ÉTAPE 12: Attente du démarrage complet (10 secondes)..."
+sleep 10
+echo ""
+
+# 13. Vérifier que PM2 fonctionne
+echo "🔍 ÉTAPE 13: Vérification du statut PM2..."
+pm2 status
+echo ""
+
+# 14. Tester la route localement
+echo "🧪 ÉTAPE 14: Test de la route /platform/make sur localhost..."
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/platform/make 2>/dev/null || echo "000")
+if [ "$HTTP_CODE" = "200" ]; then
+    echo "✅ Route fonctionne! (HTTP $HTTP_CODE)"
+elif [ "$HTTP_CODE" = "302" ] || [ "$HTTP_CODE" = "307" ] || [ "$HTTP_CODE" = "308" ]; then
+    echo "✅ Redirection détectée (HTTP $HTTP_CODE) - normal (authentification)"
+elif [ "$HTTP_CODE" = "404" ]; then
+    echo "❌ ERREUR: Route retourne toujours 404!"
+    echo "📋 Derniers logs PM2:"
+    pm2 logs talosprime --lines 20 --nostream
+    exit 1
+else
+    echo "⚠️  Code HTTP: $HTTP_CODE"
+fi
+echo ""
+
+# 15. Vérifier qu'il n'y a plus de typo dans les variables d'environnement actives
+echo "🔍 ÉTAPE 15: Vérification finale du typo..."
+if pm2 logs talosprime --lines 50 --nostream 2>/dev/null | grep -q "eul\.make\.com\|eul.make.com"; then
+    echo "⚠️  ATTENTION: Le typo 'eul.make.com' apparaît encore dans les logs!"
+    echo "   Il se peut que les variables d'environnement système contiennent encore le typo."
+    echo "   Vérifiez: env | grep MAKE_URL"
+else
+    echo "✅ Pas de typo détecté dans les logs récents"
+fi
+echo ""
+
+echo "✅ Correction FINALE terminée!"
+echo ""
+echo "📝 Prochaines étapes:"
+echo "  1. Vérifiez les logs: pm2 logs talosprime --lines 50"
+echo "  2. Testez sur le domaine: https://www.talosprimes.com/platform/make"
+echo "  3. Vérifiez qu'il n'y a plus d'erreur InvariantError dans les logs"
+echo "  4. Vérifiez qu'il n'y a plus d'erreur 'Failed to find Server Action'"
+echo "  5. Vérifiez qu'il n'y a plus de 'eul.make.com' dans les logs"
+echo ""
+echo "📋 Logs du build disponibles dans: $BUILD_LOG"
+echo ""
+
