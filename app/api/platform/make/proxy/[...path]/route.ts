@@ -219,6 +219,19 @@ export async function GET(
             return match
           }
           
+          // CRITIQUE: Ne JAMAIS réécrire les URLs Cloudflare - elles doivent rester telles quelles
+          // C'est la cause de l'erreur v1?ray=... 404
+          if (url.includes('cdn-cgi') || 
+              url.includes('challenges.cloudflare.com') ||
+              url.includes('cloudflare.com') ||
+              url.includes('/v1?ray=') ||
+              url.includes('v1?ray=') ||
+              url.includes('cf-chl') ||
+              url.includes('cf-browser-verification') ||
+              url.includes('challenge-platform')) {
+            return match; // Laisser l'URL originale
+          }
+          
           // Ne pas réécrire les fichiers statiques (CSS, JS, images, etc.)
           const urlLower = url.toLowerCase()
           if (staticExtensions.some(ext => urlLower.endsWith(ext) || urlLower.includes(ext + '?'))) {
@@ -278,6 +291,19 @@ export async function GET(
     // Ne pas proxifier les WebSockets
     if (url.includes('ws://') || url.includes('wss://')) {
       return false;
+    }
+    
+    // CRITIQUE: Ne JAMAIS proxifier les URLs Cloudflare - elles doivent être chargées directement
+    // C'est la cause de l'erreur v1?ray=... 404
+    if (url.includes('cdn-cgi') || 
+        url.includes('challenges.cloudflare.com') ||
+        url.includes('cloudflare.com') ||
+        url.includes('/v1?ray=') ||
+        url.includes('v1?ray=') ||
+        url.includes('cf-chl') ||
+        url.includes('cf-browser-verification') ||
+        url.includes('challenge-platform')) {
+      return false; // Laisser passer directement sans proxy
     }
     
     // Ne pas proxifier les fichiers statiques (CSS, JS, images, fonts, etc.)
