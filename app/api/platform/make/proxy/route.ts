@@ -57,29 +57,43 @@ export async function GET(request: NextRequest) {
       cookiePreview: request.headers.get('cookie')?.substring(0, 100) || 'none',
     })
     
-    const { isPlatform, error } = await verifyPlatformUser(request)
-    console.log('[Make Proxy Root] Platform user verification result:', { isPlatform, error })
+    // Vérifier si c'est une page publique Make.com
+    const { searchParams } = new URL(request.url)
+    const queryString = searchParams.toString()
+    const makeUrl = `${MAKE_URL}${queryString ? `?${queryString}` : ''}`
+    const isPublicPage = makeUrl.includes('www.make.com/en') || 
+                         makeUrl.includes('make.com/en') ||
+                         makeUrl.includes('/en/login') ||
+                         makeUrl.includes('/en/signup')
     
-    if (!isPlatform || error) {
-      console.error('[Make Proxy Root] ❌ Unauthorized:', {
-        isPlatform,
-        error,
-        hasCookies: !!request.headers.get('cookie'),
-        url: request.url,
-      })
+    // Pour les pages publiques, ne pas vérifier l'authentification (permet de tester)
+    if (!isPublicPage) {
+      const { isPlatform, error } = await verifyPlatformUser(request)
+      console.log('[Make Proxy Root] Platform user verification result:', { isPlatform, error })
       
-      // Si c'est une erreur d'authentification (pas de session), retourner 401 au lieu de 403
-      if (error?.includes('Not authenticated') || error?.includes('Please log in')) {
+      if (!isPlatform || error) {
+        console.error('[Make Proxy Root] ❌ Unauthorized:', {
+          isPlatform,
+          error,
+          hasCookies: !!request.headers.get('cookie'),
+          url: request.url,
+        })
+        
+        // Si c'est une erreur d'authentification (pas de session), retourner 401 au lieu de 403
+        if (error?.includes('Not authenticated') || error?.includes('Please log in')) {
+          return NextResponse.json(
+            { error: 'Authentication required. Please log in.', details: error },
+            { status: 401, headers: getCorsHeaders(request.headers.get('origin')) }
+          )
+        }
+        
         return NextResponse.json(
-          { error: 'Authentication required. Please log in.', details: error },
-          { status: 401, headers: getCorsHeaders(request.headers.get('origin')) }
+          { error: 'Unauthorized - Platform admin access required', details: error },
+          { status: 403, headers: getCorsHeaders(request.headers.get('origin')) }
         )
       }
-      
-      return NextResponse.json(
-        { error: 'Unauthorized - Platform admin access required', details: error },
-        { status: 403, headers: getCorsHeaders(request.headers.get('origin')) }
-      )
+    } else {
+      console.log('[Make Proxy Root] ⚠️ Page publique détectée - vérification d\'authentification ignorée pour test')
     }
 
     // Vérifier la configuration Make
@@ -93,16 +107,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Construire l'URL Make (racine)
-    const { searchParams } = new URL(request.url)
-    const queryString = searchParams.toString()
-    const makeUrl = `${MAKE_URL}${queryString ? `?${queryString}` : ''}`
+    // Construire l'URL Make (racine) - déjà fait plus haut pour la vérification
     console.log('[Make Proxy Root] Proxying to Make URL:', makeUrl)
     
     // Pour les pages publiques Make.com, ne pas envoyer de cookies de session
     // Les cookies de notre application ne sont pas valides pour Make.com
-    // L'URL d'organisation est une page privée, donc on envoie les cookies
-    const isPublicPage = makeUrl.includes('www.make.com/en') || makeUrl.includes('make.com/en')
     const requestCookies = isPublicPage ? undefined : (request.headers.get('cookie') || '')
     
     if (isPublicPage) {
