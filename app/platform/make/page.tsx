@@ -68,6 +68,10 @@ export default function MakePage() {
         <MainLayout>
           <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
             <div className="text-center">
+              <div className="bg-green-600 text-white p-4 rounded-lg mb-4 max-w-md mx-auto">
+                <p className="font-bold text-lg">✅ DIAGNOSTIC : Page make/page.tsx chargée (loading)</p>
+                <p className="text-sm mt-2">Timestamp: {new Date().toLocaleString('fr-FR')}</p>
+              </div>
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
               <p className="text-muted-foreground">Chargement de Make...</p>
             </div>
@@ -80,6 +84,10 @@ export default function MakePage() {
   return (
     <ProtectedRoute>
       <MainLayout>
+        <div className="bg-green-600 text-white p-2 rounded-lg mb-2 max-w-md mx-auto text-center">
+          <p className="font-bold text-sm">✅ DIAGNOSTIC : Page make/page.tsx chargée (ready)</p>
+          <p className="text-xs">Timestamp: {new Date().toLocaleString('fr-FR')}</p>
+        </div>
         <div 
           ref={containerRef}
           className="w-full h-[calc(100vh-4rem)]"
