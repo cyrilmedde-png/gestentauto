@@ -226,11 +226,34 @@ export async function GET(request: NextRequest) {
                                      htmlData.includes('__cf_bm') ||
                                      htmlData.includes('cf_clearance') ||
                                      htmlData.includes('Just a moment') ||
-                                     htmlData.includes('Checking your browser')
+                                     htmlData.includes('Checking your browser') ||
+                                     htmlData.includes('cf-challenge') ||
+                                     htmlData.includes('cf-browser-verification')
         
         if (isCloudflareChallenge) {
           console.warn('[Make Proxy Root] ⚠️⚠️⚠️ CHALLENGE CLOUDFLARE DÉTECTÉ!')
           console.warn('[Make Proxy Root] Le HTML contient un challenge Cloudflare - JavaScript doit être autorisé')
+          console.warn('[Make Proxy Root] HTML length:', htmlData.length)
+          
+          // Vérifier si le HTML contient le script de challenge Cloudflare
+          const hasChallengeScript = htmlData.includes('cdn-cgi/challenge-platform') ||
+                                    htmlData.includes('challenge-platform') ||
+                                    htmlData.includes('cf-chl') ||
+                                    htmlData.includes('cf-browser-verification')
+          
+          if (hasChallengeScript) {
+            console.warn('[Make Proxy Root] ✅ Script de challenge Cloudflare détecté dans le HTML')
+            console.warn('[Make Proxy Root] Le JavaScript devrait résoudre le challenge automatiquement')
+          } else {
+            console.warn('[Make Proxy Root] ⚠️ Script de challenge Cloudflare NON détecté dans le HTML')
+          }
+        }
+        
+        // Si c'est un 403, logger un extrait du HTML pour debug
+        if (response.status === 403) {
+          const htmlPreview = htmlData.substring(0, 500)
+          console.warn('[Make Proxy Root] ⚠️ 403 Forbidden - HTML preview:', htmlPreview)
+          console.warn('[Make Proxy Root] ⚠️ Vérifiez si le challenge Cloudflare est présent dans le HTML')
         }
         
         // Vérifier si le HTML contient des redirections vers www.make.com
@@ -539,15 +562,40 @@ export async function GET(request: NextRequest) {
         
         // CSP complet qui autorise JavaScript, Cloudflare, et le framing
         // CRITIQUE: Autoriser JavaScript pour résoudre le challenge Cloudflare
-        const cspHeader = [
-          "frame-ancestors 'self' https://www.talosprimes.com",
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.make.com https://*.cdn.make.com https://challenges.cloudflare.com https://*.cloudflare.com",
-          "connect-src 'self' https://*.make.com https://*.eu1.make.com wss://*.make.com https://challenges.cloudflare.com https://*.cloudflare.com https://cdn-cgi.challenges.cloudflare.com",
-          "style-src 'self' 'unsafe-inline' https://*.make.com https://*.cdn.make.com",
-          "img-src 'self' data: https: blob:",
-          "font-src 'self' data: https:",
-          "frame-src 'self' https://*.make.com https://challenges.cloudflare.com"
-        ].join('; ')
+        // Si c'est un challenge Cloudflare, rendre le CSP encore plus permissif
+        const isCloudflareChallenge = htmlData.includes('Enable JavaScript and cookies to continue') ||
+                                     htmlData.includes('challenges.cloudflare.com') ||
+                                     htmlData.includes('/cdn-cgi/challenge-platform/') ||
+                                     htmlData.includes('cf-challenge') ||
+                                     htmlData.includes('cf-browser-verification')
+        
+        let cspHeader: string
+        if (isCloudflareChallenge || response.status === 403) {
+          // CSP ULTRA-PERMISSIF pour le challenge Cloudflare
+          console.warn('[Make Proxy Root] 🔓 CSP ULTRA-PERMISSIF activé pour résoudre le challenge Cloudflare')
+          cspHeader = [
+            "frame-ancestors 'self' https://www.talosprimes.com",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http: data: blob: *",
+            "connect-src 'self' https: http: wss: ws: *",
+            "style-src 'self' 'unsafe-inline' https: http: data: *",
+            "img-src 'self' data: https: http: blob: *",
+            "font-src 'self' data: https: http: *",
+            "frame-src 'self' https: http: *",
+            "object-src 'none'",
+            "base-uri 'self'"
+          ].join('; ')
+        } else {
+          // CSP normal (plus restrictif)
+          cspHeader = [
+            "frame-ancestors 'self' https://www.talosprimes.com",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.make.com https://*.cdn.make.com https://challenges.cloudflare.com https://*.cloudflare.com",
+            "connect-src 'self' https://*.make.com https://*.eu1.make.com wss://*.make.com https://challenges.cloudflare.com https://*.cloudflare.com https://cdn-cgi.challenges.cloudflare.com",
+            "style-src 'self' 'unsafe-inline' https://*.make.com https://*.cdn.make.com",
+            "img-src 'self' data: https: blob:",
+            "font-src 'self' data: https:",
+            "frame-src 'self' https://*.make.com https://challenges.cloudflare.com"
+          ].join('; ')
+        }
         
         const nextResponse = new NextResponse(modifiedHtml, {
           status: response.status,

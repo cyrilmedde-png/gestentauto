@@ -45,8 +45,11 @@ export default function MakePage() {
     iframe.className = 'w-full h-full border-0 rounded-lg'
     iframe.title = 'Make - Automatisation'
     iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen')
-    // Sandbox avec permissions pour JavaScript et cookies (allow-same-origin permet les cookies)
-    iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation')
+    // Sandbox avec permissions MAXIMALES pour résoudre le challenge Cloudflare
+    // CRITIQUE: allow-same-origin permet les cookies, allow-scripts permet JavaScript
+    // On enlève le sandbox si nécessaire pour Cloudflare, mais c'est moins sécurisé
+    // Pour l'instant, on garde le sandbox mais avec toutes les permissions
+    iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation allow-modals allow-downloads')
     iframe.setAttribute('loading', 'eager')
     iframe.style.width = '100%'
     iframe.style.height = '100%'
