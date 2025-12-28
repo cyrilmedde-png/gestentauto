@@ -195,6 +195,7 @@ export async function GET(request: NextRequest) {
         const isCloudflareChallenge = htmlData.includes('Enable JavaScript and cookies to continue') ||
                                      htmlData.includes('challenges.cloudflare.com') ||
                                      htmlData.includes('/cdn-cgi/challenge-platform/') ||
+                                     htmlData.includes('_cf_bm') ||
                                      htmlData.includes('__cf_bm') ||
                                      htmlData.includes('cf_clearance') ||
                                      htmlData.includes('Just a moment') ||
@@ -537,7 +538,9 @@ export async function GET(request: NextRequest) {
         if (setCookieHeaders && setCookieHeaders.length > 0) {
           setCookieHeaders.forEach(cookie => {
             // Vérifier si c'est un cookie Cloudflare (nécessaire pour le challenge)
-            const isCloudflareCookie = cookie.includes('__cf_bm') || 
+            // IMPORTANT: Cloudflare utilise _cf_bm (un underscore) et __cf_bm (deux underscores)
+            const isCloudflareCookie = cookie.includes('_cf_bm') || 
+                                      cookie.includes('__cf_bm') ||
                                       cookie.includes('cf_clearance') ||
                                       cookie.includes('cf_ob_info') ||
                                       cookie.includes('cf_use_ob')
