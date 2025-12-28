@@ -464,10 +464,23 @@ export async function GET(request: NextRequest) {
           },
         })
         
-        // Transmettre les cookies Set-Cookie de Make
+        // Filtrer et transmettre uniquement les cookies Set-Cookie compatibles avec notre domaine
+        // Les cookies Make.com avec domain=.eu1.make.com ou domain=.make.com ne peuvent pas être utilisés
+        // sur talosprimes.com, donc on ne les transmet pas pour éviter les erreurs du navigateur
         if (setCookieHeaders && setCookieHeaders.length > 0) {
           setCookieHeaders.forEach(cookie => {
-            nextResponse.headers.append('Set-Cookie', cookie)
+            // Filtrer les cookies avec domain Make.com (ne peuvent pas être utilisés sur notre domaine)
+            const hasMakeDomain = cookie.includes('domain=.eu1.make.com') || 
+                                  cookie.includes('domain=.make.com') ||
+                                  cookie.includes('domain=eu1.make.com') ||
+                                  cookie.includes('domain=make.com')
+            
+            if (!hasMakeDomain) {
+              // Seulement transmettre les cookies sans domaine Make.com
+              nextResponse.headers.append('Set-Cookie', cookie)
+            } else {
+              console.log('[Make Proxy Root] ⚠️ Cookie Make.com filtré (domaine incompatible):', cookie.substring(0, 100))
+            }
           })
         }
         
@@ -489,10 +502,23 @@ export async function GET(request: NextRequest) {
         },
       })
       
-      // Transmettre les cookies Set-Cookie
+      // Filtrer et transmettre uniquement les cookies Set-Cookie compatibles avec notre domaine
+      // Les cookies Make.com avec domain=.eu1.make.com ou domain=.make.com ne peuvent pas être utilisés
+      // sur talosprimes.com, donc on ne les transmet pas pour éviter les erreurs du navigateur
       if (setCookieHeaders && setCookieHeaders.length > 0) {
         setCookieHeaders.forEach(cookie => {
-          nextResponse.headers.append('Set-Cookie', cookie)
+          // Filtrer les cookies avec domain Make.com (ne peuvent pas être utilisés sur notre domaine)
+          const hasMakeDomain = cookie.includes('domain=.eu1.make.com') || 
+                                cookie.includes('domain=.make.com') ||
+                                cookie.includes('domain=eu1.make.com') ||
+                                cookie.includes('domain=make.com')
+          
+          if (!hasMakeDomain) {
+            // Seulement transmettre les cookies sans domaine Make.com
+            nextResponse.headers.append('Set-Cookie', cookie)
+          } else {
+            console.log('[Make Proxy Root] ⚠️ Cookie Make.com filtré (domaine incompatible):', cookie.substring(0, 100))
+          }
         })
       }
       
