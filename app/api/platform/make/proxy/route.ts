@@ -110,6 +110,7 @@ export async function GET(request: NextRequest) {
       }
     } else {
       console.log('[Make Proxy Root] ✅ Page publique détectée - vérification d\'authentification ignorée pour test')
+      console.log('[Make Proxy Root] ✅✅✅ BYPASSING AUTHENTICATION - isPublicPage is TRUE')
     }
 
     // Vérifier la configuration Make
@@ -151,6 +152,11 @@ export async function GET(request: NextRequest) {
         headers['Referer'] = referer
       }
       
+      console.log('[Make Proxy Root] ========== CALLING proxyMakeRequest ==========')
+      console.log('[Make Proxy Root] makeUrl:', makeUrl)
+      console.log('[Make Proxy Root] isPublicPage:', isPublicPage)
+      console.log('[Make Proxy Root] requestCookies:', requestCookies ? 'present' : 'undefined')
+      
       const response = await proxyMakeRequest(makeUrl, {
         method: 'GET',
         headers,
@@ -158,12 +164,21 @@ export async function GET(request: NextRequest) {
       
       // Log IMMÉDIATEMENT après le await pour s'assurer qu'on arrive ici
       console.log('[Make Proxy Root] ========== proxyMakeRequest RETURNED ==========')
+      console.log('[Make Proxy Root] Response status from Make.com:', response?.status, response?.statusText)
       console.log('[Make Proxy Root] Response object:', {
         status: response?.status,
         statusText: response?.statusText,
         hasHeaders: !!response?.headers,
         hasBody: !!response?.body,
       })
+      
+      // Si Make.com retourne un 403, logger les détails
+      if (response?.status === 403) {
+        console.error('[Make Proxy Root] ⚠️⚠️⚠️ Make.com returned 403 Forbidden!')
+        console.error('[Make Proxy Root] This 403 is from Make.com, not our code!')
+        console.error('[Make Proxy Root] makeUrl:', makeUrl)
+        console.error('[Make Proxy Root] isPublicPage:', isPublicPage)
+      }
       const contentType = response.headers.get('content-type') || 'application/octet-stream'
       console.log('[Make Proxy Root] Content-Type:', contentType)
       
