@@ -139,8 +139,10 @@ export async function GET(
       method: 'GET',
       headers: {
         'User-Agent': request.headers.get('user-agent') || 'TalosPrime-Platform',
-        'Accept': request.headers.get('accept') || '*/*',
-        'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9',
+        'Accept': request.headers.get('accept') || 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://www.make.com/', // Ajouter Referer pour contourner Cloudflare
+        'Origin': 'https://www.make.com', // Ajouter Origin pour contourner Cloudflare
       },
     }, requestCookies || undefined)
 

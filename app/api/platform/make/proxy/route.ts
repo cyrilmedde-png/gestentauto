@@ -130,27 +130,54 @@ export async function GET(request: NextRequest) {
     // Pour les pages publiques Make.com, ne pas envoyer de cookies de session
     // Les cookies de notre application ne sont pas valides pour Make.com
     // isPublicPage est déjà défini plus haut
-    const requestCookies = isPublicPage ? undefined : (request.headers.get('cookie') || '')
     
-    if (isPublicPage) {
-      console.log('[Make Proxy Root] Public page detected - not sending cookies')
-    } else {
-      console.log('[Make Proxy Root] Private page - sending cookies')
+    // CRITIQUE: Extraire les cookies Cloudflare de la requête (s'ils existent)
+    // Ces cookies peuvent venir d'une requête précédente où Cloudflare les a envoyés
+    const requestCookieHeader = request.headers.get('cookie') || ''
+    const cloudflareCookies: string[] = []
+    
+    // Extraire les cookies Cloudflare de la requête
+    if (requestCookieHeader) {
+      const cookies = requestCookieHeader.split(';').map(c => c.trim())
+      cookies.forEach(cookie => {
+        if (cookie.includes('_cf_bm') || 
+            cookie.includes('__cf_bm') ||
+            cookie.includes('cf_clearance') ||
+            cookie.includes('cf_ob_info') ||
+            cookie.includes('cf_use_ob')) {
+          cloudflareCookies.push(cookie)
+        }
+      })
     }
     
-    try {
-      console.log('[Make Proxy Root] Starting proxy request...')
-      // Ne pas passer de headers personnalisés - proxyMakeRequest utilisera un User-Agent de navigateur
-      const headers: Record<string, string> = {
-        'Accept': request.headers.get('accept') || 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+    // Construire les cookies à envoyer à Make.com
+    let requestCookies: string | undefined
+    if (isPublicPage) {
+      // Pour les pages publiques, envoyer uniquement les cookies Cloudflare si présents
+      requestCookies = cloudflareCookies.length > 0 ? cloudflareCookies.join('; ') : undefined
+      console.log('[Make Proxy Root] Public page detected - sending Cloudflare cookies:', cloudflareCookies.length)
+    } else {
+      // Pour les pages privées, envoyer les cookies de session + cookies Cloudflare
+      const sessionCookies = requestCookieHeader
+      if (cloudflareCookies.length > 0) {
+        requestCookies = sessionCookies 
+          ? `${sessionCookies}; ${cloudflareCookies.join('; ')}`
+          : cloudflareCookies.join('; ')
+      } else {
+        requestCookies = sessionCookies || undefined
       }
-      
-      // Ajouter Referer seulement s'il existe
-      const referer = request.headers.get('referer')
-      if (referer) {
-        headers['Referer'] = referer
-      }
+      console.log('[Make Proxy Root] Private page - sending cookies (Cloudflare:', cloudflareCookies.length, ')')
+    }
+    
+      try {
+        console.log('[Make Proxy Root] Starting proxy request...')
+        // Headers optimisés pour contourner Cloudflare
+        const headers: Record<string, string> = {
+          'Accept': request.headers.get('accept') || 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+          'Accept-Language': request.headers.get('accept-language') || 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Referer': 'https://www.make.com/', // Toujours ajouter Referer Make.com pour contourner Cloudflare
+          'Origin': 'https://www.make.com', // Toujours ajouter Origin Make.com pour contourner Cloudflare
+        }
       
       console.log('[Make Proxy Root] ========== CALLING proxyMakeRequest ==========')
       console.log('[Make Proxy Root] makeUrl:', makeUrl)
@@ -553,14 +580,32 @@ export async function GET(request: NextRequest) {
             
             // Transmettre les cookies Cloudflare même avec domain Make.com (nécessaires pour le challenge)
             if (isCloudflareCookie) {
-              console.log('[Make Proxy Root] ✅ Cookie Cloudflare transmis (nécessaire pour le challenge):', cookie.substring(0, 100))
-              // Modifier le cookie pour qu'il fonctionne sur notre domaine
-              // Enlever le domain Make.com pour permettre au navigateur de le stocker
-              const modifiedCookie = cookie
-                .replace(/;\s*domain=\.?[^;]+/gi, '') // Supprimer domain Make.com
-                .replace(/;\s*domain=make\.com/gi, '')
-                .replace(/;\s*domain=eu1\.make\.com/gi, '')
-              nextResponse.headers.append('Set-Cookie', modifiedCookie)
+              console.log('[Make Proxy Root] ✅ Cookie Cloudflare détecté:', cookie.substring(0, 100))
+              
+              // Extraire le nom=valeur du cookie
+              const cookieMatch = cookie.match(/^([^=]+=[^;]+)/)
+              if (cookieMatch) {
+                const cookieNameValue = cookieMatch[1]
+                console.log('[Make Proxy Root] ✅ Cookie Cloudflare extrait:', cookieNameValue.substring(0, 80))
+                
+                // Transmettre le cookie SANS le domaine Make.com pour que le navigateur puisse le stocker
+                // Le navigateur le stockera pour notre domaine, et on le renverra dans les requêtes suivantes
+                const modifiedCookie = cookie
+                  .replace(/;\s*domain=\.?[^;]+/gi, '') // Supprimer domain Make.com
+                  .replace(/;\s*domain=make\.com/gi, '')
+                  .replace(/;\s*domain=eu1\.make\.com/gi, '')
+                  .replace(/;\s*SameSite=[^;]+/gi, '; SameSite=None') // Forcer SameSite=None
+                  + '; Secure' // Ajouter Secure si HTTPS
+                
+                nextResponse.headers.append('Set-Cookie', modifiedCookie)
+              } else {
+                // Fallback: transmettre sans domaine
+                const modifiedCookie = cookie
+                  .replace(/;\s*domain=\.?[^;]+/gi, '')
+                  .replace(/;\s*domain=make\.com/gi, '')
+                  .replace(/;\s*domain=eu1\.make\.com/gi, '')
+                nextResponse.headers.append('Set-Cookie', modifiedCookie)
+              }
             } else if (!hasMakeDomain) {
               // Transmettre les autres cookies sans domaine Make.com
               nextResponse.headers.append('Set-Cookie', cookie)
