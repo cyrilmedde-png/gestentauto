@@ -1,46 +1,107 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { usePathname } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
-import { getN8NIframe } from '@/lib/n8n-iframe'
+
+const IFRAME_ID = 'n8n-persistent-iframe'
+const IFRAME_CONTAINER_ID = 'n8n-iframe-container'
 
 export default function N8NPage() {
   const [loading, setLoading] = useState(true)
+  const pathname = usePathname()
   const containerRef = useRef<HTMLDivElement>(null)
-  const iframeInitializedRef = useRef(false)
+  const isMountedRef = useRef(false)
 
   useEffect(() => {
-    // Timeout de sécurité pour le chargement
-    const timeout = setTimeout(() => {
+    isMountedRef.current = true
+
+    // Fonction pour créer/monter l'iframe une seule fois
+    const initializeIframe = () => {
+      if (!containerRef.current) return
+
+      // Chercher si l'iframe existe déjà
+      let iframe = document.getElementById(IFRAME_ID) as HTMLIFrameElement | null
+      
+      if (!iframe) {
+        // Créer l'iframe une seule fois
+        iframe = document.createElement('iframe')
+        iframe.id = IFRAME_ID
+        iframe.src = 'https://n8n.talosprimes.com'
+        iframe.className = 'w-full h-full border-0 rounded-lg'
+        iframe.title = 'N8N - Automatisation'
+        iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen')
+        iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox')
+        iframe.style.width = '100%'
+        iframe.style.height = '100%'
+        iframe.style.border = '0'
+        iframe.style.borderRadius = '0.5rem'
+        iframe.style.position = 'absolute'
+        iframe.style.top = '0'
+        iframe.style.left = '0'
+        iframe.style.right = '0'
+        iframe.style.bottom = '0'
+      }
+
+      // Si l'iframe n'est pas dans notre container, la déplacer
+      if (iframe.parentNode !== containerRef.current) {
+        // Retirer de l'ancien parent si présent
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe)
+        }
+        // Ajouter au nouveau container
+        containerRef.current.appendChild(iframe)
+      }
+
       setLoading(false)
-    }, 2000)
-
-    return () => clearTimeout(timeout)
-  }, [])
-
-  useEffect(() => {
-    if (!containerRef.current || loading || iframeInitializedRef.current) return
-
-    // Récupérer l'iframe globale (créée une seule fois)
-    const iframe = getN8NIframe()
-
-    // Si l'iframe est déjà dans un autre container, la déplacer
-    if (iframe.parentNode && iframe.parentNode !== containerRef.current) {
-      iframe.parentNode.removeChild(iframe)
-      containerRef.current.appendChild(iframe)
-    } else if (!containerRef.current.contains(iframe)) {
-      // Si l'iframe n'est nulle part, l'ajouter
-      containerRef.current.appendChild(iframe)
     }
 
-    iframeInitializedRef.current = true
+    // Timeout de sécurité
+    const timeout = setTimeout(() => {
+      if (isMountedRef.current) {
+        initializeIframe()
+      }
+    }, 100)
 
-    // Ne jamais supprimer l'iframe dans le cleanup
+    // Essayer immédiatement aussi
+    if (containerRef.current) {
+      initializeIframe()
+    } else {
+      // Attendre que le container soit disponible
+      const checkInterval = setInterval(() => {
+        if (containerRef.current && isMountedRef.current) {
+          clearInterval(checkInterval)
+          initializeIframe()
+        }
+      }, 50)
+
+      return () => {
+        clearInterval(checkInterval)
+        clearTimeout(timeout)
+      }
+    }
+
     return () => {
-      // Ne rien faire - l'iframe doit persister
+      clearTimeout(timeout)
+      // NE PAS supprimer l'iframe - elle doit persister
     }
-  }, [loading])
+  }, [pathname])
+
+  // Nettoyer seulement quand on quitte complètement la page N8N
+  useEffect(() => {
+    return () => {
+      // Vérifier si on quitte vraiment la page N8N (pas juste un re-render)
+      const timer = setTimeout(() => {
+        if (!window.location.pathname.includes('/platform/n8n')) {
+          // On a vraiment quitté la page, mais on ne supprime toujours pas l'iframe
+          // pour qu'elle soit réutilisable si on revient
+        }
+      }, 1000)
+
+      return () => clearTimeout(timer)
+    }
+  }, [pathname])
 
   if (loading) {
     return (
@@ -61,6 +122,7 @@ export default function N8NPage() {
     <ProtectedRoute>
       <MainLayout>
         <div 
+          id={IFRAME_CONTAINER_ID}
           ref={containerRef}
           className="w-full h-[calc(100vh-4rem)]"
           style={{ position: 'relative' }}
