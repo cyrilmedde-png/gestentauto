@@ -1,93 +1,110 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
-// Variable globale pour persister l'iframe - CRÉÉE UNE SEULE FOIS
+// Variable globale pour l'iframe - créée une seule fois pour toute l'application
 let globalN8NIframe: HTMLIFrameElement | null = null
-const IFRAME_ID = 'n8n-persistent-iframe-container'
+const IFRAME_ID = 'n8n-global-iframe'
 
-function N8NIframe() {
-  const [mounted, setMounted] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+// Fonction pour créer l'iframe une seule fois au niveau global
+function getOrCreateGlobalIframe(): HTMLIFrameElement {
+  if (globalN8NIframe && globalN8NIframe.parentNode) {
+    return globalN8NIframe
+  }
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  // Chercher si l'iframe existe déjà dans le DOM
+  const existing = document.getElementById(IFRAME_ID) as HTMLIFrameElement | null
+  if (existing) {
+    globalN8NIframe = existing
+    return existing
+  }
 
-  useEffect(() => {
-    if (!mounted || !containerRef.current) return
+  // Créer l'iframe une seule fois
+  const iframe = document.createElement('iframe')
+  iframe.id = IFRAME_ID
+  iframe.src = 'https://n8n.talosprimes.com'
+  iframe.className = 'w-full h-full border-0 rounded-lg'
+  iframe.title = 'N8N - Automatisation'
+  iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen')
+  iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox')
+  iframe.setAttribute('loading', 'eager')
+  iframe.style.width = '100%'
+  iframe.style.height = '100%'
+  iframe.style.border = '0'
+  iframe.style.borderRadius = '0.5rem'
+  iframe.style.position = 'fixed'
+  iframe.style.top = '0'
+  iframe.style.left = '0'
+  iframe.style.zIndex = '-1'
+  iframe.style.display = 'none'
 
-    // Si l'iframe globale existe déjà quelque part dans le DOM, la déplacer ici
-    const existingIframe = document.getElementById(IFRAME_ID)?.querySelector('iframe') as HTMLIFrameElement | null
-    if (existingIframe) {
-      globalN8NIframe = existingIframe
-      // Si elle est dans un autre container, la déplacer
-      if (existingIframe.parentNode && existingIframe.parentNode !== containerRef.current) {
-        containerRef.current.appendChild(existingIframe)
-      } else if (!containerRef.current.contains(existingIframe)) {
-        containerRef.current.appendChild(existingIframe)
-      }
-      return
-    }
+  // Ajouter l'iframe au body si elle n'existe pas encore
+  if (!document.getElementById(IFRAME_ID)) {
+    document.body.appendChild(iframe)
+  }
 
-    // Si l'iframe globale existe en mémoire mais pas dans le DOM
-    if (globalN8NIframe) {
-      if (globalN8NIframe.parentNode && globalN8NIframe.parentNode !== containerRef.current) {
-        containerRef.current.appendChild(globalN8NIframe)
-      } else if (!containerRef.current.contains(globalN8NIframe)) {
-        containerRef.current.appendChild(globalN8NIframe)
-      }
-      return
-    }
-
-    // Créer l'iframe UNE SEULE FOIS
-    if (!globalN8NIframe && containerRef.current) {
-      const iframe = document.createElement('iframe')
-      iframe.src = 'https://n8n.talosprimes.com'
-      iframe.className = 'w-full h-full border-0 rounded-lg'
-      iframe.title = 'N8N - Automatisation'
-      iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen')
-      iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox')
-      iframe.setAttribute('loading', 'eager')
-      iframe.style.width = '100%'
-      iframe.style.height = '100%'
-      iframe.style.border = '0'
-      iframe.style.borderRadius = '0.5rem'
-
-      containerRef.current.appendChild(iframe)
-      globalN8NIframe = iframe
-    }
-
-    // Ne JAMAIS supprimer l'iframe lors du cleanup
-    return () => {
-      // Ne rien faire - l'iframe doit persister même si le composant se démonte
-    }
-  }, [mounted])
-
-  return (
-    <div 
-      id={IFRAME_ID}
-      ref={containerRef}
-      className="w-full h-[calc(100vh-4rem)]"
-      style={{ position: 'relative' }}
-    />
-  )
+  globalN8NIframe = iframe
+  return iframe
 }
 
 export default function N8NPage() {
   const [loading, setLoading] = useState(true)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // Timeout de sécurité pour le chargement
+    // Créer/récupérer l'iframe globale
+    const iframe = getOrCreateGlobalIframe()
+
+    // Timeout de sécurité
     const timeout = setTimeout(() => {
       setLoading(false)
-    }, 1500)
+    }, 1000)
 
+    // Quand le composant est monté, déplacer l'iframe dans notre container
+    if (containerRef.current && iframe.parentNode !== containerRef.current) {
+      // Retirer l'iframe de son parent actuel
+      if (iframe.parentNode) {
+        iframe.parentNode.removeChild(iframe)
+      }
+      // Réinitialiser les styles pour l'affichage normal
+      iframe.style.position = 'relative'
+      iframe.style.top = 'auto'
+      iframe.style.left = 'auto'
+      iframe.style.zIndex = 'auto'
+      iframe.style.display = 'block'
+      // Ajouter au container
+      containerRef.current.appendChild(iframe)
+    } else if (containerRef.current && !containerRef.current.contains(iframe)) {
+      // Si l'iframe n'est pas dans le container, la déplacer
+      if (iframe.parentNode) {
+        iframe.parentNode.removeChild(iframe)
+      }
+      iframe.style.position = 'relative'
+      iframe.style.top = 'auto'
+      iframe.style.left = 'auto'
+      iframe.style.zIndex = 'auto'
+      iframe.style.display = 'block'
+      containerRef.current.appendChild(iframe)
+    }
+
+    // Cleanup : Ne JAMAIS supprimer l'iframe, juste la cacher
     return () => {
       clearTimeout(timeout)
+      if (iframe && iframe.parentNode === containerRef.current) {
+        // Déplacer l'iframe vers le body et la cacher au lieu de la supprimer
+        containerRef.current.removeChild(iframe)
+        iframe.style.position = 'fixed'
+        iframe.style.top = '0'
+        iframe.style.left = '0'
+        iframe.style.zIndex = '-1'
+        iframe.style.display = 'none'
+        if (!document.getElementById(IFRAME_ID)) {
+          document.body.appendChild(iframe)
+        }
+      }
     }
   }, [])
 
@@ -109,7 +126,11 @@ export default function N8NPage() {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <N8NIframe />
+        <div 
+          ref={containerRef}
+          className="w-full h-[calc(100vh-4rem)]"
+          style={{ position: 'relative' }}
+        />
       </MainLayout>
     </ProtectedRoute>
   )
