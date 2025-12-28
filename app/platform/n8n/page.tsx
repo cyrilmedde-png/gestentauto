@@ -1,60 +1,51 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
-// Variable globale pour persister l'iframe en dehors de React
+// Variable globale pour persister l'iframe - CRÉÉE UNE SEULE FOIS
 let globalN8NIframe: HTMLIFrameElement | null = null
-const IFRAME_ID = 'n8n-persistent-iframe'
+const IFRAME_ID = 'n8n-persistent-iframe-container'
 
-export default function N8NPage() {
-  const [loading, setLoading] = useState(true)
+function N8NIframe() {
   const [mounted, setMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setMounted(true)
-    
-    // Timeout de sécurité pour le chargement
-    const timeout = setTimeout(() => {
-      setLoading(false)
-    }, 2000)
-
-    return () => {
-      clearTimeout(timeout)
-    }
   }, [])
 
-  // Créer/récupérer l'iframe une seule fois
   useEffect(() => {
-    if (!mounted || loading) return
+    if (!mounted || !containerRef.current) return
 
-    // Vérifier si l'iframe globale existe déjà dans le DOM
-    const existingIframe = document.getElementById(IFRAME_ID) as HTMLIFrameElement | null
+    // Si l'iframe globale existe déjà quelque part dans le DOM, la déplacer ici
+    const existingIframe = document.getElementById(IFRAME_ID)?.querySelector('iframe') as HTMLIFrameElement | null
     if (existingIframe) {
       globalN8NIframe = existingIframe
-      // Déplacer l'iframe dans notre container si nécessaire
-      if (containerRef.current && existingIframe.parentNode !== containerRef.current) {
+      // Si elle est dans un autre container, la déplacer
+      if (existingIframe.parentNode && existingIframe.parentNode !== containerRef.current) {
+        containerRef.current.appendChild(existingIframe)
+      } else if (!containerRef.current.contains(existingIframe)) {
         containerRef.current.appendChild(existingIframe)
       }
-      setLoading(false)
       return
     }
 
-    // Si l'iframe globale existe en mémoire mais pas dans le DOM, la recréer
-    if (globalN8NIframe && !globalN8NIframe.parentNode) {
-      if (containerRef.current) {
+    // Si l'iframe globale existe en mémoire mais pas dans le DOM
+    if (globalN8NIframe) {
+      if (globalN8NIframe.parentNode && globalN8NIframe.parentNode !== containerRef.current) {
         containerRef.current.appendChild(globalN8NIframe)
-        setLoading(false)
-        return
+      } else if (!containerRef.current.contains(globalN8NIframe)) {
+        containerRef.current.appendChild(globalN8NIframe)
       }
+      return
     }
 
-    // Créer l'iframe une seule fois
-    if (containerRef.current && !globalN8NIframe) {
+    // Créer l'iframe UNE SEULE FOIS
+    if (!globalN8NIframe && containerRef.current) {
       const iframe = document.createElement('iframe')
-      iframe.id = IFRAME_ID
       iframe.src = 'https://n8n.talosprimes.com'
       iframe.className = 'w-full h-full border-0 rounded-lg'
       iframe.title = 'N8N - Automatisation'
@@ -68,14 +59,37 @@ export default function N8NPage() {
 
       containerRef.current.appendChild(iframe)
       globalN8NIframe = iframe
-      setLoading(false)
     }
 
-    // Ne jamais supprimer l'iframe lors du cleanup
+    // Ne JAMAIS supprimer l'iframe lors du cleanup
     return () => {
-      // Ne rien faire - l'iframe doit persister
+      // Ne rien faire - l'iframe doit persister même si le composant se démonte
     }
-  }, [mounted, loading])
+  }, [mounted])
+
+  return (
+    <div 
+      id={IFRAME_ID}
+      ref={containerRef}
+      className="w-full h-[calc(100vh-4rem)]"
+      style={{ position: 'relative' }}
+    />
+  )
+}
+
+export default function N8NPage() {
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Timeout de sécurité pour le chargement
+    const timeout = setTimeout(() => {
+      setLoading(false)
+    }, 1500)
+
+    return () => {
+      clearTimeout(timeout)
+    }
+  }, [])
 
   if (loading) {
     return (
@@ -95,11 +109,7 @@ export default function N8NPage() {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <div 
-          ref={containerRef}
-          className="w-full h-[calc(100vh-4rem)]"
-          style={{ position: 'relative' }}
-        />
+        <N8NIframe />
       </MainLayout>
     </ProtectedRoute>
   )
