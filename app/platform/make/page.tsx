@@ -45,7 +45,8 @@ export default function MakePage() {
     iframe.className = 'w-full h-full border-0 rounded-lg'
     iframe.title = 'Make - Automatisation'
     iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen')
-    iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox')
+    // TEST: Retirer sandbox pour permettre la transmission des cookies
+    // iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox')
     iframe.setAttribute('loading', 'eager')
     iframe.style.width = '100%'
     iframe.style.height = '100%'
