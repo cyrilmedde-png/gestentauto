@@ -1,0 +1,343 @@
+{
+  "name": "Module Leads - Gestion Onboarding",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "create-lead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-create",
+      "name": "Webhook - Créer Lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "create-lead"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "email",
+              "name": "email",
+              "value": "={{ $json.body.email }}",
+              "type": "string"
+            },
+            {
+              "id": "first_name",
+              "name": "first_name",
+              "value": "={{ $json.body.first_name || null }}",
+              "type": "string"
+            },
+            {
+              "id": "last_name",
+              "name": "last_name",
+              "value": "={{ $json.body.last_name || null }}",
+              "type": "string"
+            },
+            {
+              "id": "phone",
+              "name": "phone",
+              "value": "={{ $json.body.phone || null }}",
+              "type": "string"
+            },
+            {
+              "id": "company_name",
+              "name": "company_name",
+              "value": "={{ $json.body.company_name || null }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-lead",
+      "name": "Formater Données Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/platform/leads",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: $json.email, first_name: $json.first_name, last_name: $json.last_name, phone: $json.phone, company_name: $json.company_name }) }}",
+        "options": {}
+      },
+      "id": "create-lead-api",
+      "name": "API - Créer Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-success",
+              "leftValue": "={{ $json.lead }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-result",
+      "name": "IF - Lead créé ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "message",
+              "name": "message",
+              "value": "✅ Lead créé avec succès !",
+              "type": "string"
+            },
+            {
+              "id": "lead",
+              "name": "lead",
+              "value": "={{ $json.lead }}",
+              "type": "object"
+            },
+            {
+              "id": "statusCode",
+              "name": "statusCode",
+              "value": "201",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "success-response",
+      "name": "Set - Succès",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "message",
+              "name": "message",
+              "value": "❌ Erreur lors de la création du lead",
+              "type": "string"
+            },
+            {
+              "id": "error",
+              "name": "error",
+              "value": "={{ $json.error || 'Erreur inconnue' }}",
+              "type": "string"
+            },
+            {
+              "id": "statusCode",
+              "name": "statusCode",
+              "value": "400",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "error-response",
+      "name": "Set - Erreur",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Déclencher manuellement",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 500]
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/platform/leads",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        },
+        "options": {
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "status",
+                "value": "={{ $json.status || 'all' }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "get-leads-api",
+      "name": "API - Récupérer Leads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Afficher les leads récupérés\nconst leads = $input.item.json.leads || [];\n\nconsole.log('═══════════════════════════════════');\nconsole.log(`📊 NOMBRE DE LEADS: ${leads.length}`);\nconsole.log('═══════════════════════════════════');\n\nleads.forEach((lead, index) => {\n  console.log(`\\n${index + 1}. ${lead.email}`);\n  console.log(`   Nom: ${lead.first_name || ''} ${lead.last_name || ''}`);\n  console.log(`   Statut: ${lead.status}`);\n  console.log(`   Étape: ${lead.onboarding_step}`);\n  console.log(`   Entreprise: ${lead.company_name || '-'}`);\n});\n\nreturn $input.all();"
+      },
+      "id": "display-leads",
+      "name": "Afficher Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 500]
+    }
+  ],
+  "connections": {
+    "Webhook - Créer Lead": {
+      "main": [
+        [
+          {
+            "node": "Formater Données Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formater Données Lead": {
+      "main": [
+        [
+          {
+            "node": "API - Créer Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API - Créer Lead": {
+      "main": [
+        [
+          {
+            "node": "IF - Lead créé ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Lead créé ?": {
+      "main": [
+        [
+          {
+            "node": "Set - Succès",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Succès": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Erreur": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Déclencher manuellement": {
+      "main": [
+        [
+          {
+            "node": "API - Récupérer Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API - Récupérer Leads": {
+      "main": [
+        [
+          {
+            "node": "Afficher Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2024-12-28T12:00:00.000Z",
+  "versionId": "1"
+}
+

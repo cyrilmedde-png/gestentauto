@@ -1,41 +1,25 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
 export default function N8NPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const mountedRef = useRef(false)
-  const iframeCreatedRef = useRef(false)
+  const iframeRef = useRef<HTMLIFrameElement | null>(null)
+  const isInitializedRef = useRef(false)
 
   useEffect(() => {
-    mountedRef.current = true
-    
-    // Timeout de sécurité pour le chargement
-    const timeout = setTimeout(() => {
-      if (mountedRef.current) {
-        setLoading(false)
-      }
-    }, 2000)
+    // Créer l'iframe une seule fois, jamais la recréer
+    if (isInitializedRef.current || !containerRef.current) return
 
-    return () => {
-      mountedRef.current = false
-      clearTimeout(timeout)
-    }
-  }, [])
-
-  // Créer l'iframe une seule fois et la conserver
-  useEffect(() => {
-    if (loading || !containerRef.current) return
-
-    // Vérifier si l'iframe existe déjà dans le container
-    if (containerRef.current.querySelector('iframe')) {
-      iframeRef.current = containerRef.current.querySelector('iframe') as HTMLIFrameElement
+    // Vérifier si l'iframe existe déjà (au cas où le DOM persiste)
+    const existingIframe = containerRef.current.querySelector('iframe') as HTMLIFrameElement | null
+    if (existingIframe) {
+      iframeRef.current = existingIframe
+      isInitializedRef.current = true
+      setLoading(false)
       return
     }
 
@@ -52,15 +36,40 @@ export default function N8NPage() {
     iframe.style.border = '0'
     iframe.style.borderRadius = '0.5rem'
 
+    // Événement onload pour arrêter le loading
+    iframe.onload = () => {
+      setLoading(false)
+    }
+
+    // Timeout de sécurité
+    const timeout = setTimeout(() => {
+      setLoading(false)
+    }, 3000)
+
     containerRef.current.appendChild(iframe)
     iframeRef.current = iframe
-    iframeCreatedRef.current = true
+    isInitializedRef.current = true
 
-    // Ne jamais supprimer l'iframe, même au unmount
+    // Cleanup : Ne JAMAIS supprimer l'iframe, seulement le timeout
     return () => {
-      // Ne pas supprimer l'iframe pour préserver l'état
+      clearTimeout(timeout)
+      // NE PAS supprimer l'iframe ici - elle doit persister
     }
-  }, [loading])
+  }, []) // Dépendances vides = exécute une seule fois
+
+  // Gérer le changement d'onglet pour préserver l'iframe
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Ne rien faire - juste préserver l'iframe
+      // L'iframe N8N gère elle-même la reconnexion WebSocket
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   if (loading) {
     return (
