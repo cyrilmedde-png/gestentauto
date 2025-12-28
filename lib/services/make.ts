@@ -5,7 +5,7 @@
 import https from 'https'
 import { URL } from 'url'
 
-const MAKE_URL = process.env.NEXT_PUBLIC_MAKE_URL || process.env.MAKE_URL || 'https://eu1.make.com/organization/5837397/dashboard'
+const MAKE_URL = process.env.NEXT_PUBLIC_MAKE_URL || process.env.MAKE_URL || 'https://www.make.com/en/login'
 
 export interface MakeConnectionStatus {
   connected: boolean
