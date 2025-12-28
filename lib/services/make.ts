@@ -53,6 +53,7 @@ export async function proxyMakeRequest(
   // Construire les headers - utiliser un User-Agent de navigateur pour éviter la détection de proxy
   // IMPORTANT: Ne pas demander de compression (gzip, br) car on ne décompresse pas le contenu
   // Le navigateur client décompressera automatiquement si nécessaire
+  // CRITIQUE: Ajouter Referer et Origin pour contourner Cloudflare
   const headersRecord: Record<string, string> = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -64,8 +65,10 @@ export async function proxyMakeRequest(
     'Upgrade-Insecure-Requests': '1',
     'Sec-Fetch-Dest': 'document',
     'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-Site': 'same-origin', // Changé de 'none' à 'same-origin' pour contourner Cloudflare
     'Sec-Fetch-User': '?1',
+    'Referer': 'https://www.make.com/', // Ajouté pour contourner Cloudflare
+    'Origin': 'https://www.make.com', // Ajouté pour contourner Cloudflare
   }
 
   // Ajouter les headers existants
@@ -310,18 +313,41 @@ export async function proxyMakeRequest(
     
     if (originalCSP) {
       // Supprimer frame-ancestors de l'ancien CSP et ajouter le nôtre
+      // CRITIQUE: Autoriser JavaScript pour le challenge Cloudflare
       const modifiedCSP = String(originalCSP)
         .replace(/frame-ancestors[^;]*;?/gi, '')
+        .replace(/script-src[^;]*;?/gi, '')
+        .replace(/connect-src[^;]*;?/gi, '')
         .trim()
         .replace(/;;+/g, ';')
         .replace(/^;|;$/g, '')
-      const newCSP = modifiedCSP 
-        ? `${modifiedCSP}; frame-ancestors 'self' https://www.talosprimes.com`
-        : `frame-ancestors 'self' https://www.talosprimes.com`
+      
+      // CSP complet qui autorise JavaScript, Cloudflare, et le framing
+      const cspParts = [
+        modifiedCSP,
+        "frame-ancestors 'self' https://www.talosprimes.com",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.make.com https://*.cdn.make.com https://challenges.cloudflare.com https://*.cloudflare.com",
+        "connect-src 'self' https://*.make.com https://*.eu1.make.com wss://*.make.com https://challenges.cloudflare.com https://*.cloudflare.com https://cdn-cgi.challenges.cloudflare.com",
+        "style-src 'self' 'unsafe-inline' https://*.make.com https://*.cdn.make.com",
+        "img-src 'self' data: https: blob:",
+        "font-src 'self' data: https:",
+        "frame-src 'self' https://*.make.com https://challenges.cloudflare.com"
+      ].filter(Boolean)
+      
+      const newCSP = cspParts.join('; ')
       responseHeaders.set('Content-Security-Policy', newCSP)
     } else {
-      // Si Make.com n'a pas de CSP, on en ajoute un minimal qui autorise le framing
-      responseHeaders.set('Content-Security-Policy', "frame-ancestors 'self' https://www.talosprimes.com")
+      // Si Make.com n'a pas de CSP, on en ajoute un complet qui autorise tout
+      const newCSP = [
+        "frame-ancestors 'self' https://www.talosprimes.com",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.make.com https://*.cdn.make.com https://challenges.cloudflare.com https://*.cloudflare.com",
+        "connect-src 'self' https://*.make.com https://*.eu1.make.com wss://*.make.com https://challenges.cloudflare.com https://*.cloudflare.com https://cdn-cgi.challenges.cloudflare.com",
+        "style-src 'self' 'unsafe-inline' https://*.make.com https://*.cdn.make.com",
+        "img-src 'self' data: https: blob:",
+        "font-src 'self' data: https:",
+        "frame-src 'self' https://*.make.com https://challenges.cloudflare.com"
+      ].join('; ')
+      responseHeaders.set('Content-Security-Policy', newCSP)
     }
     
     // Supprimer X-Frame-Options si présent (déjà exclu car nous ne l'ajoutons pas depuis responseData.headers)

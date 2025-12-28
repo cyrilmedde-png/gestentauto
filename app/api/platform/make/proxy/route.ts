@@ -191,6 +191,20 @@ export async function GET(request: NextRequest) {
           htmlData = await response.text()
           console.log('[Make Proxy Root] HTML data read, length:', htmlData.length)
         
+        // DÉTECTION CRITIQUE: Vérifier si c'est un challenge Cloudflare
+        const isCloudflareChallenge = htmlData.includes('Enable JavaScript and cookies to continue') ||
+                                     htmlData.includes('challenges.cloudflare.com') ||
+                                     htmlData.includes('/cdn-cgi/challenge-platform/') ||
+                                     htmlData.includes('__cf_bm') ||
+                                     htmlData.includes('cf_clearance') ||
+                                     htmlData.includes('Just a moment') ||
+                                     htmlData.includes('Checking your browser')
+        
+        if (isCloudflareChallenge) {
+          console.warn('[Make Proxy Root] ⚠️⚠️⚠️ CHALLENGE CLOUDFLARE DÉTECTÉ!')
+          console.warn('[Make Proxy Root] Le HTML contient un challenge Cloudflare - JavaScript doit être autorisé')
+        }
+        
         // Vérifier si le HTML contient des redirections vers www.make.com
         if (htmlData.includes('www.make.com')) {
           console.warn('[Make Proxy Root] ⚠️ HTML contient des références à www.make.com')
@@ -495,29 +509,57 @@ export async function GET(request: NextRequest) {
         const setCookieHeaders = response.headers.getSetCookie()
         console.log('[Make Proxy Root] Set-Cookie headers count:', setCookieHeaders?.length || 0)
         
+        // CSP complet qui autorise JavaScript, Cloudflare, et le framing
+        // CRITIQUE: Autoriser JavaScript pour résoudre le challenge Cloudflare
+        const cspHeader = [
+          "frame-ancestors 'self' https://www.talosprimes.com",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.make.com https://*.cdn.make.com https://challenges.cloudflare.com https://*.cloudflare.com",
+          "connect-src 'self' https://*.make.com https://*.eu1.make.com wss://*.make.com https://challenges.cloudflare.com https://*.cloudflare.com https://cdn-cgi.challenges.cloudflare.com",
+          "style-src 'self' 'unsafe-inline' https://*.make.com https://*.cdn.make.com",
+          "img-src 'self' data: https: blob:",
+          "font-src 'self' data: https:",
+          "frame-src 'self' https://*.make.com https://challenges.cloudflare.com"
+        ].join('; ')
+        
         const nextResponse = new NextResponse(modifiedHtml, {
           status: response.status,
           headers: {
             'Content-Type': contentType,
             'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Content-Security-Policy': "frame-ancestors 'self' https://www.talosprimes.com",
+            'Content-Security-Policy': cspHeader,
             ...getCorsHeaders(request.headers.get('origin')),
           },
         })
         
-        // Filtrer et transmettre uniquement les cookies Set-Cookie compatibles avec notre domaine
-        // Les cookies Make.com avec domain=.eu1.make.com ou domain=.make.com ne peuvent pas être utilisés
-        // sur talosprimes.com, donc on ne les transmet pas pour éviter les erreurs du navigateur
+        // Gérer les cookies Set-Cookie
+        // CRITIQUE: Les cookies Cloudflare (__cf_bm, cf_clearance) doivent être transmis même avec domain Make.com
+        // car ils sont nécessaires pour résoudre le challenge Cloudflare
         if (setCookieHeaders && setCookieHeaders.length > 0) {
           setCookieHeaders.forEach(cookie => {
+            // Vérifier si c'est un cookie Cloudflare (nécessaire pour le challenge)
+            const isCloudflareCookie = cookie.includes('__cf_bm') || 
+                                      cookie.includes('cf_clearance') ||
+                                      cookie.includes('cf_ob_info') ||
+                                      cookie.includes('cf_use_ob')
+            
             // Filtrer les cookies avec domain Make.com (ne peuvent pas être utilisés sur notre domaine)
             const hasMakeDomain = cookie.includes('domain=.eu1.make.com') || 
-                                  cookie.includes('domain=.make.com') ||
-                                  cookie.includes('domain=eu1.make.com') ||
-                                  cookie.includes('domain=make.com')
+                                cookie.includes('domain=.make.com') ||
+                                cookie.includes('domain=eu1.make.com') ||
+                                cookie.includes('domain=make.com')
             
-            if (!hasMakeDomain) {
-              // Seulement transmettre les cookies sans domaine Make.com
+            // Transmettre les cookies Cloudflare même avec domain Make.com (nécessaires pour le challenge)
+            if (isCloudflareCookie) {
+              console.log('[Make Proxy Root] ✅ Cookie Cloudflare transmis (nécessaire pour le challenge):', cookie.substring(0, 100))
+              // Modifier le cookie pour qu'il fonctionne sur notre domaine
+              // Enlever le domain Make.com pour permettre au navigateur de le stocker
+              const modifiedCookie = cookie
+                .replace(/;\s*domain=\.?[^;]+/gi, '') // Supprimer domain Make.com
+                .replace(/;\s*domain=make\.com/gi, '')
+                .replace(/;\s*domain=eu1\.make\.com/gi, '')
+              nextResponse.headers.append('Set-Cookie', modifiedCookie)
+            } else if (!hasMakeDomain) {
+              // Transmettre les autres cookies sans domaine Make.com
               nextResponse.headers.append('Set-Cookie', cookie)
             } else {
               console.log('[Make Proxy Root] ⚠️ Cookie Make.com filtré (domaine incompatible):', cookie.substring(0, 100))
@@ -543,19 +585,31 @@ export async function GET(request: NextRequest) {
         },
       })
       
-      // Filtrer et transmettre uniquement les cookies Set-Cookie compatibles avec notre domaine
-      // Les cookies Make.com avec domain=.eu1.make.com ou domain=.make.com ne peuvent pas être utilisés
-      // sur talosprimes.com, donc on ne les transmet pas pour éviter les erreurs du navigateur
+      // Gérer les cookies Set-Cookie (pour les réponses non-HTML aussi)
+      // CRITIQUE: Les cookies Cloudflare doivent être transmis même avec domain Make.com
       if (setCookieHeaders && setCookieHeaders.length > 0) {
         setCookieHeaders.forEach(cookie => {
-          // Filtrer les cookies avec domain Make.com (ne peuvent pas être utilisés sur notre domaine)
-          const hasMakeDomain = cookie.includes('domain=.eu1.make.com') || 
-                                cookie.includes('domain=.make.com') ||
-                                cookie.includes('domain=eu1.make.com') ||
-                                cookie.includes('domain=make.com')
+          // Vérifier si c'est un cookie Cloudflare (nécessaire pour le challenge)
+          const isCloudflareCookie = cookie.includes('__cf_bm') || 
+                                    cookie.includes('cf_clearance') ||
+                                    cookie.includes('cf_ob_info') ||
+                                    cookie.includes('cf_use_ob')
           
-          if (!hasMakeDomain) {
-            // Seulement transmettre les cookies sans domaine Make.com
+          // Filtrer les cookies avec domain Make.com
+          const hasMakeDomain = cookie.includes('domain=.eu1.make.com') || 
+                              cookie.includes('domain=.make.com') ||
+                              cookie.includes('domain=eu1.make.com') ||
+                              cookie.includes('domain=make.com')
+          
+          // Transmettre les cookies Cloudflare même avec domain Make.com
+          if (isCloudflareCookie) {
+            console.log('[Make Proxy Root] ✅ Cookie Cloudflare transmis (non-HTML):', cookie.substring(0, 100))
+            const modifiedCookie = cookie
+              .replace(/;\s*domain=\.?[^;]+/gi, '')
+              .replace(/;\s*domain=make\.com/gi, '')
+              .replace(/;\s*domain=eu1\.make\.com/gi, '')
+            nextResponse.headers.append('Set-Cookie', modifiedCookie)
+          } else if (!hasMakeDomain) {
             nextResponse.headers.append('Set-Cookie', cookie)
           } else {
             console.log('[Make Proxy Root] ⚠️ Cookie Make.com filtré (domaine incompatible):', cookie.substring(0, 100))

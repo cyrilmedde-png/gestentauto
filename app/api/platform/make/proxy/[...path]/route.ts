@@ -161,6 +161,20 @@ export async function GET(
     if (contentType.includes('text/html')) {
       const htmlData = await response.text()
       
+      // DÉTECTION CRITIQUE: Vérifier si c'est un challenge Cloudflare
+      const isCloudflareChallenge = htmlData.includes('Enable JavaScript and cookies to continue') ||
+                                   htmlData.includes('challenges.cloudflare.com') ||
+                                   htmlData.includes('/cdn-cgi/challenge-platform/') ||
+                                   htmlData.includes('__cf_bm') ||
+                                   htmlData.includes('cf_clearance') ||
+                                   htmlData.includes('Just a moment') ||
+                                   htmlData.includes('Checking your browser')
+      
+      if (isCloudflareChallenge) {
+        console.warn('[Make Proxy Catch-all] ⚠️⚠️⚠️ CHALLENGE CLOUDFLARE DÉTECTÉ!')
+        console.warn('[Make Proxy Catch-all] Le HTML contient un challenge Cloudflare - JavaScript doit être autorisé')
+      }
+      
       const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
       const protocol = request.headers.get('x-forwarded-proto') || 'https'
       const baseUrl = host 
@@ -410,9 +424,22 @@ export async function GET(
       const responseHeaders = new Headers(response.headers)
       responseHeaders.delete('content-security-policy')
       responseHeaders.delete('x-frame-options')
-      responseHeaders.set('Content-Security-Policy', "frame-ancestors 'self' https://www.talosprimes.com")
       
-      // Filtrer et transmettre uniquement les cookies Set-Cookie compatibles avec notre domaine
+      // CSP complet qui autorise JavaScript, Cloudflare, et le framing
+      // CRITIQUE: Autoriser JavaScript pour résoudre le challenge Cloudflare
+      const cspHeader = [
+        "frame-ancestors 'self' https://www.talosprimes.com",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.make.com https://*.cdn.make.com https://challenges.cloudflare.com https://*.cloudflare.com",
+        "connect-src 'self' https://*.make.com https://*.eu1.make.com wss://*.make.com https://challenges.cloudflare.com https://*.cloudflare.com https://cdn-cgi.challenges.cloudflare.com",
+        "style-src 'self' 'unsafe-inline' https://*.make.com https://*.cdn.make.com",
+        "img-src 'self' data: https: blob:",
+        "font-src 'self' data: https:",
+        "frame-src 'self' https://*.make.com https://challenges.cloudflare.com"
+      ].join('; ')
+      responseHeaders.set('Content-Security-Policy', cspHeader)
+      
+      // Gérer les cookies Set-Cookie
+      // CRITIQUE: Les cookies Cloudflare (__cf_bm, cf_clearance) doivent être transmis même avec domain Make.com
       const setCookieHeaders = response.headers.getSetCookie()
       const nextResponse = new NextResponse(modifiedHtml, {
         status: response.status,
@@ -420,20 +447,34 @@ export async function GET(
       })
       
       if (setCookieHeaders && setCookieHeaders.length > 0) {
-        const filteredSetCookieHeaders = setCookieHeaders.filter(cookie => {
+        setCookieHeaders.forEach(cookie => {
+          // Vérifier si c'est un cookie Cloudflare (nécessaire pour le challenge)
+          const isCloudflareCookie = cookie.includes('__cf_bm') || 
+                                    cookie.includes('cf_clearance') ||
+                                    cookie.includes('cf_ob_info') ||
+                                    cookie.includes('cf_use_ob')
+          
           const domainMatch = cookie.match(/Domain=([^;]+)/i)
-          if (domainMatch) {
-            const domain = domainMatch[1].toLowerCase()
-            if (domain.includes('.make.com')) {
-              console.log(`[Make Proxy Catch-all] 🚫 Filtering Set-Cookie with incompatible domain: ${cookie}`)
-              return false
-            }
+          const hasMakeDomain = domainMatch && (
+            domainMatch[1].toLowerCase().includes('.make.com') ||
+            domainMatch[1].toLowerCase().includes('make.com')
+          )
+          
+          // Transmettre les cookies Cloudflare même avec domain Make.com
+          if (isCloudflareCookie) {
+            console.log(`[Make Proxy Catch-all] ✅ Cookie Cloudflare transmis: ${cookie.substring(0, 100)}`)
+            // Modifier le cookie pour qu'il fonctionne sur notre domaine
+            const modifiedCookie = cookie
+              .replace(/;\s*Domain=\.?[^;]+/gi, '')
+              .replace(/;\s*Domain=make\.com/gi, '')
+              .replace(/;\s*Domain=eu1\.make\.com/gi, '')
+            nextResponse.headers.append('Set-Cookie', modifiedCookie)
+          } else if (!hasMakeDomain) {
+            // Transmettre les autres cookies sans domaine Make.com
+            nextResponse.headers.append('Set-Cookie', cookie)
+          } else {
+            console.log(`[Make Proxy Catch-all] 🚫 Filtering Set-Cookie with incompatible domain: ${cookie.substring(0, 100)}`)
           }
-          return true
-        })
-        
-        filteredSetCookieHeaders.forEach(cookie => {
-          nextResponse.headers.append('Set-Cookie', cookie)
         })
       }
       
@@ -452,22 +493,35 @@ export async function GET(
       },
     })
     
-    // Filtrer et transmettre uniquement les cookies Set-Cookie compatibles avec notre domaine
+    // Gérer les cookies Set-Cookie (pour les réponses non-HTML aussi)
+    // CRITIQUE: Les cookies Cloudflare doivent être transmis même avec domain Make.com
     if (setCookieHeaders && setCookieHeaders.length > 0) {
-      const filteredSetCookieHeaders = setCookieHeaders.filter(cookie => {
+      setCookieHeaders.forEach(cookie => {
+        // Vérifier si c'est un cookie Cloudflare
+        const isCloudflareCookie = cookie.includes('__cf_bm') || 
+                                  cookie.includes('cf_clearance') ||
+                                  cookie.includes('cf_ob_info') ||
+                                  cookie.includes('cf_use_ob')
+        
         const domainMatch = cookie.match(/Domain=([^;]+)/i)
-        if (domainMatch) {
-          const domain = domainMatch[1].toLowerCase()
-          if (domain.includes('.make.com')) {
-            console.log(`[Make Proxy Catch-all] 🚫 Filtering Set-Cookie with incompatible domain: ${cookie}`)
-            return false
-          }
+        const hasMakeDomain = domainMatch && (
+          domainMatch[1].toLowerCase().includes('.make.com') ||
+          domainMatch[1].toLowerCase().includes('make.com')
+        )
+        
+        // Transmettre les cookies Cloudflare même avec domain Make.com
+        if (isCloudflareCookie) {
+          console.log(`[Make Proxy Catch-all] ✅ Cookie Cloudflare transmis (non-HTML): ${cookie.substring(0, 100)}`)
+          const modifiedCookie = cookie
+            .replace(/;\s*Domain=\.?[^;]+/gi, '')
+            .replace(/;\s*Domain=make\.com/gi, '')
+            .replace(/;\s*Domain=eu1\.make\.com/gi, '')
+          nextResponse.headers.append('Set-Cookie', modifiedCookie)
+        } else if (!hasMakeDomain) {
+          nextResponse.headers.append('Set-Cookie', cookie)
+        } else {
+          console.log(`[Make Proxy Catch-all] 🚫 Filtering Set-Cookie with incompatible domain: ${cookie.substring(0, 100)}`)
         }
-        return true
-      })
-      
-      filteredSetCookieHeaders.forEach(cookie => {
-        nextResponse.headers.append('Set-Cookie', cookie)
       })
     }
     
