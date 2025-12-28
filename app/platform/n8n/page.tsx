@@ -4,61 +4,78 @@ import { useEffect, useState, useRef } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
+// Variable globale pour persister l'iframe en dehors de React
+let globalN8NIframe: HTMLIFrameElement | null = null
+const IFRAME_ID = 'n8n-persistent-iframe'
+
 export default function N8NPage() {
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const iframeRef = useRef<HTMLIFrameElement | null>(null)
-  const mountedRef = useRef(false)
-  const iframeCreatedRef = useRef(false)
 
   useEffect(() => {
-    mountedRef.current = true
+    setMounted(true)
     
     // Timeout de sécurité pour le chargement
     const timeout = setTimeout(() => {
-      if (mountedRef.current) {
-        setLoading(false)
-      }
+      setLoading(false)
     }, 2000)
 
     return () => {
-      mountedRef.current = false
       clearTimeout(timeout)
     }
   }, [])
 
-  // Créer l'iframe une seule fois et la conserver
+  // Créer/récupérer l'iframe une seule fois
   useEffect(() => {
-    if (loading || !containerRef.current) return
+    if (!mounted || loading) return
 
-    // Vérifier si l'iframe existe déjà dans le container
-    if (containerRef.current.querySelector('iframe')) {
-      iframeRef.current = containerRef.current.querySelector('iframe') as HTMLIFrameElement
+    // Vérifier si l'iframe globale existe déjà dans le DOM
+    const existingIframe = document.getElementById(IFRAME_ID) as HTMLIFrameElement | null
+    if (existingIframe) {
+      globalN8NIframe = existingIframe
+      // Déplacer l'iframe dans notre container si nécessaire
+      if (containerRef.current && existingIframe.parentNode !== containerRef.current) {
+        containerRef.current.appendChild(existingIframe)
+      }
+      setLoading(false)
       return
     }
 
-    // Créer l'iframe une seule fois
-    const iframe = document.createElement('iframe')
-    iframe.src = 'https://n8n.talosprimes.com'
-    iframe.className = 'w-full h-full border-0 rounded-lg'
-    iframe.title = 'N8N - Automatisation'
-    iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen')
-    iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox')
-    iframe.setAttribute('loading', 'eager')
-    iframe.style.width = '100%'
-    iframe.style.height = '100%'
-    iframe.style.border = '0'
-    iframe.style.borderRadius = '0.5rem'
-
-    containerRef.current.appendChild(iframe)
-    iframeRef.current = iframe
-    iframeCreatedRef.current = true
-
-    // Ne jamais supprimer l'iframe, même au unmount
-    return () => {
-      // Ne pas supprimer l'iframe pour préserver l'état
+    // Si l'iframe globale existe en mémoire mais pas dans le DOM, la recréer
+    if (globalN8NIframe && !globalN8NIframe.parentNode) {
+      if (containerRef.current) {
+        containerRef.current.appendChild(globalN8NIframe)
+        setLoading(false)
+        return
+      }
     }
-  }, [loading])
+
+    // Créer l'iframe une seule fois
+    if (containerRef.current && !globalN8NIframe) {
+      const iframe = document.createElement('iframe')
+      iframe.id = IFRAME_ID
+      iframe.src = 'https://n8n.talosprimes.com'
+      iframe.className = 'w-full h-full border-0 rounded-lg'
+      iframe.title = 'N8N - Automatisation'
+      iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen')
+      iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox')
+      iframe.setAttribute('loading', 'eager')
+      iframe.style.width = '100%'
+      iframe.style.height = '100%'
+      iframe.style.border = '0'
+      iframe.style.borderRadius = '0.5rem'
+
+      containerRef.current.appendChild(iframe)
+      globalN8NIframe = iframe
+      setLoading(false)
+    }
+
+    // Ne jamais supprimer l'iframe lors du cleanup
+    return () => {
+      // Ne rien faire - l'iframe doit persister
+    }
+  }, [mounted, loading])
 
   if (loading) {
     return (
