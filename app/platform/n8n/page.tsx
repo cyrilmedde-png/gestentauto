@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { getN8NIframe } from '@/lib/n8n-iframe'
 
 export default function N8NPage() {
   const [loading, setLoading] = useState(true)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const iframeInitializedRef = useRef(false)
 
   useEffect(() => {
     // Timeout de sécurité pour le chargement
@@ -15,6 +18,29 @@ export default function N8NPage() {
 
     return () => clearTimeout(timeout)
   }, [])
+
+  useEffect(() => {
+    if (!containerRef.current || loading || iframeInitializedRef.current) return
+
+    // Récupérer l'iframe globale (créée une seule fois)
+    const iframe = getN8NIframe()
+
+    // Si l'iframe est déjà dans un autre container, la déplacer
+    if (iframe.parentNode && iframe.parentNode !== containerRef.current) {
+      iframe.parentNode.removeChild(iframe)
+      containerRef.current.appendChild(iframe)
+    } else if (!containerRef.current.contains(iframe)) {
+      // Si l'iframe n'est nulle part, l'ajouter
+      containerRef.current.appendChild(iframe)
+    }
+
+    iframeInitializedRef.current = true
+
+    // Ne jamais supprimer l'iframe dans le cleanup
+    return () => {
+      // Ne rien faire - l'iframe doit persister
+    }
+  }, [loading])
 
   if (loading) {
     return (
@@ -34,16 +60,11 @@ export default function N8NPage() {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <div className="w-full h-[calc(100vh-4rem)]">
-          <iframe
-            key="n8n-iframe"
-            src="https://n8n.talosprimes.com"
-            className="w-full h-full border-0 rounded-lg"
-            title="N8N - Automatisation"
-            allow="clipboard-read; clipboard-write; fullscreen"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-          />
-        </div>
+        <div 
+          ref={containerRef}
+          className="w-full h-[calc(100vh-4rem)]"
+          style={{ position: 'relative' }}
+        />
       </MainLayout>
     </ProtectedRoute>
   )
