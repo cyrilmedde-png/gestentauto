@@ -1,7 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { createAdminClient, createServerClient } from '@/lib/supabase/server'
+import { NextResponse, NextRequest } from 'next/server'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const { type, title, message, data } = await request.json()
 
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // Récupérer tous les utilisateurs admin
     const { data: admins, error: adminsError } = await supabase
@@ -74,9 +74,9 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServerClient(request)
 
     // Vérifier que l'utilisateur est connecté
     const {
@@ -124,7 +124,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   try {
     const { notification_id } = await request.json()
 
@@ -135,7 +135,7 @@ export async function PATCH(request: Request) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = await createServerClient(request)
 
     // Marquer la notification comme lue
     const { error: updateError } = await supabase

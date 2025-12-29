@@ -1,8 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { validatePassword } from '@/lib/utils/passwordGenerator'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const { currentPassword, newPassword } = await request.json()
 
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = await createServerClient(request)
 
     // Vérifier que l'utilisateur est connecté
     const {
