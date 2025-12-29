@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
 
 export interface Module {
@@ -17,10 +17,16 @@ export function useModules() {
   const [activeModuleNames, setActiveModuleNames] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const userIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    loadModules()
-  }, [user])
+    // Ne recharger que si l'ID utilisateur change vraiment
+    const currentUserId = user?.id || null
+    if (currentUserId !== userIdRef.current) {
+      userIdRef.current = currentUserId
+      loadModules()
+    }
+  }, [user?.id])
 
   const loadModules = async () => {
     try {
