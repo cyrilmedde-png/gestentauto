@@ -59,5 +59,5 @@ COMMENT ON COLUMN notifications.type IS 'Type de notification: new_registration,
 COMMENT ON COLUMN notifications.data IS 'Données JSON supplémentaires associées à la notification';
 COMMENT ON COLUMN notifications.read IS 'Indique si la notification a été lue';
 
-COMMENT ON COLUMN users.password_change_required IS 'Indique si l\'utilisateur doit changer son mot de passe à la prochaine connexion';
+COMMENT ON COLUMN users.password_change_required IS 'Indique si l''utilisateur doit changer son mot de passe à la prochaine connexion';
 
