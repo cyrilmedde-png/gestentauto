@@ -12,10 +12,75 @@ set -e  # Arrêter en cas d'erreur
 # ============================================
 # CONFIGURATION
 # ============================================
-N8N_DIR="/var/n8n"
-N8N_USER="n8n"
+# Détection automatique du répertoire N8N
+N8N_DIR=""
+N8N_USER=""
 BACKUP_DIR="/var/backups/n8n"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# Détecter où N8N est installé
+detect_n8n_installation() {
+    log_info "🔍 Détection de l'installation N8N..."
+    
+    # Méthode 1: Vérifier si un utilisateur n8n existe et a un répertoire
+    if id "n8n" &>/dev/null; then
+        N8N_USER="n8n"
+        if [ -d "/var/n8n" ]; then
+            N8N_DIR="/var/n8n"
+            log_success "N8N trouvé: /var/n8n (utilisateur n8n)"
+            return 0
+        fi
+    fi
+    
+    # Méthode 2: Vérifier le répertoire home de l'utilisateur actuel
+    CURRENT_USER_HOME=$(eval echo ~$USER)
+    if [ -d "$CURRENT_USER_HOME/.n8n" ]; then
+        N8N_DIR="$CURRENT_USER_HOME/.n8n"
+        N8N_USER="$USER"
+        log_success "N8N trouvé: $N8N_DIR (utilisateur $USER)"
+        return 0
+    fi
+    
+    # Méthode 3: Vérifier le répertoire root
+    if [ -d "/root/.n8n" ]; then
+        N8N_DIR="/root/.n8n"
+        N8N_USER="root"
+        log_success "N8N trouvé: $N8N_DIR (utilisateur root)"
+        return 0
+    fi
+    
+    # Méthode 4: Vérifier via PM2
+    if command -v pm2 &> /dev/null; then
+        PM2_N8N_INFO=$(pm2 jlist 2>/dev/null | jq -r '.[] | select(.name=="n8n") | {cwd: .pm2_env.cwd, user: .pm2_env.user}' 2>/dev/null || echo "")
+        if [ -n "$PM2_N8N_INFO" ]; then
+            PM2_CWD=$(echo "$PM2_N8N_INFO" | jq -r '.cwd' 2>/dev/null || echo "")
+            PM2_USER=$(echo "$PM2_N8N_INFO" | jq -r '.user' 2>/dev/null || echo "")
+            if [ -n "$PM2_CWD" ] && [ -d "$PM2_CWD" ]; then
+                N8N_DIR="$PM2_CWD"
+                N8N_USER="${PM2_USER:-root}"
+                log_success "N8N trouvé via PM2: $N8N_DIR (utilisateur $N8N_USER)"
+                return 0
+            fi
+        fi
+    fi
+    
+    # Méthode 5: Vérifier où n8n est installé globalement
+    if command -v n8n &> /dev/null; then
+        N8N_CMD=$(which n8n)
+        # Chercher le répertoire node_modules parent
+        N8N_NODE_MODULES=$(dirname "$N8N_CMD" | sed 's|/\.bin||' | sed 's|/bin||')
+        if [ -d "$N8N_NODE_MODULES" ]; then
+            # Remonter jusqu'à trouver un répertoire .n8n ou créer un chemin par défaut
+            N8N_DIR="${HOME}/.n8n"
+            N8N_USER="${USER:-root}"
+            log_warning "N8N trouvé globalement, utilisation du répertoire par défaut: $N8N_DIR"
+            return 0
+        fi
+    fi
+    
+    log_error "N8N non trouvé"
+    return 1
+}
 
 # Couleurs pour les messages
 RED='\033[0;31m'
@@ -60,18 +125,25 @@ echo ""
 
 check_root
 
-# Vérifier que l'utilisateur n8n existe
-if ! id "$N8N_USER" &>/dev/null; then
-    log_error "L'utilisateur $N8N_USER n'existe pas"
-    echo "Exécutez d'abord: sudo bash scripts/install-n8n.sh"
+# Détecter l'installation N8N
+if ! detect_n8n_installation; then
+    log_error "N8N n'est pas installé ou n'a pas pu être détecté"
+    echo ""
+    echo "💡 Options:"
+    echo "   1. Installer N8N avec: sudo bash scripts/install-n8n.sh"
+    echo "   2. Installer N8N globalement: npm install -g n8n"
+    echo "   3. Vérifier que N8N est en cours d'exécution: pm2 list | grep n8n"
     exit 1
 fi
 
-# Vérifier que le répertoire N8N existe
+# Créer le répertoire s'il n'existe pas
 if [ ! -d "$N8N_DIR" ]; then
-    log_error "Le répertoire $N8N_DIR n'existe pas"
-    echo "N8N n'est pas installé. Exécutez d'abord: sudo bash scripts/install-n8n.sh"
-    exit 1
+    log_warning "Le répertoire $N8N_DIR n'existe pas, création..."
+    mkdir -p "$N8N_DIR"
+    if [ "$N8N_USER" != "$USER" ] && [ "$N8N_USER" != "root" ]; then
+        chown -R "$N8N_USER:$N8N_USER" "$N8N_DIR" 2>/dev/null || true
+    fi
+    log_success "Répertoire créé: $N8N_DIR"
 fi
 
 # Vérifier que PM2 est installé
@@ -81,7 +153,13 @@ if ! command -v pm2 &> /dev/null; then
 fi
 
 # Vérifier que N8N est en cours d'exécution
-if ! sudo -u "$N8N_USER" pm2 describe n8n &>/dev/null; then
+if [ "$N8N_USER" = "root" ]; then
+    PM2_CHECK_CMD="pm2 describe n8n"
+else
+    PM2_CHECK_CMD="sudo -u $N8N_USER pm2 describe n8n"
+fi
+
+if ! eval "$PM2_CHECK_CMD" &>/dev/null; then
     log_warning "N8N n'est pas en cours d'exécution avec PM2"
     read -p "Voulez-vous continuer quand même ? (y/n) " -n 1 -r
     echo
@@ -100,7 +178,11 @@ log_info "📦 Détermination de la version à installer..."
 echo ""
 
 # Récupérer la version actuelle
-CURRENT_VERSION=$(sudo -u "$N8N_USER" bash -c "cd $N8N_DIR && npm list n8n 2>/dev/null | grep n8n@ | sed 's/.*@//' | head -1" || echo "inconnue")
+if [ "$N8N_USER" = "root" ]; then
+    CURRENT_VERSION=$(bash -c "cd $N8N_DIR && npm list n8n 2>/dev/null | grep n8n@ | sed 's/.*@//' | head -1" || echo "inconnue")
+else
+    CURRENT_VERSION=$(sudo -u "$N8N_USER" bash -c "cd $N8N_DIR && npm list n8n 2>/dev/null | grep n8n@ | sed 's/.*@//' | head -1" || echo "inconnue")
+fi
 
 if [ -n "$1" ]; then
     TARGET_VERSION="$1"
@@ -173,9 +255,15 @@ read -p "Voulez-vous sauvegarder les données N8N (workflows, credentials) ? (y/
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     log_info "Sauvegarde des données (cela peut prendre quelques minutes)..."
-    sudo -u "$N8N_USER" tar -czf "$BACKUP_DIR/n8n-data-backup.$TIMESTAMP.tar.gz" -C "$N8N_DIR" data 2>/dev/null || {
-        log_warning "Impossible de sauvegarder les données (peut être normal si le dossier data est vide)"
-    }
+    if [ "$N8N_USER" = "root" ]; then
+        tar -czf "$BACKUP_DIR/n8n-data-backup.$TIMESTAMP.tar.gz" -C "$N8N_DIR" data 2>/dev/null || {
+            log_warning "Impossible de sauvegarder les données (peut être normal si le dossier data est vide)"
+        }
+    else
+        sudo -u "$N8N_USER" tar -czf "$BACKUP_DIR/n8n-data-backup.$TIMESTAMP.tar.gz" -C "$N8N_DIR" data 2>/dev/null || {
+            log_warning "Impossible de sauvegarder les données (peut être normal si le dossier data est vide)"
+        }
+    fi
     log_success "Données sauvegardées"
 fi
 
@@ -188,12 +276,22 @@ echo ""
 log_info "⏸️  Arrêt de N8N..."
 echo ""
 
-if sudo -u "$N8N_USER" pm2 describe n8n &>/dev/null; then
-    sudo -u "$N8N_USER" pm2 stop n8n
-    sleep 2
-    log_success "N8N arrêté"
+if [ "$N8N_USER" = "root" ]; then
+    if pm2 describe n8n &>/dev/null; then
+        pm2 stop n8n
+        sleep 2
+        log_success "N8N arrêté"
+    else
+        log_warning "N8N n'était pas en cours d'exécution"
+    fi
 else
-    log_warning "N8N n'était pas en cours d'exécution"
+    if sudo -u "$N8N_USER" pm2 describe n8n &>/dev/null; then
+        sudo -u "$N8N_USER" pm2 stop n8n
+        sleep 2
+        log_success "N8N arrêté"
+    else
+        log_warning "N8N n'était pas en cours d'exécution"
+    fi
 fi
 
 # ============================================
@@ -214,18 +312,57 @@ npm install -g "n8n@$TARGET_VERSION" || {
 GLOBAL_VERSION=$(n8n --version 2>/dev/null || echo "")
 log_success "N8N global mis à jour: version $GLOBAL_VERSION"
 
-# Mettre à jour localement dans /var/n8n
+# Mettre à jour localement
 log_info "Mise à jour locale de N8N dans $N8N_DIR..."
-sudo -u "$N8N_USER" bash <<EOF
+
+# Créer package.json s'il n'existe pas
+if [ ! -f "$N8N_DIR/package.json" ]; then
+    log_info "Création de package.json..."
+    if [ "$N8N_USER" = "root" ]; then
+        cat > "$N8N_DIR/package.json" <<EOF
+{
+  "name": "n8n-instance",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {}
+}
+EOF
+    else
+        sudo -u "$N8N_USER" bash -c "cat > $N8N_DIR/package.json <<'EOF'
+{
+  \"name\": \"n8n-instance\",
+  \"version\": \"1.0.0\",
+  \"private\": true,
+  \"dependencies\": {}
+}
+EOF"
+    fi
+fi
+
+if [ "$N8N_USER" = "root" ]; then
+    bash <<EOF
 cd $N8N_DIR
 npm install "n8n@$TARGET_VERSION" --save --save-exact || {
     echo "Erreur lors de l'installation locale"
     exit 1
 }
 EOF
+else
+    sudo -u "$N8N_USER" bash <<EOF
+cd $N8N_DIR
+npm install "n8n@$TARGET_VERSION" --save --save-exact || {
+    echo "Erreur lors de l'installation locale"
+    exit 1
+}
+EOF
+fi
 
 # Vérifier la version locale
-LOCAL_VERSION=$(sudo -u "$N8N_USER" bash -c "cd $N8N_DIR && npm list n8n 2>/dev/null | grep n8n@ | sed 's/.*@//' | head -1" || echo "")
+if [ "$N8N_USER" = "root" ]; then
+    LOCAL_VERSION=$(bash -c "cd $N8N_DIR && npm list n8n 2>/dev/null | grep n8n@ | sed 's/.*@//' | head -1" || echo "")
+else
+    LOCAL_VERSION=$(sudo -u "$N8N_USER" bash -c "cd $N8N_DIR && npm list n8n 2>/dev/null | grep n8n@ | sed 's/.*@//' | head -1" || echo "")
+fi
 log_success "N8N local mis à jour: version $LOCAL_VERSION"
 
 # ============================================
@@ -277,26 +414,49 @@ if grep -q "script: 'n8n'" "$N8N_DIR/ecosystem.config.js"; then
 fi
 
 # Redémarrer avec PM2
-sudo -u "$N8N_USER" bash <<EOF
+if [ "$N8N_USER" = "root" ]; then
+    bash <<EOF
 cd $N8N_DIR
 export \$(cat .env 2>/dev/null | grep -v '^#' | xargs 2>/dev/null || true)
-pm2 restart ecosystem.config.js || pm2 start ecosystem.config.js
+pm2 restart ecosystem.config.js 2>/dev/null || pm2 start ecosystem.config.js 2>/dev/null || pm2 restart n8n 2>/dev/null || pm2 start n8n 2>/dev/null
 pm2 save
 EOF
+else
+    sudo -u "$N8N_USER" bash <<EOF
+cd $N8N_DIR
+export \$(cat .env 2>/dev/null | grep -v '^#' | xargs 2>/dev/null || true)
+pm2 restart ecosystem.config.js 2>/dev/null || pm2 start ecosystem.config.js 2>/dev/null || pm2 restart n8n 2>/dev/null || pm2 start n8n 2>/dev/null
+pm2 save
+EOF
+fi
 
 sleep 3
 
 # Vérifier le statut
-if sudo -u "$N8N_USER" pm2 describe n8n &>/dev/null; then
-    STATUS=$(sudo -u "$N8N_USER" pm2 jlist | jq -r '.[] | select(.name=="n8n") | .pm2_env.status' 2>/dev/null || echo "unknown")
-    if [ "$STATUS" = "online" ]; then
-        log_success "N8N redémarré avec succès (statut: $STATUS)"
+if [ "$N8N_USER" = "root" ]; then
+    if pm2 describe n8n &>/dev/null; then
+        STATUS=$(pm2 jlist 2>/dev/null | jq -r '.[] | select(.name=="n8n") | .pm2_env.status' 2>/dev/null || echo "unknown")
+        if [ "$STATUS" = "online" ]; then
+            log_success "N8N redémarré avec succès (statut: $STATUS)"
+        else
+            log_warning "N8N redémarré mais statut: $STATUS"
+        fi
     else
-        log_warning "N8N redémarré mais statut: $STATUS"
+        log_error "N8N n'a pas pu être redémarré"
+        exit 1
     fi
 else
-    log_error "N8N n'a pas pu être redémarré"
-    exit 1
+    if sudo -u "$N8N_USER" pm2 describe n8n &>/dev/null; then
+        STATUS=$(sudo -u "$N8N_USER" pm2 jlist 2>/dev/null | jq -r '.[] | select(.name=="n8n") | .pm2_env.status' 2>/dev/null || echo "unknown")
+        if [ "$STATUS" = "online" ]; then
+            log_success "N8N redémarré avec succès (statut: $STATUS)"
+        else
+            log_warning "N8N redémarré mais statut: $STATUS"
+        fi
+    else
+        log_error "N8N n'a pas pu être redémarré"
+        exit 1
+    fi
 fi
 
 # ============================================
@@ -311,12 +471,20 @@ CLI_VERSION=$(n8n --version 2>/dev/null || echo "inconnue")
 log_info "Version CLI: $CLI_VERSION"
 
 # Vérifier la version locale
-LOCAL_VERSION_CHECK=$(sudo -u "$N8N_USER" bash -c "cd $N8N_DIR && npm list n8n 2>/dev/null | grep n8n@ | sed 's/.*@//' | head -1" || echo "inconnue")
+if [ "$N8N_USER" = "root" ]; then
+    LOCAL_VERSION_CHECK=$(bash -c "cd $N8N_DIR && npm list n8n 2>/dev/null | grep n8n@ | sed 's/.*@//' | head -1" || echo "inconnue")
+else
+    LOCAL_VERSION_CHECK=$(sudo -u "$N8N_USER" bash -c "cd $N8N_DIR && npm list n8n 2>/dev/null | grep n8n@ | sed 's/.*@//' | head -1" || echo "inconnue")
+fi
 log_info "Version locale: $LOCAL_VERSION_CHECK"
 
 # Vérifier les logs pour les erreurs
 log_info "Vérification des logs (5 dernières lignes)..."
-sudo -u "$N8N_USER" pm2 logs n8n --lines 5 --nostream 2>/dev/null || true
+if [ "$N8N_USER" = "root" ]; then
+    pm2 logs n8n --lines 5 --nostream 2>/dev/null || true
+else
+    sudo -u "$N8N_USER" pm2 logs n8n --lines 5 --nostream 2>/dev/null || true
+fi
 
 # Test de connectivité (optionnel)
 log_info "Test de connectivité..."
@@ -350,13 +518,25 @@ echo ""
 echo "🔧 Commandes utiles :"
 echo ""
 echo "   # Voir le statut N8N"
-echo "   sudo -u $N8N_USER pm2 status"
+if [ "$N8N_USER" = "root" ]; then
+    echo "   pm2 status"
+else
+    echo "   sudo -u $N8N_USER pm2 status"
+fi
 echo ""
 echo "   # Voir les logs N8N"
-echo "   sudo -u $N8N_USER pm2 logs n8n"
+if [ "$N8N_USER" = "root" ]; then
+    echo "   pm2 logs n8n"
+else
+    echo "   sudo -u $N8N_USER pm2 logs n8n"
+fi
 echo ""
 echo "   # Redémarrer N8N"
-echo "   sudo -u $N8N_USER pm2 restart n8n"
+if [ "$N8N_USER" = "root" ]; then
+    echo "   pm2 restart n8n"
+else
+    echo "   sudo -u $N8N_USER pm2 restart n8n"
+fi
 echo ""
 echo "   # Vérifier la version dans le panel"
 echo "   Accédez à https://n8n.talosprimes.com"
