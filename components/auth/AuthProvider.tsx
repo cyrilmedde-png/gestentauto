@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo, ReactNode } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { getCurrentUser, type AuthUser } from '@/lib/auth'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
@@ -19,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
   const [loading, setLoading] = useState(true)
   const isLoadingUserRef = useRef(false)
+  const userIdRef = useRef<string | null>(null)
 
   const loadUser = useCallback(async () => {
     // Éviter les appels multiples simultanés
@@ -57,14 +58,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSupabaseUser(authUser)
 
       if (authUser) {
-        try {
-          const fullUser = await getCurrentUser()
-          setUser(fullUser)
-        } catch (userError) {
-          console.error('Error loading full user data:', userError)
-          setUser(null)
+        // Ne recharger que si l'ID utilisateur change vraiment
+        if (authUser.id !== userIdRef.current) {
+          userIdRef.current = authUser.id
+          try {
+            const fullUser = await getCurrentUser()
+            setUser(fullUser)
+          } catch (userError) {
+            console.error('Error loading full user data:', userError)
+            setUser(null)
+          }
         }
       } else {
+        userIdRef.current = null
         setUser(null)
       }
     } catch (error) {
@@ -124,15 +130,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Mémoriser la valeur du contexte pour éviter les re-renders inutiles
+  const contextValue = useMemo(() => ({
+    user,
+    supabaseUser,
+    loading,
+    signOut: handleSignOut,
+  }), [user, supabaseUser, loading])
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        supabaseUser,
-        loading,
-        signOut: handleSignOut,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )
