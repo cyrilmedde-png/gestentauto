@@ -75,19 +75,19 @@ if [ ! -f "$NGINX_N8N_CONFIG" ]; then
         print_step "Création d'une nouvelle configuration N8N..."
         
         # Créer la configuration
-        sudo bash -c 'cat > /etc/nginx/sites-available/n8n << EOF
+        sudo tee /etc/nginx/sites-available/n8n > /dev/null <<'EOFNGINX'
 server {
     server_name n8n.talosprimes.com;
 
     location / {
         proxy_pass http://localhost:5678;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         
         # Timeouts plus longs pour éviter les déconnexions
         proxy_connect_timeout 300s;
@@ -99,12 +99,12 @@ server {
         proxy_request_buffering off;
     }
 
-    # Autoriser l\'iframe depuis www.talosprimes.com
-    add_header Content-Security-Policy "frame-ancestors '\''self'\'' https://www.talosprimes.com" always;
+    # Autoriser l'iframe depuis www.talosprimes.com
+    add_header Content-Security-Policy "frame-ancestors 'self' https://www.talosprimes.com" always;
     
     listen 80;
 }
-EOF'
+EOFNGINX
         
         # Activer la configuration
         sudo ln -sf /etc/nginx/sites-available/n8n /etc/nginx/sites-enabled/n8n
