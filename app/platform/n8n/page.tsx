@@ -1,50 +1,84 @@
 'use client'
 
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import React from 'react'
 
-// Mémoriser le composant pour éviter les remontages inutiles
+// Variable globale pour persister l'iframe entre les remontages
+// Cela empêche le rechargement lors du changement d'onglet
+let globalIframe: HTMLIFrameElement | null = null
+let iframeLoaded = false
+
 const N8NPageContent = React.memo(() => {
-  const [loading, setLoading] = useState(true)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const hasLoadedRef = useRef(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [loading, setLoading] = useState(!iframeLoaded)
 
   useEffect(() => {
-    // Si l'iframe a déjà été chargé, ne pas recharger
-    if (hasLoadedRef.current) {
-      setLoading(false)
+    if (!containerRef.current) return
+
+    // Si l'iframe globale existe déjà, la réutiliser
+    if (globalIframe) {
+      // Si l'iframe est dans un autre conteneur, la déplacer
+      if (globalIframe.parentNode && globalIframe.parentNode !== containerRef.current) {
+        containerRef.current.appendChild(globalIframe)
+      } else if (!globalIframe.parentNode) {
+        // Si l'iframe n'a pas de parent, l'ajouter
+        containerRef.current.appendChild(globalIframe)
+      }
+      
+      // Si déjà chargée, ne pas afficher le loader
+      if (iframeLoaded) {
+        setLoading(false)
+      }
       return
     }
 
-    // Timeout de sécurité pour le chargement
-    const timeout = setTimeout(() => {
+    // Créer l'iframe une seule fois dans toute la vie de l'application
+    const iframe = document.createElement('iframe')
+    iframe.src = 'https://n8n.talosprimes.com'
+    iframe.className = 'w-full h-full border-0 rounded-lg'
+    iframe.title = 'N8N - Automatisation'
+    iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen')
+    iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox')
+    
+    iframe.onload = () => {
+      iframeLoaded = true
       setLoading(false)
-      hasLoadedRef.current = true
-    }, 2000)
+    }
 
-    return () => clearTimeout(timeout)
+    globalIframe = iframe
+    containerRef.current.appendChild(iframe)
+
+    // Timeout de sécurité
+    const timeout = setTimeout(() => {
+      if (!iframeLoaded) {
+        iframeLoaded = true
+        setLoading(false)
+      }
+    }, 5000)
+
+    // Ne jamais nettoyer - garder l'iframe en mémoire pour éviter le rechargement
+    return () => {
+      clearTimeout(timeout)
+      // Ne pas supprimer l'iframe du DOM - elle reste en mémoire
+    }
   }, [])
 
-  // Mémoriser l'iframe pour éviter les recréations
-  const iframe = useMemo(() => (
-    <iframe
-      ref={iframeRef}
-      key="n8n-iframe-stable" // Key stable pour éviter la recréation
-      src="https://n8n.talosprimes.com"
-      className="w-full h-full border-0 rounded-lg"
-      title="N8N - Automatisation"
-      allow="clipboard-read; clipboard-write; fullscreen"
-      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-      onLoad={() => {
-        setLoading(false)
-        hasLoadedRef.current = true
-      }}
-    />
-  ), [])
+  // Empêcher le rechargement lors des événements de visibilité
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Ne rien faire - l'iframe reste en mémoire
+    }
 
-  if (loading && !hasLoadedRef.current) {
+    document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true })
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
+
+  if (loading) {
     return (
       <ProtectedRoute>
         <MainLayout>
@@ -62,9 +96,11 @@ const N8NPageContent = React.memo(() => {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <div className="w-full h-[calc(100vh-4rem)]">
-          {iframe}
-        </div>
+        <div 
+          ref={containerRef}
+          className="w-full h-[calc(100vh-4rem)]"
+          suppressHydrationWarning
+        />
       </MainLayout>
     </ProtectedRoute>
   )
