@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import React from 'react'
@@ -71,6 +72,37 @@ const N8NPageContent = React.memo(() => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(!iframeLoaded)
   const [mounted, setMounted] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
+  const navigationBlockedRef = useRef(false)
+
+  // Empêcher Next.js de naviguer lors du changement d'onglet
+  useEffect(() => {
+    // Intercepter les tentatives de navigation Next.js
+    const originalPush = router.push
+    const originalReplace = router.replace
+    
+    router.push = ((...args: Parameters<typeof router.push>) => {
+      if (navigationBlockedRef.current) {
+        console.log('[N8N Page] Blocked router.push during tab change')
+        return Promise.resolve(false)
+      }
+      return originalPush.apply(router, args)
+    }) as typeof router.push
+    
+    router.replace = ((...args: Parameters<typeof router.replace>) => {
+      if (navigationBlockedRef.current) {
+        console.log('[N8N Page] Blocked router.replace during tab change')
+        return Promise.resolve(false)
+      }
+      return originalReplace.apply(router, args)
+    }) as typeof router.replace
+
+    return () => {
+      router.push = originalPush
+      router.replace = originalReplace
+    }
+  }, [router])
 
   // S'assurer que le composant est monté côté client
   useEffect(() => {
@@ -122,16 +154,32 @@ const N8NPageContent = React.memo(() => {
   // Empêcher tout rechargement lors des événements de visibilité
   useEffect(() => {
     // Intercepter et empêcher les comportements par défaut
-    const preventReload = (e: Event) => {
-      console.log('[N8N Page] Preventing reload event:', e.type)
-      e.stopPropagation()
-      // Ne rien faire - l'iframe reste intacte
+    const preventReload = (e: BeforeUnloadEvent) => {
+      console.log('[N8N Page] Preventing reload event: beforeunload')
+      // Ne pas empêcher complètement (pour permettre la fermeture normale)
+      // Mais empêcher les rechargements automatiques
+      if (navigationBlockedRef.current) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
     }
 
     // Empêcher les rechargements lors du changement d'onglet
     const handleVisibilityChange = () => {
       const isVisible = !document.hidden
       console.log(`[N8N Page] Visibility changed: ${isVisible ? 'visible' : 'hidden'}`)
+      
+      // Bloquer la navigation Next.js pendant le changement d'onglet
+      if (!isVisible) {
+        navigationBlockedRef.current = true
+        console.log('[N8N Page] Blocking navigation (tab hidden)')
+      } else {
+        // Délai avant de débloquer pour éviter les navigations immédiates
+        setTimeout(() => {
+          navigationBlockedRef.current = false
+          console.log('[N8N Page] Unblocking navigation (tab visible)')
+        }, 100)
+      }
       
       // Ne rien faire - l'iframe reste en mémoire
       if (globalIframe && !globalIframe.parentNode && containerRef.current) {
@@ -152,16 +200,26 @@ const N8NPageContent = React.memo(() => {
 
     const handleBlur = () => {
       console.log('[N8N Page] Window blurred')
-      // Ne rien faire
+      navigationBlockedRef.current = true
+    }
+
+    // Empêcher les popstate qui peuvent déclencher des navigations
+    const handlePopState = (e: PopStateEvent) => {
+      if (navigationBlockedRef.current) {
+        console.log('[N8N Page] Blocked popstate navigation')
+        e.preventDefault()
+        e.stopPropagation()
+        // Empêcher la navigation en restaurant l'état
+        window.history.pushState(null, '', pathname)
+      }
     }
 
     // Écouter les événements mais ne pas permettre de rechargement
     document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true })
     window.addEventListener('focus', handleFocus, { passive: true })
     window.addEventListener('blur', handleBlur, { passive: true })
-    
-    // Empêcher les rechargements de page
     window.addEventListener('beforeunload', preventReload)
+    window.addEventListener('popstate', handlePopState)
     
     return () => {
       console.log('[N8N Page] Removing visibility event listeners')
@@ -169,8 +227,9 @@ const N8NPageContent = React.memo(() => {
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('blur', handleBlur)
       window.removeEventListener('beforeunload', preventReload)
+      window.removeEventListener('popstate', handlePopState)
     }
-  }, [])
+  }, [pathname])
 
   if (!mounted) {
     return null
