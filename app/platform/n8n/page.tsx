@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import React from 'react'
@@ -11,15 +10,22 @@ import React from 'react'
 let globalIframe: HTMLIFrameElement | null = null
 let iframeLoaded = false
 let iframeContainer: HTMLDivElement | null = null
+let renderCount = 0
 
 // Fonction pour créer/mettre à jour l'iframe de manière persistante
 function ensureIframeExists(targetContainer: HTMLDivElement) {
+  renderCount++
+  console.log(`[N8N Iframe] Render count: ${renderCount}, Iframe exists: ${!!globalIframe}, Loaded: ${iframeLoaded}`)
+  
   // Si l'iframe existe déjà, juste la déplacer si nécessaire
   if (globalIframe && iframeContainer) {
     if (globalIframe.parentNode !== targetContainer) {
+      console.log('[N8N Iframe] Moving iframe to new container')
       // Déplacer l'iframe vers le nouveau conteneur
       targetContainer.appendChild(globalIframe)
       iframeContainer = targetContainer
+    } else {
+      console.log('[N8N Iframe] Iframe already in correct container')
     }
     return globalIframe
   }
@@ -31,6 +37,7 @@ function ensureIframeExists(targetContainer: HTMLDivElement) {
 
   // Créer l'iframe une seule fois
   if (!globalIframe) {
+    console.log('[N8N Iframe] Creating new iframe')
     const iframe = document.createElement('iframe')
     iframe.src = 'https://n8n.talosprimes.com'
     iframe.className = 'w-full h-full border-0 rounded-lg'
@@ -43,12 +50,18 @@ function ensureIframeExists(targetContainer: HTMLDivElement) {
     
     iframe.onload = () => {
       iframeLoaded = true
+      console.log('[N8N Iframe] Iframe loaded successfully')
       // Déclencher un événement personnalisé pour notifier le chargement
       window.dispatchEvent(new CustomEvent('n8n-iframe-loaded'))
     }
 
+    iframe.onerror = () => {
+      console.error('[N8N Iframe] Iframe load error')
+    }
+
     globalIframe = iframe
     iframeContainer.appendChild(iframe)
+    console.log('[N8N Iframe] Iframe appended to container')
   }
 
   return globalIframe
@@ -61,18 +74,24 @@ const N8NPageContent = React.memo(() => {
 
   // S'assurer que le composant est monté côté client
   useEffect(() => {
+    console.log('[N8N Page] Component mounting')
     setMounted(true)
   }, [])
 
   // Gérer l'iframe de manière persistante
   useEffect(() => {
-    if (!mounted || !containerRef.current) return
+    if (!mounted || !containerRef.current) {
+      console.log('[N8N Page] Not mounted or no container ref')
+      return
+    }
 
+    console.log('[N8N Page] Setting up iframe')
     // Créer/mettre à jour l'iframe
     ensureIframeExists(containerRef.current)
 
     // Écouter l'événement de chargement
     const handleIframeLoaded = () => {
+      console.log('[N8N Page] Received iframe loaded event')
       setLoading(false)
     }
     window.addEventListener('n8n-iframe-loaded', handleIframeLoaded)
@@ -80,6 +99,7 @@ const N8NPageContent = React.memo(() => {
     // Timeout de sécurité
     const timeout = setTimeout(() => {
       if (!iframeLoaded) {
+        console.log('[N8N Page] Timeout - marking as loaded')
         iframeLoaded = true
         setLoading(false)
       }
@@ -87,10 +107,12 @@ const N8NPageContent = React.memo(() => {
 
     // Si l'iframe est déjà chargée, ne pas afficher le loader
     if (iframeLoaded) {
+      console.log('[N8N Page] Iframe already loaded, hiding loader')
       setLoading(false)
     }
 
     return () => {
+      console.log('[N8N Page] Cleanup effect')
       window.removeEventListener('n8n-iframe-loaded', handleIframeLoaded)
       clearTimeout(timeout)
       // NE JAMAIS supprimer l'iframe - elle reste en mémoire
@@ -101,27 +123,35 @@ const N8NPageContent = React.memo(() => {
   useEffect(() => {
     // Intercepter et empêcher les comportements par défaut
     const preventReload = (e: Event) => {
+      console.log('[N8N Page] Preventing reload event:', e.type)
       e.stopPropagation()
       // Ne rien faire - l'iframe reste intacte
     }
 
     // Empêcher les rechargements lors du changement d'onglet
     const handleVisibilityChange = () => {
+      const isVisible = !document.hidden
+      console.log(`[N8N Page] Visibility changed: ${isVisible ? 'visible' : 'hidden'}`)
+      
       // Ne rien faire - l'iframe reste en mémoire
       if (globalIframe && !globalIframe.parentNode && containerRef.current) {
+        console.log('[N8N Page] Iframe lost parent, reattaching')
         // Si l'iframe a été perdue, la remettre
         containerRef.current.appendChild(globalIframe)
       }
     }
 
     const handleFocus = () => {
+      console.log('[N8N Page] Window focused')
       // Vérifier que l'iframe est toujours là
       if (globalIframe && !globalIframe.parentNode && containerRef.current) {
+        console.log('[N8N Page] Iframe lost parent on focus, reattaching')
         containerRef.current.appendChild(globalIframe)
       }
     }
 
     const handleBlur = () => {
+      console.log('[N8N Page] Window blurred')
       // Ne rien faire
     }
 
@@ -134,6 +164,7 @@ const N8NPageContent = React.memo(() => {
     window.addEventListener('beforeunload', preventReload)
     
     return () => {
+      console.log('[N8N Page] Removing visibility event listeners')
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('blur', handleBlur)
