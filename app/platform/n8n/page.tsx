@@ -46,7 +46,7 @@ const N8NPageContent = React.memo(() => {
   const [loading, setLoading] = useState(!globalIframeLoaded)
   const containerRef = useRef<HTMLDivElement>(null)
   const mountedRef = useRef(false)
-  const loadingTimeoutRef = useRef<NodeJS.Timeout>()
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
     // Éviter les doubles montages en dev mode
