@@ -55,7 +55,9 @@ export function useNotifications() {
   }, [user?.id])
 
   useEffect(() => {
-    if (!user?.id) {
+    const currentUserId = user?.id || null
+    
+    if (!currentUserId) {
       setNotifications([])
       setUnreadCount(0)
       setLoading(false)
@@ -69,7 +71,7 @@ export function useNotifications() {
         setError(null)
 
         const headers: HeadersInit = {
-          'X-User-Id': user.id,
+          'X-User-Id': currentUserId,
         }
 
         const response = await fetch('/api/platform/notifications', {
