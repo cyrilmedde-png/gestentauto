@@ -13,18 +13,12 @@ let iframeContainer: HTMLDivElement | null = null
 
 // Fonction pour créer/mettre à jour l'iframe de manière persistante
 function ensureIframeExists(targetContainer: HTMLDivElement) {
-  renderCount++
-  console.log(`[N8N Iframe] Render count: ${renderCount}, Iframe exists: ${!!globalIframe}, Loaded: ${iframeLoaded}`)
-  
   // Si l'iframe existe déjà, juste la déplacer si nécessaire
   if (globalIframe && iframeContainer) {
     if (globalIframe.parentNode !== targetContainer) {
-      console.log('[N8N Iframe] Moving iframe to new container')
       // Déplacer l'iframe vers le nouveau conteneur
       targetContainer.appendChild(globalIframe)
       iframeContainer = targetContainer
-    } else {
-      console.log('[N8N Iframe] Iframe already in correct container')
     }
     return globalIframe
   }
@@ -36,7 +30,6 @@ function ensureIframeExists(targetContainer: HTMLDivElement) {
 
   // Créer l'iframe une seule fois
   if (!globalIframe) {
-    console.log('[N8N Iframe] Creating new iframe')
     const iframe = document.createElement('iframe')
     iframe.src = 'https://n8n.talosprimes.com'
     iframe.className = 'w-full h-full border-0 rounded-lg'
@@ -49,18 +42,12 @@ function ensureIframeExists(targetContainer: HTMLDivElement) {
     
     iframe.onload = () => {
       iframeLoaded = true
-      console.log('[N8N Iframe] Iframe loaded successfully')
       // Déclencher un événement personnalisé pour notifier le chargement
       window.dispatchEvent(new CustomEvent('n8n-iframe-loaded'))
     }
 
-    iframe.onerror = () => {
-      console.error('[N8N Iframe] Iframe load error')
-    }
-
     globalIframe = iframe
     iframeContainer.appendChild(iframe)
-    console.log('[N8N Iframe] Iframe appended to container')
   }
 
   return globalIframe
