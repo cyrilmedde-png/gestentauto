@@ -245,3 +245,5 @@ Après cette correction :
 - ✅ Meilleure expérience utilisateur
 - ✅ Performance optimisée
 
+
+

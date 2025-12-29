@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Home, FileText, Users, Settings, Menu, UserPlus, Package, UserCheck, BarChart, Workflow, type LucideIcon } from 'lucide-react'
+import { Home, FileText, Users, Settings, Menu, UserPlus, Package, UserCheck, BarChart, type LucideIcon } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
@@ -54,10 +54,7 @@ export function Sidebar() {
     { icon: Settings, label: 'Paramètres', href: '/platform/settings' },
   ]
 
-  // Outils de création (toujours visibles - pour créer des workflows)
-  const creationTools = [
-    { icon: Workflow, label: 'N8N', href: '/platform/n8n' },
-  ]
+  // Outils de création supprimés - N8N non intégré
 
   // Modules dynamiques (workflows créés par N8N)
   const dynamicNavItems = modules
@@ -87,7 +84,6 @@ export function Sidebar() {
   // Combiner tous les items de navigation
   const navItems = [
     ...baseNavItems,
-    ...creationTools,  // Outils de création après les items de base
     ...staticNavItems,
     ...dynamicNavItems,  // Workflows créés par N8N
   ]

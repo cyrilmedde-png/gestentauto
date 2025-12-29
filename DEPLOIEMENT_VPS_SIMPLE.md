@@ -220,3 +220,5 @@ Pour plus de détails, consultez :
 - `docs/FIX_N8N_RELOAD_ONGLET.md` - Explication technique
 - `docs/TEST_N8N_NO_RELOAD.md` - Tests détaillés
 
+
+

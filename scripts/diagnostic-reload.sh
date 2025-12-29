@@ -45,3 +45,5 @@ echo "✅ Diagnostic terminé"
 echo ""
 
 
+
+

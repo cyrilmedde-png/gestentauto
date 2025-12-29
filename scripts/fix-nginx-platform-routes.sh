@@ -130,3 +130,5 @@ echo "   3. Les logs nginx erreurs: tail -f /var/log/nginx/error.log"
 
 
 
+
+

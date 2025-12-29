@@ -250,3 +250,4 @@ Avec cette solution :
 Pour comprendre en détail pourquoi l'ancienne solution ne marchait pas :
 - `docs/POURQUOI_CA_RECHARGEAIT_ENCORE.md` - Explication technique complète
 
+

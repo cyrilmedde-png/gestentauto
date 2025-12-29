@@ -40,3 +40,5 @@ echo "📝 Pour vérifier les logs:"
 echo "   pm2 logs talosprime --lines 50"
 
 
+
+

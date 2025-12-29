@@ -123,3 +123,5 @@ echo "  4. Vérifiez que N8N fonctionne toujours: /platform/n8n"
 echo ""
 
 
+
+

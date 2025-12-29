@@ -92,3 +92,5 @@ echo "  3. Testez N8N: https://www.talosprimes.com/platform/n8n (vérifiez que l
 echo ""
 
 
+
+
