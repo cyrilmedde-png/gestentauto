@@ -76,26 +76,26 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Check className="w-8 h-8 text-green-600" />
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-gray-800 rounded-2xl shadow-2xl p-8 text-center border border-gray-700">
+          <div className="w-16 h-16 bg-green-900/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500">
+            <Check className="w-8 h-8 text-green-400" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold text-white mb-2">
             Inscription réussie ! 🎉
           </h1>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-300 mb-4">
             Votre compte a été créé avec succès.
           </p>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-blue-900 font-medium mb-2">
+          <div className="bg-blue-900/20 border border-blue-500 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-300 font-medium mb-2">
               📧 Consultez votre email
             </p>
-            <p className="text-sm text-blue-700">
+            <p className="text-sm text-blue-200">
               Nous vous avons envoyé vos identifiants de connexion à l'adresse <strong>{formData.email}</strong>
             </p>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-400">
             Redirection vers la page de connexion...
           </p>
         </div>
@@ -104,22 +104,22 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-white mb-2">
             Créer un compte
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-300">
             Rejoignez Talos Prime en quelques secondes
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700">
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Prénom */}
             <div>
-              <label htmlFor="first_name" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="first_name" className="block text-sm font-medium text-gray-200 mb-2">
                 Prénom *
               </label>
               <div className="relative">
@@ -131,7 +131,7 @@ export default function RegisterPage() {
                   required
                   value={formData.first_name}
                   onChange={handleChange}
-                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full pl-11 pr-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   placeholder="Jean"
                 />
               </div>
@@ -139,7 +139,7 @@ export default function RegisterPage() {
 
             {/* Nom */}
             <div>
-              <label htmlFor="last_name" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="last_name" className="block text-sm font-medium text-gray-200 mb-2">
                 Nom *
               </label>
               <div className="relative">
@@ -151,7 +151,7 @@ export default function RegisterPage() {
                   required
                   value={formData.last_name}
                   onChange={handleChange}
-                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full pl-11 pr-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   placeholder="Dupont"
                 />
               </div>
@@ -159,7 +159,7 @@ export default function RegisterPage() {
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-200 mb-2">
                 Email *
               </label>
               <div className="relative">
@@ -171,7 +171,7 @@ export default function RegisterPage() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full pl-11 pr-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   placeholder="jean.dupont@example.com"
                 />
               </div>
@@ -179,7 +179,7 @@ export default function RegisterPage() {
 
             {/* Téléphone */}
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-200 mb-2">
                 Téléphone *
               </label>
               <div className="relative">
@@ -191,18 +191,18 @@ export default function RegisterPage() {
                   required
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full pl-11 pr-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   placeholder="+33612345678"
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-400">
                 Format: +33 suivi de votre numéro (ex: +33612345678)
               </p>
             </div>
 
             {/* Entreprise (optionnel) */}
             <div>
-              <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="company" className="block text-sm font-medium text-gray-200 mb-2">
                 Entreprise (optionnel)
               </label>
               <div className="relative">
@@ -213,7 +213,7 @@ export default function RegisterPage() {
                   type="text"
                   value={formData.company}
                   onChange={handleChange}
-                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full pl-11 pr-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   placeholder="ACME Corp"
                 />
               </div>
@@ -221,14 +221,14 @@ export default function RegisterPage() {
 
             {/* Erreur */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-sm text-red-800">{error}</p>
+              <div className="bg-red-900/20 border border-red-500 rounded-lg p-4">
+                <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
 
             {/* Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-xs text-blue-900">
+            <div className="bg-blue-900/20 border border-blue-500 rounded-lg p-4">
+              <p className="text-xs text-blue-300">
                 🔐 Un mot de passe temporaire vous sera envoyé par email. Vous devrez le changer lors de votre première connexion.
               </p>
             </div>
@@ -237,7 +237,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/50"
             >
               {loading ? (
                 <>
@@ -255,9 +255,9 @@ export default function RegisterPage() {
 
           {/* Lien connexion */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-400">
               Vous avez déjà un compte ?{' '}
-              <Link href="/auth/login" className="text-blue-600 hover:text-blue-700 font-medium">
+              <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 font-medium">
                 Se connecter
               </Link>
             </p>
