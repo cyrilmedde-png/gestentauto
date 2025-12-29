@@ -118,7 +118,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadUser])
 
-  const handleSignOut = async () => {
+  // Mémoriser handleSignOut pour éviter les changements de référence
+  const handleSignOut = useCallback(async () => {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
@@ -128,10 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Error signing out:', error)
       throw error
     }
-  }
-
-  // Mémoriser handleSignOut pour éviter les changements de référence
-  const signOutMemo = useCallback(() => handleSignOut(), [])
+  }, [])
 
   // Mémoriser la valeur du contexte pour éviter les re-renders inutiles
   // Utiliser les IDs au lieu des objets complets pour la comparaison
@@ -139,8 +137,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     supabaseUser,
     loading,
-    signOut: signOutMemo,
-  }), [user?.id, supabaseUser?.id, loading, signOutMemo])
+    signOut: handleSignOut,
+  }), [user?.id, supabaseUser?.id, loading, handleSignOut])
 
   return (
     <AuthContext.Provider value={contextValue}>
