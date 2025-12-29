@@ -10,7 +10,6 @@ import React from 'react'
 let globalIframe: HTMLIFrameElement | null = null
 let iframeLoaded = false
 let iframeContainer: HTMLDivElement | null = null
-let renderCount = 0
 
 // Fonction pour créer/mettre à jour l'iframe de manière persistante
 function ensureIframeExists(targetContainer: HTMLDivElement) {
