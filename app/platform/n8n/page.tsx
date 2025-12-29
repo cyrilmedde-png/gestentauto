@@ -32,6 +32,53 @@ function createN8NIframe(): HTMLIFrameElement {
   iframe.onload = () => {
     console.log('✅ Iframe N8N chargée avec succès')
     globalIframeLoaded = true
+    
+    // Injecter un script pour empêcher N8N de détecter les changements d'onglet
+    try {
+      const iframeWindow = iframe.contentWindow
+      if (iframeWindow) {
+        console.log('🛡️ Injection de la protection anti-reload dans N8N')
+        
+        // Override de document.hidden et document.visibilityState
+        const script = `
+          (function() {
+            console.log('🔒 Protection anti-reload N8N activée');
+            
+            // Forcer document.hidden à toujours retourner false
+            Object.defineProperty(document, 'hidden', {
+              configurable: true,
+              get: function() { return false; }
+            });
+            
+            // Forcer document.visibilityState à toujours retourner 'visible'
+            Object.defineProperty(document, 'visibilityState', {
+              configurable: true,
+              get: function() { return 'visible'; }
+            });
+            
+            // Bloquer les événements visibilitychange
+            const originalAddEventListener = document.addEventListener;
+            document.addEventListener = function(type, listener, options) {
+              if (type === 'visibilitychange') {
+                console.log('🚫 Événement visibilitychange bloqué');
+                return;
+              }
+              return originalAddEventListener.call(this, type, listener, options);
+            };
+            
+            console.log('✅ N8N protégé contre les changements d\'onglet');
+          })();
+        `
+        
+        // Injecter le script dans l'iframe
+        const scriptElement = iframeWindow.document.createElement('script')
+        scriptElement.textContent = script
+        iframeWindow.document.head.appendChild(scriptElement)
+      }
+    } catch (error) {
+      // Erreur CORS attendue - on ne peut pas injecter dans l'iframe
+      console.log('⚠️ Impossible d\'injecter dans l\'iframe (CORS) - solution alternative nécessaire')
+    }
   }
   
   iframe.onerror = () => {
