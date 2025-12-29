@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from './AuthProvider'
 
@@ -8,11 +8,16 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   const router = useRouter()
 
+  // Mémoriser router.push pour éviter les changements de référence
+  const pushToLogin = useMemo(() => {
+    return () => router.push('/auth/login')
+  }, [router])
+
   useEffect(() => {
     if (!loading && !user?.id) {
-      router.push('/auth/login')
+      pushToLogin()
     }
-  }, [user?.id, loading, router])
+  }, [user?.id, loading, pushToLogin])
 
   // Toujours retourner quelque chose, jamais null
   if (loading) {
