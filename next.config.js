@@ -1,10 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false,
-  // Désactiver le prefetching pour éviter les rechargements
-  experimental: {
-    optimizePackageImports: ['@/components'],
-  },
+  reactStrictMode: true,
   images: {
     remotePatterns: [
       {

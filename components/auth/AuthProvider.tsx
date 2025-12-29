@@ -19,7 +19,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
   const [loading, setLoading] = useState(true)
   const isLoadingUserRef = useRef(false)
-  const loadingRef = useRef(true)
 
   const loadUser = useCallback(async () => {
     // Éviter les appels multiples simultanés
@@ -30,7 +29,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoadingUserRef.current = true
     try {
       setLoading(true)
-      loadingRef.current = true
       
       // Vérifier si Supabase est configuré
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -60,13 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (authUser) {
         try {
-          // Timeout de 3 secondes pour getCurrentUser
-          const fullUserPromise = getCurrentUser()
-          const timeoutPromise = new Promise<null>((resolve) => {
-            setTimeout(() => resolve(null), 3000)
-          })
-          
-          const fullUser = await Promise.race([fullUserPromise, timeoutPromise])
+          const fullUser = await getCurrentUser()
           setUser(fullUser)
         } catch (userError) {
           console.error('Error loading full user data:', userError)
@@ -81,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSupabaseUser(null)
     } finally {
       setLoading(false)
-      loadingRef.current = false
       isLoadingUserRef.current = false
     }
   }, [])
@@ -95,24 +86,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Timeout de sécurité : si le chargement prend plus de 5 secondes, arrêter le loading
-    const timeoutId = setTimeout(() => {
-      if (loadingRef.current) {
-        console.warn('AuthProvider: Timeout - arrêt du loading après 5 secondes')
-        setLoading(false)
-        loadingRef.current = false
-      }
-    }, 5000)
-
     // Récupérer l'utilisateur initial
-    loadUser().finally(() => {
-      clearTimeout(timeoutId)
-    })
+    loadUser()
 
     // Écouter les changements d'authentification
-    let subscription: { unsubscribe: () => void } | null = null
     try {
-      const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
           // Ignorer TOKEN_REFRESHED pour éviter les boucles, on ne recharge que sur SIGNED_IN
           if (event === 'SIGNED_IN') {
@@ -123,20 +102,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       )
-      subscription = authSubscription
+
+      return () => {
+        subscription.unsubscribe()
+      }
     } catch (error) {
       console.error('Error setting up auth state change listener:', error)
       setLoading(false)
     }
-
-    return () => {
-      clearTimeout(timeoutId)
-      if (subscription) {
-        subscription.unsubscribe()
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Ne pas inclure loadUser pour éviter les re-renders
+  }, [loadUser])
 
   const handleSignOut = async () => {
     try {
@@ -171,5 +145,3 @@ export function useAuth() {
   }
   return context
 }
-
-
