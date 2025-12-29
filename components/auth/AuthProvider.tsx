@@ -130,13 +130,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Mémoriser handleSignOut pour éviter les changements de référence
+  const signOutMemo = useCallback(() => handleSignOut(), [])
+
   // Mémoriser la valeur du contexte pour éviter les re-renders inutiles
+  // Utiliser les IDs au lieu des objets complets pour la comparaison
   const contextValue = useMemo(() => ({
     user,
     supabaseUser,
     loading,
-    signOut: handleSignOut,
-  }), [user, supabaseUser, loading])
+    signOut: signOutMemo,
+  }), [user?.id, supabaseUser?.id, loading, signOutMemo])
 
   return (
     <AuthContext.Provider value={contextValue}>

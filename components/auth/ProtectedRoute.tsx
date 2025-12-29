@@ -9,10 +9,10 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user?.id) {
       router.push('/auth/login')
     }
-  }, [user, loading, router])
+  }, [user?.id, loading, router])
 
   // Toujours retourner quelque chose, jamais null
   if (loading) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { supabase } from '@/lib/supabase/client'
 
@@ -21,6 +21,8 @@ export function useNotifications() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const userIdRef = useRef<string | null>(null)
+  const channelRef = useRef<any>(null)
 
   const loadNotifications = useCallback(async () => {
     if (!user?.id) return
@@ -56,6 +58,19 @@ export function useNotifications() {
 
   useEffect(() => {
     const currentUserId = user?.id || null
+    
+    // Ne recharger que si l'ID utilisateur change vraiment
+    if (currentUserId === userIdRef.current && channelRef.current) {
+      return // Ne rien faire si déjà connecté pour le même utilisateur
+    }
+    
+    userIdRef.current = currentUserId
+    
+    // Nettoyer le channel existant si présent
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current)
+      channelRef.current = null
+    }
     
     if (!currentUserId) {
       setNotifications([])
@@ -139,9 +154,14 @@ export function useNotifications() {
         }
       )
       .subscribe()
+    
+    channelRef.current = channel
 
     return () => {
-      supabase.removeChannel(channel)
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
     }
   }, [user?.id])
 
