@@ -135,7 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         subscription.unsubscribe()
       }
     }
-  }, [loadUser])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Ne pas inclure loadUser pour éviter les re-renders
 
   const handleSignOut = async () => {
     try {
