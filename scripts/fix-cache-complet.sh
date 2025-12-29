@@ -59,3 +59,4 @@ echo "   - Cochez 'Images et fichiers en cache'"
 echo "   - Cliquez sur 'Effacer les données'"
 echo ""
 
+

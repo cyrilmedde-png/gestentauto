@@ -162,3 +162,4 @@ ssh root@82.165.129.143 "cd /var/www/talosprime && git pull origin main && pm2 r
 
 
 
+

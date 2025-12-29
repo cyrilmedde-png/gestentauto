@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false, // Désactivé temporairement pour éviter les double-renders qui peuvent causer des rechargements
+  reactStrictMode: true,
   images: {
     remotePatterns: [
       {

@@ -122,3 +122,4 @@ echo "  3. Vérifiez que /platform/make retourne bien 404 (normal, route supprim
 echo "  4. Vérifiez que N8N fonctionne toujours: /platform/n8n"
 echo ""
 
+

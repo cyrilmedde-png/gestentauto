@@ -126,3 +126,4 @@ echo "   3. Les logs PM2: pm2 logs talosprime --lines 50"
 echo "   4. Le cache du navigateur (essayez en navigation privée ou videz le cache)"
 echo ""
 
+

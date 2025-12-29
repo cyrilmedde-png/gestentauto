@@ -91,3 +91,4 @@ echo "  2. Testez l'application: https://www.talosprimes.com"
 echo "  3. Testez N8N: https://www.talosprimes.com/platform/n8n (vérifiez que l'iframe ne recharge pas lors du changement d'onglet)"
 echo ""
 
+

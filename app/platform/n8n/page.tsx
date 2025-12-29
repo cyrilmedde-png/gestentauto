@@ -6,30 +6,35 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import React from 'react'
 
 // Variable globale pour persister l'iframe entre les remontages
-// Stockée directement dans document.body pour éviter les remontages React
 let globalIframe: HTMLIFrameElement | null = null
 let iframeLoaded = false
-let iframeContainer: HTMLDivElement | null = null
 
-// Fonction pour créer/mettre à jour l'iframe de manière persistante
-function ensureIframeExists(targetContainer: HTMLDivElement) {
-  // Si l'iframe existe déjà, juste la déplacer si nécessaire
-  if (globalIframe && iframeContainer) {
-    if (globalIframe.parentNode !== targetContainer) {
-      // Déplacer l'iframe vers le nouveau conteneur
-      targetContainer.appendChild(globalIframe)
-      iframeContainer = targetContainer
+const N8NPageContent = React.memo(() => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted || !containerRef.current) {
+      return
     }
-    return globalIframe
-  }
 
-  // Créer le conteneur si nécessaire
-  if (!iframeContainer) {
-    iframeContainer = targetContainer
-  }
+    // Si l'iframe existe déjà, la réutiliser
+    if (globalIframe) {
+      if (globalIframe.parentNode !== containerRef.current) {
+        containerRef.current.appendChild(globalIframe)
+      }
+      if (iframeLoaded) {
+        setLoading(false)
+      }
+      return
+    }
 
-  // Créer l'iframe une seule fois
-  if (!globalIframe) {
+    // Créer l'iframe une seule fois
     const iframe = document.createElement('iframe')
     iframe.src = 'https://n8n.talosprimes.com'
     iframe.className = 'w-full h-full border-0 rounded-lg'
@@ -42,41 +47,12 @@ function ensureIframeExists(targetContainer: HTMLDivElement) {
     
     iframe.onload = () => {
       iframeLoaded = true
-      // Déclencher un événement personnalisé pour notifier le chargement
+      setLoading(false)
       window.dispatchEvent(new CustomEvent('n8n-iframe-loaded'))
     }
 
     globalIframe = iframe
-    iframeContainer.appendChild(iframe)
-  }
-
-  return globalIframe
-}
-
-const N8NPageContent = React.memo(() => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [loading, setLoading] = useState(!iframeLoaded)
-  const [mounted, setMounted] = useState(false)
-
-  // S'assurer que le composant est monté côté client
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Gérer l'iframe de manière persistante
-  useEffect(() => {
-    if (!mounted || !containerRef.current) {
-      return
-    }
-
-    // Créer/mettre à jour l'iframe
-    ensureIframeExists(containerRef.current)
-
-    // Écouter l'événement de chargement
-    const handleIframeLoaded = () => {
-      setLoading(false)
-    }
-    window.addEventListener('n8n-iframe-loaded', handleIframeLoaded)
+    containerRef.current.appendChild(iframe)
 
     // Timeout de sécurité
     const timeout = setTimeout(() => {
@@ -86,29 +62,21 @@ const N8NPageContent = React.memo(() => {
       }
     }, 5000)
 
-    // Si l'iframe est déjà chargée, ne pas afficher le loader
-    if (iframeLoaded) {
-      setLoading(false)
-    }
-
     return () => {
-      window.removeEventListener('n8n-iframe-loaded', handleIframeLoaded)
       clearTimeout(timeout)
-      // NE JAMAIS supprimer l'iframe - elle reste en mémoire
+      // Ne jamais supprimer l'iframe - elle reste en mémoire
     }
   }, [mounted])
 
-  // Gérer la visibilité - simplement s'assurer que l'iframe reste attachée
+  // S'assurer que l'iframe reste attachée lors des changements de visibilité
   useEffect(() => {
     const handleVisibilityChange = () => {
-      // Si l'iframe a été perdue, la remettre
       if (globalIframe && !globalIframe.parentNode && containerRef.current) {
         containerRef.current.appendChild(globalIframe)
       }
     }
 
     const handleFocus = () => {
-      // Vérifier que l'iframe est toujours là
       if (globalIframe && !globalIframe.parentNode && containerRef.current) {
         containerRef.current.appendChild(globalIframe)
       }
@@ -149,7 +117,6 @@ const N8NPageContent = React.memo(() => {
           ref={containerRef}
           className="w-full h-[calc(100vh-4rem)]"
           suppressHydrationWarning
-          style={{ position: 'relative' }}
         />
       </MainLayout>
     </ProtectedRoute>

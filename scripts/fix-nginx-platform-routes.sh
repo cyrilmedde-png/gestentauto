@@ -129,3 +129,4 @@ echo "   2. Les logs nginx: tail -f /var/log/nginx/access.log"
 echo "   3. Les logs nginx erreurs: tail -f /var/log/nginx/error.log"
 
 
+

@@ -92,3 +92,4 @@ echo "  3. Testez N8N: https://www.talosprimes.com/platform/n8n"
 echo "  4. Changez d'onglet et revenez - l'iframe NE DOIT PAS recharger"
 echo ""
 
+
