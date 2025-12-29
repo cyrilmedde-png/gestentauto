@@ -1,54 +1,81 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import React from 'react'
 
 // Variable globale pour persister l'iframe entre les remontages
-// Cela empêche le rechargement lors du changement d'onglet
+// Stockée directement dans document.body pour éviter les remontages React
 let globalIframe: HTMLIFrameElement | null = null
 let iframeLoaded = false
+let iframeContainer: HTMLDivElement | null = null
 
-const N8NPageContent = React.memo(() => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [loading, setLoading] = useState(!iframeLoaded)
-
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    // Si l'iframe globale existe déjà, la réutiliser
-    if (globalIframe) {
-      // Si l'iframe est dans un autre conteneur, la déplacer
-      if (globalIframe.parentNode && globalIframe.parentNode !== containerRef.current) {
-        containerRef.current.appendChild(globalIframe)
-      } else if (!globalIframe.parentNode) {
-        // Si l'iframe n'a pas de parent, l'ajouter
-        containerRef.current.appendChild(globalIframe)
-      }
-      
-      // Si déjà chargée, ne pas afficher le loader
-      if (iframeLoaded) {
-        setLoading(false)
-      }
-      return
+// Fonction pour créer/mettre à jour l'iframe de manière persistante
+function ensureIframeExists(targetContainer: HTMLDivElement) {
+  // Si l'iframe existe déjà, juste la déplacer si nécessaire
+  if (globalIframe && iframeContainer) {
+    if (globalIframe.parentNode !== targetContainer) {
+      // Déplacer l'iframe vers le nouveau conteneur
+      targetContainer.appendChild(globalIframe)
+      iframeContainer = targetContainer
     }
+    return globalIframe
+  }
 
-    // Créer l'iframe une seule fois dans toute la vie de l'application
+  // Créer le conteneur si nécessaire
+  if (!iframeContainer) {
+    iframeContainer = targetContainer
+  }
+
+  // Créer l'iframe une seule fois
+  if (!globalIframe) {
     const iframe = document.createElement('iframe')
     iframe.src = 'https://n8n.talosprimes.com'
     iframe.className = 'w-full h-full border-0 rounded-lg'
     iframe.title = 'N8N - Automatisation'
     iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen')
     iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox')
+    iframe.style.display = 'block'
+    iframe.style.width = '100%'
+    iframe.style.height = '100%'
     
     iframe.onload = () => {
       iframeLoaded = true
-      setLoading(false)
+      // Déclencher un événement personnalisé pour notifier le chargement
+      window.dispatchEvent(new CustomEvent('n8n-iframe-loaded'))
     }
 
     globalIframe = iframe
-    containerRef.current.appendChild(iframe)
+    iframeContainer.appendChild(iframe)
+  }
+
+  return globalIframe
+}
+
+const N8NPageContent = React.memo(() => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [loading, setLoading] = useState(!iframeLoaded)
+  const [mounted, setMounted] = useState(false)
+
+  // S'assurer que le composant est monté côté client
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Gérer l'iframe de manière persistante
+  useEffect(() => {
+    if (!mounted || !containerRef.current) return
+
+    // Créer/mettre à jour l'iframe
+    ensureIframeExists(containerRef.current)
+
+    // Écouter l'événement de chargement
+    const handleIframeLoaded = () => {
+      setLoading(false)
+    }
+    window.addEventListener('n8n-iframe-loaded', handleIframeLoaded)
 
     // Timeout de sécurité
     const timeout = setTimeout(() => {
@@ -58,25 +85,65 @@ const N8NPageContent = React.memo(() => {
       }
     }, 5000)
 
-    // Ne jamais nettoyer - garder l'iframe en mémoire pour éviter le rechargement
-    return () => {
-      clearTimeout(timeout)
-      // Ne pas supprimer l'iframe du DOM - elle reste en mémoire
+    // Si l'iframe est déjà chargée, ne pas afficher le loader
+    if (iframeLoaded) {
+      setLoading(false)
     }
-  }, [])
 
-  // Empêcher le rechargement lors des événements de visibilité
+    return () => {
+      window.removeEventListener('n8n-iframe-loaded', handleIframeLoaded)
+      clearTimeout(timeout)
+      // NE JAMAIS supprimer l'iframe - elle reste en mémoire
+    }
+  }, [mounted])
+
+  // Empêcher tout rechargement lors des événements de visibilité
   useEffect(() => {
+    // Intercepter et empêcher les comportements par défaut
+    const preventReload = (e: Event) => {
+      e.stopPropagation()
+      // Ne rien faire - l'iframe reste intacte
+    }
+
+    // Empêcher les rechargements lors du changement d'onglet
     const handleVisibilityChange = () => {
       // Ne rien faire - l'iframe reste en mémoire
+      if (globalIframe && !globalIframe.parentNode && containerRef.current) {
+        // Si l'iframe a été perdue, la remettre
+        containerRef.current.appendChild(globalIframe)
+      }
     }
 
+    const handleFocus = () => {
+      // Vérifier que l'iframe est toujours là
+      if (globalIframe && !globalIframe.parentNode && containerRef.current) {
+        containerRef.current.appendChild(globalIframe)
+      }
+    }
+
+    const handleBlur = () => {
+      // Ne rien faire
+    }
+
+    // Écouter les événements mais ne pas permettre de rechargement
     document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true })
+    window.addEventListener('focus', handleFocus, { passive: true })
+    window.addEventListener('blur', handleBlur, { passive: true })
+    
+    // Empêcher les rechargements de page
+    window.addEventListener('beforeunload', preventReload)
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('beforeunload', preventReload)
     }
   }, [])
+
+  if (!mounted) {
+    return null
+  }
 
   if (loading) {
     return (
@@ -100,6 +167,7 @@ const N8NPageContent = React.memo(() => {
           ref={containerRef}
           className="w-full h-[calc(100vh-4rem)]"
           suppressHydrationWarning
+          style={{ position: 'relative' }}
         />
       </MainLayout>
     </ProtectedRoute>
