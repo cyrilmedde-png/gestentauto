@@ -75,8 +75,8 @@ export function Sidebar() {
     { icon: UserPlus, label: 'Leads', href: '/platform/leads', moduleName: 'leads' },
     { icon: UserCheck, label: 'Onboarding', href: '/platform/onboarding', moduleName: 'starter' },
   ].filter(item => {
-    // Le module "starter" est toujours accessible
-    if (item.moduleName === 'starter') return true
+    // Les modules core de la plateforme sont toujours accessibles
+    if (item.moduleName === 'starter' || item.moduleName === 'leads') return true
     // Vérifier l'accès pour les autres modules
     return hasModule(item.moduleName)
   })
