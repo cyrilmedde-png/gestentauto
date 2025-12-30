@@ -219,7 +219,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { \"success\": true, \"message\": \"Inscription réussie. Consultez votre email pour vos identifiants.\", \"user_id\": $node[\"Créer Utilisateur\"].json.user_id } }}"
+        "responseBody": "={{ { \"success\": true, \"message\": \"Inscription réussie. Consultez votre email pour vos identifiants.\" } }}"
       },
       "id": "response-success",
       "name": "Réponse Succès",

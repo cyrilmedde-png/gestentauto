@@ -91,25 +91,39 @@ export async function POST(request: Request) {
       console.log('📄 Content-Type:', contentType)
       
       if (contentType && contentType.includes('application/json')) {
-        n8nData = await n8nResponse.json()
-        console.log('✅ Données N8N reçues:', n8nData)
+        try {
+          const responseText = await n8nResponse.text()
+          console.log('📝 Réponse brute N8N:', responseText)
+          
+          if (responseText && responseText.trim().length > 0) {
+            n8nData = JSON.parse(responseText)
+            console.log('✅ Données N8N reçues:', n8nData)
+          } else {
+            console.log('⚠️ Réponse N8N vide')
+          }
+        } catch (parseError) {
+          console.error('⚠️ Erreur parsing JSON (non bloquant):', parseError instanceof Error ? parseError.message : parseError)
+          // On continue quand même, l'inscription a réussi
+        }
       } else {
         const textResponse = await n8nResponse.text()
         console.log('⚠️ Réponse N8N (non-JSON):', textResponse)
       }
+      
+      console.log('✅ Workflow N8N exécuté avec succès')
+      
     } catch (n8nError) {
       console.error('💥 Exception lors de l\'appel N8N:', n8nError)
       console.error('💥 Message d\'erreur:', n8nError instanceof Error ? n8nError.message : 'Erreur inconnue')
-      console.error('💥 Stack:', n8nError instanceof Error ? n8nError.stack : '')
       
       return NextResponse.json(
         {
           success: false,
-          error: `Impossible de contacter le workflow N8N. ${n8nError instanceof Error ? n8nError.message : 'Erreur de connexion'}`,
+          error: `Le workflow N8N n'a pas pu être contacté. ${n8nError instanceof Error ? n8nError.message : 'Erreur de connexion'}`,
           debug: {
             errorType: n8nError instanceof Error ? n8nError.constructor.name : 'Unknown',
             errorMessage: n8nError instanceof Error ? n8nError.message : String(n8nError),
-            suggestion: 'Vérifiez que N8N est en ligne et que le workflow "Inscription Utilisateur Automatique" est ACTIVÉ (bouton vert).',
+            suggestion: 'Vérifiez que N8N est en ligne et que le workflow est activé.',
           }
         },
         { status: 500 }
