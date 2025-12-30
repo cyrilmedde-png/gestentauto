@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe/config'
-import { cookies } from 'next/headers'
 
 /**
  * POST /api/stripe/subscriptions/cancel
@@ -9,10 +8,9 @@ import { cookies } from 'next/headers'
  * 
  * Body: { reason?: string, cancel_at_period_end?: boolean }
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(cookieStore)
+    const supabase = await createServerClient(request)
 
     // Vérifier l'authentification
     const { data: { user }, error: authError } = await supabase.auth.getUser()

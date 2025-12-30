@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { cookies } from 'next/headers'
 
 /**
  * GET /api/stripe/plans/list
@@ -8,8 +7,7 @@ import { cookies } from 'next/headers'
  */
 export async function GET() {
   try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(cookieStore)
+    const supabase = await createServerClient()
 
     // Récupérer toutes les formules actives
     const { data: plans, error } = await supabase
