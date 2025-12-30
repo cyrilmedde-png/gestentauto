@@ -1,0 +1,130 @@
+{
+  "name": "Créer Essai (Envoi Identifiants)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "creer-essai",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-creer-essai",
+      "name": "Webhook Créer Essai",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 400],
+      "webhookId": "creer-essai"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/email/send",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.body.email }}"
+            },
+            {
+              "name": "subject",
+              "value": "🎉 Votre essai gratuit est activé !"
+            },
+            {
+              "name": "html",
+              "value": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;\"><div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center; border-radius: 10px 10px 0 0;\"><h1 style=\"color: white; margin: 0; font-size: 28px;\">🎉 Votre essai est activé !</h1></div><div style=\"background-color: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\"><p style=\"font-size: 16px; color: #333; margin-bottom: 15px;\">Bonjour <strong>{{ $json.body.first_name }} {{ $json.body.last_name }}</strong>,</p><p style=\"font-size: 16px; color: #333; margin-bottom: 25px;\">Nous sommes ravis de vous accueillir sur <strong>Talos Prime</strong> ! Votre période d'essai gratuit de <strong>{{ $json.body.duration_days }} jours</strong> vient de commencer.</p><div style=\"background: #f0f9ff; border-left: 4px solid #2563eb; padding: 25px; margin: 30px 0; border-radius: 8px;\"><h2 style=\"color: #1e40af; margin-top: 0; font-size: 20px;\">🔐 Vos identifiants de connexion</h2><p style=\"margin: 15px 0; font-size: 15px;\"><strong>Email :</strong> <span style=\"color: #2563eb;\">{{ $json.body.email }}</span></p><p style=\"margin: 15px 0; font-size: 15px;\"><strong>Mot de passe :</strong></p><div style=\"background: #dbeafe; padding: 15px; border-radius: 6px; margin: 10px 0;\"><code style=\"font-size: 18px; font-weight: bold; color: #1e40af; letter-spacing: 1px;\">{{ $json.body.password }}</code></div><p style=\"margin: 15px 0; font-size: 13px; color: #666;\">⚠️ Conservez ce mot de passe en lieu sûr. Vous pourrez le modifier après votre première connexion.</p></div><div style=\"text-align: center; margin: 35px 0;\"><a href=\"https://www.talosprimes.com/auth/login\" style=\"display: inline-block; background: #2563eb; color: white; padding: 16px 45px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);\">🚀 Se connecter maintenant</a></div><div style=\"background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 30px 0; border-radius: 8px;\"><p style=\"margin: 0; font-size: 15px; color: #92400e;\"><strong>⏰ Votre essai expire le :</strong> {{ $json.body.trial_end_date }}</p></div><div style=\"margin: 30px 0;\"><h3 style=\"color: #1e40af; font-size: 18px; margin-bottom: 15px;\">📦 Modules activés pour votre essai :</h3><ul style=\"list-style: none; padding: 0;\"><li style=\"padding: 8px 0; font-size: 15px;\">✅ CRM & Gestion des Leads</li><li style=\"padding: 8px 0; font-size: 15px;\">✅ Gestion des Clients</li><li style=\"padding: 8px 0; font-size: 15px;\">✅ Facturation & Devis</li></ul></div><div style=\"background: #f0fdf4; border: 1px solid #86efac; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #15803d; font-size: 16px; margin-top: 0;\">💡 Pour bien démarrer :</h3><ol style=\"color: #166534; font-size: 14px; line-height: 1.8;\"><li>Connectez-vous avec vos identifiants ci-dessus</li><li>Explorez le tableau de bord et les différents modules</li><li>Créez votre premier lead ou client</li><li>Testez les fonctionnalités de facturation</li></ol></div><div style=\"margin-top: 35px; padding-top: 25px; border-top: 1px solid #e5e7eb;\"><p style=\"font-size: 15px; color: #333; margin-bottom: 10px;\">Besoin d'aide ? Notre équipe est là pour vous :</p><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">📧 Email : support@talosprimes.com</p><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">📱 Téléphone : +33 X XX XX XX XX</p><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">💬 Chat en direct : Disponible dans l'application</p></div><p style=\"font-size: 16px; color: #333; margin-top: 35px; text-align: center;\">À très vite sur Talos Prime ! 🚀</p><p style=\"font-size: 14px; color: #999; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;\">L'équipe Talos Prime</p></div><div style=\"text-align: center; padding: 20px; font-size: 12px; color: #999;\"><p>© 2025 Talos Prime - Tous droits réservés</p></div></div>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-email-identifiants",
+      "name": "Email Identifiants Complet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [470, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/sms/send",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.body.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "🎉 Votre essai Talos Prime est activé ! Connectez-vous sur www.talosprimes.com/auth/login avec l'email reçu. Bon essai ! 🚀"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-sms-essai-active",
+      "name": "SMS Essai Activé",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Identifiants envoyés avec succès\" } }}"
+      },
+      "id": "response-success-essai",
+      "name": "Réponse Succès",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Créer Essai": {
+      "main": [
+        [
+          {
+            "node": "Email Identifiants Complet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Identifiants Complet": {
+      "main": [
+        [
+          {
+            "node": "SMS Essai Activé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS Essai Activé": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1",
+  "id": "creer-essai",
+  "meta": {
+    "instanceId": "n8n-talosprimes"
+  },
+  "tags": []
+}
+

@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedPlatformRoute } from '@/components/auth/ProtectedPlatformRoute'
 import { LeadFormModal } from '@/components/leads/LeadFormModal'
+import { CreateTrialModal } from '@/components/platform/CreateTrialModal'
 import { useAuth } from '@/components/auth/AuthProvider'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Plus, Rocket } from 'lucide-react'
 
 interface Lead {
   id: string
@@ -57,6 +58,8 @@ export default function LeadsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isTrialModalOpen, setIsTrialModalOpen] = useState(false)
+  const [selectedLeadForTrial, setSelectedLeadForTrial] = useState<Lead | null>(null)
 
   useEffect(() => {
     loadLeads()
@@ -102,6 +105,22 @@ export default function LeadsPage() {
   const handleEdit = (lead: Lead) => {
     setEditingLead(lead)
     setIsEditModalOpen(true)
+  }
+
+  const handleCreateTrial = (lead: Lead) => {
+    setSelectedLeadForTrial(lead)
+    setIsTrialModalOpen(true)
+  }
+
+  const handleTrialCreated = () => {
+    setIsTrialModalOpen(false)
+    setSelectedLeadForTrial(null)
+    loadLeads() // Recharger la liste pour mettre à jour le statut
+  }
+
+  const canCreateTrial = (lead: Lead) => {
+    // Peut créer un essai si le lead a complété le questionnaire ou l'entretien
+    return ['questionnaire_completed', 'interview_scheduled'].includes(lead.status)
   }
 
   const handleDelete = async (leadId: string) => {
@@ -308,6 +327,15 @@ export default function LeadsPage() {
 
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2 pt-3 border-t border-border/30">
+                      {canCreateTrial(lead) && (
+                        <button
+                          onClick={() => handleCreateTrial(lead)}
+                          className="w-full flex items-center justify-center gap-2 text-green-400 hover:text-green-300 active:text-green-200 text-sm font-medium px-3 py-2.5 min-h-[44px] touch-manipulation bg-green-400/10 hover:bg-green-400/20 rounded-lg transition-colors"
+                        >
+                          <Rocket className="w-4 h-4" />
+                          Créer essai
+                        </button>
+                      )}
                       <button
                         onClick={() => handleEdit(lead)}
                         className="flex-1 text-yellow-400 hover:text-yellow-300 active:text-yellow-200 text-sm font-medium px-3 py-2.5 min-h-[44px] touch-manipulation bg-yellow-400/10 hover:bg-yellow-400/20 rounded-lg transition-colors"
@@ -391,6 +419,15 @@ export default function LeadsPage() {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                              {canCreateTrial(lead) && (
+                                <button
+                                  onClick={() => handleCreateTrial(lead)}
+                                  className="flex items-center gap-1 text-green-400 hover:text-green-300 active:text-green-200 text-sm font-medium px-2 py-1.5 min-h-[36px] touch-manipulation bg-green-400/10 hover:bg-green-400/20 rounded"
+                                >
+                                  <Rocket className="w-3 h-3" />
+                                  Essai
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleEdit(lead)}
                                 className="text-yellow-400 hover:text-yellow-300 active:text-yellow-200 text-sm font-medium px-2 py-1.5 min-h-[36px] touch-manipulation"
@@ -437,6 +474,15 @@ export default function LeadsPage() {
           onSave={handleModalSave}
           lead={editingLead}
         />
+        {selectedLeadForTrial && (
+          <CreateTrialModal
+            isOpen={isTrialModalOpen}
+            onClose={handleTrialCreated}
+            leadId={selectedLeadForTrial.id}
+            leadName={`${selectedLeadForTrial.first_name} ${selectedLeadForTrial.last_name}`}
+            leadEmail={selectedLeadForTrial.email}
+          />
+        )}
       </MainLayout>
     </ProtectedPlatformRoute>
   )

@@ -45,7 +45,7 @@ export default function RegisterPage() {
         return
       }
 
-      const response = await fetch('/api/auth/register-simple', {
+      const response = await fetch('/api/auth/register-lead', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,9 +64,9 @@ export default function RegisterPage() {
       // Succès !
       setSuccess(true)
       
-      // Rediriger vers la page de connexion après 3 secondes
+      // Rediriger vers la page d'accueil après 3 secondes
       setTimeout(() => {
-        router.push('/auth/login')
+        router.push('/')
       }, 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de l\'inscription')
@@ -82,21 +82,24 @@ export default function RegisterPage() {
             <Check className="w-8 h-8 text-green-400" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">
-            Inscription réussie ! 🎉
+            Demande enregistrée ! 🎉
           </h1>
           <p className="text-gray-300 mb-4">
-            Votre compte a été créé avec succès.
+            Merci pour votre intérêt pour Talos Prime.
           </p>
           <div className="bg-blue-900/20 border border-blue-500 rounded-lg p-4 mb-6">
             <p className="text-sm text-blue-300 font-medium mb-2">
-              📧 Consultez votre email
+              📞 Nous vous contacterons très prochainement
+            </p>
+            <p className="text-sm text-blue-200 mb-3">
+              Notre équipe va vous contacter sous <strong>24 heures</strong> pour vous présenter notre plateforme et répondre à toutes vos questions.
             </p>
             <p className="text-sm text-blue-200">
-              Nous vous avons envoyé vos identifiants de connexion à l'adresse <strong>{formData.email}</strong>
+              Un email de confirmation a été envoyé à <strong>{formData.email}</strong>
             </p>
           </div>
           <p className="text-sm text-gray-400">
-            Redirection vers la page de connexion...
+            Retour à l'accueil...
           </p>
         </div>
       </div>
