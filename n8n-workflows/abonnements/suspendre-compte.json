@@ -1,0 +1,173 @@
+{
+  "name": "Suspendre Compte (3 échecs paiement)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "suspendre-compte",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-suspendre",
+      "name": "Webhook Suspendre Compte",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 400],
+      "webhookId": "suspendre-compte"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/internal/subscriptions/suspend",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "subscription_id",
+              "value": "={{ $json.subscription_id }}"
+            },
+            {
+              "name": "reason",
+              "value": "={{ $json.reason }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "suspend-subscription",
+      "name": "Suspendre Abonnement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [470, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/email/send",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "subject",
+              "value": "🚨 Votre compte Talos Prime a été suspendu"
+            },
+            {
+              "name": "html",
+              "value": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;\"><div style=\"background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;\"><h1 style=\"color: white; margin: 0; font-size: 28px;\">🚨 Compte Suspendu</h1></div><div style=\"background-color: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\"><p style=\"font-size: 16px; color: #333; margin-bottom: 15px;\">Bonjour <strong>{{ $json.first_name || 'Cher client' }}</strong>,</p><p style=\"font-size: 16px; color: #333; margin-bottom: 25px;\">Votre compte Talos Prime a été <strong>suspendu</strong> suite à plusieurs échecs de paiement.</p><div style=\"background: #fee2e2; border-left: 4px solid #dc2626; padding: 25px; margin: 30px 0; border-radius: 8px;\"><h2 style=\"color: #991b1b; margin-top: 0; font-size: 20px;\">⚠️ Raison de la suspension</h2><p style=\"margin: 10px 0; font-size: 15px; color: #7f1d1d;\">{{ $json.reason || '3 échecs de paiement consécutifs' }}</p><p style=\"margin: 10px 0; font-size: 15px; color: #7f1d1d;\"><strong>Date de suspension :</strong> {{ $json.suspended_at }}</p></div><div style=\"background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #92400e; margin-top: 0; font-size: 18px;\">📋 Ce que cela signifie</h3><ul style=\"color: #78350f; font-size: 14px; line-height: 1.8; margin: 10px 0; padding-left: 20px;\"><li>Votre accès à l'application est <strong>temporairement bloqué</strong></li><li>Vos données sont <strong>conservées pendant 30 jours</strong></li><li>Aucun nouveau prélèvement ne sera tenté</li><li>Après 30 jours, vos données seront <strong>définitivement supprimées</strong></li></ul></div><div style=\"background: #d1fae5; border-left: 4px solid #10b981; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #047857; margin-top: 0; font-size: 18px;\">✅ Comment réactiver votre compte</h3><p style=\"margin: 10px 0; font-size: 14px; color: #065f46;\"><strong>C'est simple :</strong></p><ol style=\"color: #065f46; font-size: 14px; line-height: 1.8; margin: 10px 0; padding-left: 20px;\"><li>Cliquez sur le bouton ci-dessous</li><li>Mettez à jour votre moyen de paiement</li><li>Votre compte sera réactivé <strong>immédiatement</strong></li></ol></div><div style=\"text-align: center; margin: 35px 0;\"><a href=\"https://www.talosprimes.com/billing?action=reactivate\" style=\"display: inline-block; background: #10b981; color: white; padding: 16px 45px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);\">🔓 Réactiver mon compte maintenant</a></div><div style=\"background: #f3f4f6; border-radius: 8px; padding: 20px; margin: 30px 0;\"><p style=\"font-size: 14px; color: #4b5563; margin: 5px 0;\">💬 <strong>Besoin d'aide ou d'un délai de paiement ?</strong></p><p style=\"font-size: 14px; color: #6b7280; margin: 5px 0;\">Contactez-nous, nous sommes là pour vous aider :</p><p style=\"font-size: 14px; color: #6b7280; margin: 5px 0;\">📧 Email : billing@talosprimes.com</p><p style=\"font-size: 14px; color: #6b7280; margin: 5px 0;\">📱 Téléphone : +33 X XX XX XX XX</p></div><p style=\"font-size: 14px; color: #999; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;\">L'équipe Talos Prime</p></div></div>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-email-suspension",
+      "name": "Email Suspension",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/sms/send",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "URGENT Talos Prime: Votre compte a ete suspendu suite a des echecs de paiement. Reactivez-le sur www.talosprimes.com/billing avant suppression definitive (30j)."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-sms-suspension",
+      "name": "SMS Suspension",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 450]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Compte suspendu\" } }}"
+      },
+      "id": "response-success",
+      "name": "Réponse Succès",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 375]
+    }
+  ],
+  "connections": {
+    "Webhook Suspendre Compte": {
+      "main": [
+        [
+          {
+            "node": "Suspendre Abonnement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Suspendre Abonnement": {
+      "main": [
+        [
+          {
+            "node": "Email Suspension",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "SMS Suspension",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Suspension": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS Suspension": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-12-30T12:00:00.000Z",
+  "versionId": "1"
+}
+

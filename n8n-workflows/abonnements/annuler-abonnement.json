@@ -1,0 +1,94 @@
+{
+  "name": "Annuler Abonnement (Email Annulation)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "annuler-abonnement",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-annulation",
+      "name": "Webhook Annulation",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 400],
+      "webhookId": "annuler-abonnement"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/email/send",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "subject",
+              "value": "Annulation de votre abonnement Talos Prime confirmée"
+            },
+            {
+              "name": "html",
+              "value": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;\"><div style=\"background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;\"><h1 style=\"color: white; margin: 0; font-size: 28px;\">Annulation Confirmée</h1></div><div style=\"background-color: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\"><p style=\"font-size: 16px; color: #333; margin-bottom: 15px;\">Bonjour <strong>{{ $json.first_name || 'Cher client' }}</strong>,</p><p style=\"font-size: 16px; color: #333; margin-bottom: 25px;\">Nous avons bien reçu votre demande d'annulation. Nous sommes désolés de vous voir partir.</p><div style=\"background: #f3f4f6; border-left: 4px solid #6b7280; padding: 25px; margin: 30px 0; border-radius: 8px;\"><h2 style=\"color: #374151; margin-top: 0; font-size: 20px;\">📋 Détails de l'annulation</h2><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Formule :</strong> {{ $json.plan_name }}</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Date effective :</strong> {{ $json.cancel_at }}</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Accès jusqu'au :</strong> {{ $json.access_until }}</p></div><div style=\"background: #dbeafe; border-left: 4px solid #2563eb; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #1e40af; margin-top: 0; font-size: 18px;\">ℹ️ Ce qui se passe maintenant</h3><ul style=\"color: #1e40af; font-size: 14px; line-height: 1.8; margin: 10px 0; padding-left: 20px;\"><li>Votre abonnement reste actif jusqu'au <strong>{{ $json.access_until }}</strong></li><li>Aucun nouveau prélèvement ne sera effectué</li><li>Vous pouvez réactiver votre abonnement à tout moment</li><li>Vos données seront conservées pendant 30 jours</li></ul></div><div style=\"background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #92400e; margin-top: 0; font-size: 18px;\">💭 Partagez votre avis</h3><p style=\"margin: 10px 0; font-size: 14px; color: #78350f;\">Votre retour est précieux pour nous améliorer. Pourriez-vous nous dire pourquoi vous annulez ?</p><div style=\"text-align: center; margin-top: 15px;\"><a href=\"https://www.talosprimes.com/feedback?type=cancelation\" style=\"display: inline-block; background: #f59e0b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px;\">📝 Répondre au questionnaire (2 min)</a></div></div><div style=\"text-align: center; margin: 35px 0;\"><a href=\"https://www.talosprimes.com/billing\" style=\"display: inline-block; background: #10b981; color: white; padding: 14px 35px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); margin: 5px;\">🔄 Réactiver mon abonnement</a></div><div style=\"margin-top: 35px; padding-top: 25px; border-top: 1px solid #e5e7eb;\"><p style=\"font-size: 15px; color: #333; margin-bottom: 10px;\">Nous espérons vous revoir bientôt !</p><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">📧 Email : support@talosprimes.com</p></div><p style=\"font-size: 14px; color: #999; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;\">L'équipe Talos Prime</p></div></div>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-email-cancelation",
+      "name": "Email Annulation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [470, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Email annulation envoyé\" } }}"
+      },
+      "id": "response-success",
+      "name": "Réponse Succès",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Annulation": {
+      "main": [
+        [
+          {
+            "node": "Email Annulation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Annulation": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-12-30T12:00:00.000Z",
+  "versionId": "1"
+}
+

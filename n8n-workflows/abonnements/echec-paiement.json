@@ -1,0 +1,213 @@
+{
+  "name": "Échec Paiement (Alertes)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "echec-paiement",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-echec",
+      "name": "Webhook Échec Paiement",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 400],
+      "webhookId": "echec-paiement"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.attempt_count }}",
+              "operation": "smaller",
+              "value2": 3
+            }
+          ]
+        }
+      },
+      "id": "check-attempts",
+      "name": "IF - Moins de 3 échecs ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/email/send",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "subject",
+              "value": "⚠️ Échec du paiement Talos Prime - Action requise"
+            },
+            {
+              "name": "html",
+              "value": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;\"><div style=\"background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;\"><h1 style=\"color: white; margin: 0; font-size: 28px;\">⚠️ Échec du Paiement</h1></div><div style=\"background-color: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\"><p style=\"font-size: 16px; color: #333; margin-bottom: 15px;\">Bonjour <strong>{{ $json.first_name || 'Cher client' }}</strong>,</p><p style=\"font-size: 16px; color: #333; margin-bottom: 25px;\">Nous n'avons pas pu prélever le montant de votre abonnement Talos Prime.</p><div style=\"background: #fef3c7; border-left: 4px solid #f59e0b; padding: 25px; margin: 30px 0; border-radius: 8px;\"><h2 style=\"color: #92400e; margin-top: 0; font-size: 20px;\">📋 Détails</h2><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Montant :</strong> {{ $json.amount }}€</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Formule :</strong> {{ $json.plan_name }}</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Tentative :</strong> {{ $json.attempt_count }}/3</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Raison :</strong> {{ $json.failure_reason || 'Fonds insuffisants ou carte expirée' }}</p></div><div style=\"background: #fee2e2; border-left: 4px solid #dc2626; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #991b1b; margin-top: 0; font-size: 18px;\">🚨 Action requise</h3><p style=\"margin: 10px 0; font-size: 15px; color: #7f1d1d;\">Pour éviter la suspension de votre compte, veuillez mettre à jour votre moyen de paiement dans les <strong>48 heures</strong>.</p><p style=\"margin: 10px 0; font-size: 14px; color: #7f1d1d;\">Après 3 échecs consécutifs, votre compte sera automatiquement suspendu.</p></div><div style=\"text-align: center; margin: 35px 0;\"><a href=\"https://www.talosprimes.com/billing\" style=\"display: inline-block; background: #dc2626; color: white; padding: 16px 45px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);\">🔧 Mettre à jour mon moyen de paiement</a></div><div style=\"margin-top: 35px; padding-top: 25px; border-top: 1px solid #e5e7eb;\"><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">Besoin d'aide ?</p><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">📧 Email : billing@talosprimes.com</p><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">📱 Téléphone : +33 X XX XX XX XX</p></div><p style=\"font-size: 14px; color: #999; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;\">L'équipe Talos Prime</p></div></div>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-email-warning",
+      "name": "Email Alerte (< 3 échecs)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/sms/send",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "ALERTE Talos Prime: Echec paiement {{ $json.amount }}€. Mettez a jour votre carte sur www.talosprimes.com/billing pour eviter la suspension."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-sms-alert",
+      "name": "SMS Alerte",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 450]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.talosprimes.com/webhook/suspendre-compte",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "company_id",
+              "value": "={{ $json.company_id }}"
+            },
+            {
+              "name": "subscription_id",
+              "value": "={{ $json.subscription_id }}"
+            },
+            {
+              "name": "reason",
+              "value": "3 échecs de paiement consécutifs"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "trigger-suspension",
+      "name": "Déclencher Suspension",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 600]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Alertes envoyées\" } }}"
+      },
+      "id": "response-success",
+      "name": "Réponse Succès",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Échec Paiement": {
+      "main": [
+        [
+          {
+            "node": "IF - Moins de 3 échecs ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Moins de 3 échecs ?": {
+      "main": [
+        [
+          {
+            "node": "Email Alerte (< 3 échecs)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "SMS Alerte",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Déclencher Suspension",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Alerte (< 3 échecs)": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS Alerte": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Déclencher Suspension": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-12-30T12:00:00.000Z",
+  "versionId": "1"
+}
+

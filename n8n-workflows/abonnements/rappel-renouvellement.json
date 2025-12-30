@@ -1,0 +1,128 @@
+{
+  "name": "Rappel Renouvellement (J-7)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "cron-daily",
+      "name": "Cron - Tous les jours 9h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/internal/subscriptions/expiring-soon",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "days_until_renewal",
+              "value": "7"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-expiring",
+      "name": "Récupérer Abonnements J-7",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [470, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Séparer les abonnements en items individuels\nconst subscriptions = $input.first().json.subscriptions || [];\n\nreturn subscriptions.map(sub => ({ json: sub }));"
+      },
+      "id": "split-items",
+      "name": "Séparer en Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/email/send",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "subject",
+              "value": "💳 Rappel : Renouvellement Talos Prime dans 7 jours"
+            },
+            {
+              "name": "html",
+              "value": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;\"><div style=\"background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;\"><h1 style=\"color: white; margin: 0; font-size: 28px;\">💳 Rappel de Renouvellement</h1></div><div style=\"background-color: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\"><p style=\"font-size: 16px; color: #333; margin-bottom: 15px;\">Bonjour <strong>{{ $json.first_name || 'Cher client' }}</strong>,</p><p style=\"font-size: 16px; color: #333; margin-bottom: 25px;\">Votre abonnement Talos Prime sera renouvelé dans <strong>7 jours</strong>.</p><div style=\"background: #dbeafe; border-left: 4px solid #3b82f6; padding: 25px; margin: 30px 0; border-radius: 8px;\"><h2 style=\"color: #1e40af; margin-top: 0; font-size: 20px;\">📋 Prochain prélèvement</h2><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Date :</strong> {{ $json.renewal_date }}</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Montant :</strong> {{ $json.amount }}€</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Formule :</strong> {{ $json.plan_name }}</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Moyen de paiement :</strong> {{ $json.payment_method }}</p></div><div style=\"background: #f0fdf4; border: 1px solid #86efac; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #15803d; font-size: 16px; margin-top: 0;\">✅ Tout est prêt !</h3><p style=\"margin: 10px 0; font-size: 14px; color: #166534;\">Votre carte se terminant par <strong>{{ $json.card_last4 }}</strong> sera automatiquement débitée le {{ $json.renewal_date }}.</p><p style=\"margin: 10px 0; font-size: 14px; color: #166534;\">Aucune action n'est requise de votre part.</p></div><div style=\"background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #92400e; margin-top: 0; font-size: 18px;\">💡 Envie de changer ?</h3><p style=\"margin: 10px 0; font-size: 14px; color: #78350f;\">Vous pouvez à tout moment :</p><ul style=\"color: #78350f; font-size: 14px; line-height: 1.8; margin: 10px 0; padding-left: 20px;\"><li>Passer à une formule supérieure</li><li>Passer à une formule inférieure</li><li>Mettre à jour votre moyen de paiement</li><li>Annuler votre abonnement</li></ul></div><div style=\"text-align: center; margin: 35px 0;\"><a href=\"https://www.talosprimes.com/billing\" style=\"display: inline-block; background: #3b82f6; color: white; padding: 14px 35px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); margin: 5px;\">📊 Gérer mon abonnement</a></div><div style=\"margin-top: 35px; padding-top: 25px; border-top: 1px solid #e5e7eb;\"><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">Questions ?</p><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">📧 Email : billing@talosprimes.com</p></div><p style=\"font-size: 14px; color: #999; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;\">Merci de votre confiance - L'équipe Talos Prime</p></div></div>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-email-reminder",
+      "name": "Email Rappel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [910, 400]
+    }
+  ],
+  "connections": {
+    "Cron - Tous les jours 9h": {
+      "main": [
+        [
+          {
+            "node": "Récupérer Abonnements J-7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Récupérer Abonnements J-7": {
+      "main": [
+        [
+          {
+            "node": "Séparer en Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Séparer en Items": {
+      "main": [
+        [
+          {
+            "node": "Email Rappel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-30T12:00:00.000Z",
+  "versionId": "1"
+}
+

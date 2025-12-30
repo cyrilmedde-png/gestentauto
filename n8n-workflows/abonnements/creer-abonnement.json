@@ -1,0 +1,191 @@
+{
+  "name": "Créer Abonnement (Email Confirmation)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "creer-abonnement",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-creer-abonnement",
+      "name": "Webhook Créer Abonnement",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 400],
+      "webhookId": "creer-abonnement"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.email }}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{ $json.subscription_id }}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{ $json.plan_name }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "validation-data",
+      "name": "Validation Données",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [470, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/email/send",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "subject",
+              "value": "🎉 Bienvenue sur Talos Prime - Abonnement {{ $json.plan_name }} confirmé"
+            },
+            {
+              "name": "html",
+              "value": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;\"><div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center; border-radius: 10px 10px 0 0;\"><h1 style=\"color: white; margin: 0; font-size: 32px;\">🎉 Bienvenue !</h1><p style=\"color: white; margin-top: 10px; font-size: 18px;\">Votre abonnement est actif</p></div><div style=\"background-color: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\"><p style=\"font-size: 16px; color: #333; margin-bottom: 15px;\">Bonjour <strong>{{ $json.first_name || 'Cher client' }}</strong>,</p><p style=\"font-size: 16px; color: #333; margin-bottom: 25px;\">Nous sommes ravis de vous compter parmi nos clients ! Votre abonnement <strong>{{ $json.plan_name }}</strong> est maintenant actif.</p><div style=\"background: #f0f9ff; border-left: 4px solid #2563eb; padding: 25px; margin: 30px 0; border-radius: 8px;\"><h2 style=\"color: #1e40af; margin-top: 0; font-size: 20px;\">📊 Récapitulatif de votre abonnement</h2><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Formule :</strong> {{ $json.plan_name }}</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Prix :</strong> {{ $json.amount }}€/mois</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Prochain prélèvement :</strong> {{ $json.next_payment_date }}</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Statut :</strong> <span style=\"color: #10b981; font-weight: bold;\">✅ Actif</span></p></div><div style=\"text-align: center; margin: 35px 0;\"><a href=\"https://www.talosprimes.com/billing\" style=\"display: inline-block; background: #2563eb; color: white; padding: 16px 45px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);\">🎯 Gérer mon abonnement</a></div><div style=\"background: #f0fdf4; border: 1px solid #86efac; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #15803d; font-size: 16px; margin-top: 0;\">💡 Ce que vous pouvez faire maintenant :</h3><ul style=\"color: #166534; font-size: 14px; line-height: 1.8; margin: 10px 0; padding-left: 20px;\"><li>Accéder à tous les modules inclus dans votre formule</li><li>Inviter des membres de votre équipe (selon votre quota)</li><li>Configurer vos préférences et notifications</li><li>Consulter vos factures et reçus</li><li>Changer de formule à tout moment</li></ul></div><div style=\"margin-top: 35px; padding-top: 25px; border-top: 1px solid #e5e7eb;\"><p style=\"font-size: 15px; color: #333; margin-bottom: 10px;\">Besoin d'aide ?</p><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">📧 Email : support@talosprimes.com</p><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">📱 Téléphone : +33 X XX XX XX XX</p><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">💬 Chat en direct : Disponible dans l'application</p></div><p style=\"font-size: 16px; color: #333; margin-top: 35px; text-align: center;\">Merci de votre confiance ! 🚀</p><p style=\"font-size: 14px; color: #999; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;\">L'équipe Talos Prime</p></div><div style=\"text-align: center; padding: 20px; font-size: 12px; color: #999;\"><p>© 2025 Talos Prime - Tous droits réservés</p><p style=\"margin-top: 10px;\"><a href=\"https://www.talosprimes.com/billing\" style=\"color: #2563eb; text-decoration: none;\">Gérer mon abonnement</a> | <a href=\"https://www.talosprimes.com/support\" style=\"color: #2563eb; text-decoration: none;\">Support</a></p></div></div>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-email-confirmation",
+      "name": "Email Confirmation Abonnement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/sms/send",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "Bienvenue sur Talos Prime ! Votre abonnement {{ $json.plan_name }} est actif. Connectez-vous sur www.talosprimes.com"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-sms-confirmation",
+      "name": "SMS Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 450]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Emails et notifications envoyés\" } }}"
+      },
+      "id": "response-success",
+      "name": "Réponse Succès",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 375]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 400,
+        "responseBody": "={{ { \"success\": false, \"message\": \"Données invalides\" } }}"
+      },
+      "id": "response-error",
+      "name": "Réponse Erreur",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 600]
+    }
+  ],
+  "connections": {
+    "Webhook Créer Abonnement": {
+      "main": [
+        [
+          {
+            "node": "Validation Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Données": {
+      "main": [
+        [
+          {
+            "node": "Email Confirmation Abonnement",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "SMS Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Réponse Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Confirmation Abonnement": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-12-30T12:00:00.000Z",
+  "versionId": "1"
+}
+

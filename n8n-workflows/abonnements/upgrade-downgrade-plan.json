@@ -1,0 +1,170 @@
+{
+  "name": "Changement Formule (Upgrade/Downgrade)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "changement-formule",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-changement",
+      "name": "Webhook Changement Formule",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 400],
+      "webhookId": "changement-formule"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.change_type }}",
+              "value2": "upgrade"
+            }
+          ]
+        }
+      },
+      "id": "check-upgrade-downgrade",
+      "name": "IF - Upgrade ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/email/send",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "subject",
+              "value": "🚀 Upgrade vers {{ $json.new_plan_name }} confirmé !"
+            },
+            {
+              "name": "html",
+              "value": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;\"><div style=\"background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;\"><h1 style=\"color: white; margin: 0; font-size: 28px;\">🚀 Upgrade Confirmé !</h1></div><div style=\"background-color: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\"><p style=\"font-size: 16px; color: #333; margin-bottom: 15px;\">Bonjour <strong>{{ $json.first_name || 'Cher client' }}</strong>,</p><p style=\"font-size: 16px; color: #333; margin-bottom: 25px;\">Félicitations ! Vous venez de passer à la formule <strong>{{ $json.new_plan_name }}</strong>. 🎉</p><div style=\"background: #ede9fe; border-left: 4px solid #8b5cf6; padding: 25px; margin: 30px 0; border-radius: 8px;\"><h2 style=\"color: #6d28d9; margin-top: 0; font-size: 20px;\">📊 Changement</h2><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Ancienne formule :</strong> {{ $json.old_plan_name }} ({{ $json.old_price }}€/mois)</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Nouvelle formule :</strong> {{ $json.new_plan_name }} ({{ $json.new_price }}€/mois)</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Effectif :</strong> Immédiatement</p></div><div style=\"background: #dbeafe; border-left: 4px solid #2563eb; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #1e40af; margin-top: 0; font-size: 18px;\">💰 Facturation</h3><p style=\"margin: 10px 0; font-size: 14px; color: #1e3a8a;\">Le prorata a été calculé automatiquement. Vous serez facturé {{ $json.prorated_amount }}€ pour la période restante du mois en cours.</p><p style=\"margin: 10px 0; font-size: 14px; color: #1e3a8a;\">À partir du {{ $json.next_billing_date }}, vous serez facturé {{ $json.new_price }}€/mois.</p></div><div style=\"background: #f0fdf4; border: 1px solid #86efac; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #15803d; font-size: 16px; margin-top: 0;\">✨ Nouvelles fonctionnalités débloquées</h3><ul style=\"color: #166534; font-size: 14px; line-height: 1.8; margin: 10px 0; padding-left: 20px;\">{{ $json.new_features }}</ul></div><div style=\"text-align: center; margin: 35px 0;\"><a href=\"https://www.talosprimes.com/billing\" style=\"display: inline-block; background: #8b5cf6; color: white; padding: 14px 35px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);\">📊 Voir mon abonnement</a></div><p style=\"font-size: 14px; color: #999; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;\">Merci de votre confiance - L'équipe Talos Prime</p></div></div>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-email-upgrade",
+      "name": "Email Upgrade",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.talosprimes.com/api/email/send",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "subject",
+              "value": "Changement vers {{ $json.new_plan_name }} confirmé"
+            },
+            {
+              "name": "html",
+              "value": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;\"><div style=\"background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;\"><h1 style=\"color: white; margin: 0; font-size: 28px;\">Changement de Formule</h1></div><div style=\"background-color: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\"><p style=\"font-size: 16px; color: #333; margin-bottom: 15px;\">Bonjour <strong>{{ $json.first_name || 'Cher client' }}</strong>,</p><p style=\"font-size: 16px; color: #333; margin-bottom: 25px;\">Votre changement vers la formule <strong>{{ $json.new_plan_name }}</strong> a bien été effectué.</p><div style=\"background: #dbeafe; border-left: 4px solid #3b82f6; padding: 25px; margin: 30px 0; border-radius: 8px;\"><h2 style=\"color: #1e40af; margin-top: 0; font-size: 20px;\">📊 Changement</h2><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Ancienne formule :</strong> {{ $json.old_plan_name }} ({{ $json.old_price }}€/mois)</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Nouvelle formule :</strong> {{ $json.new_plan_name }} ({{ $json.new_price }}€/mois)</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Effectif :</strong> Immédiatement</p></div><div style=\"background: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #047857; margin-top: 0; font-size: 18px;\">💰 Facturation</h3><p style=\"margin: 10px 0; font-size: 14px; color: #065f46;\">Le prorata a été calculé. Vous avez été crédité de {{ $json.credit_amount }}€ pour la période non utilisée.</p><p style=\"margin: 10px 0; font-size: 14px; color: #065f46;\">À partir du {{ $json.next_billing_date }}, vous serez facturé {{ $json.new_price }}€/mois.</p></div><div style=\"text-align: center; margin: 35px 0;\"><a href=\"https://www.talosprimes.com/billing\" style=\"display: inline-block; background: #3b82f6; color: white; padding: 14px 35px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px;\">📊 Voir mon abonnement</a></div><p style=\"font-size: 14px; color: #999; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;\">Merci - L'équipe Talos Prime</p></div></div>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-email-downgrade",
+      "name": "Email Downgrade",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Email envoyé\" } }}"
+      },
+      "id": "response-success",
+      "name": "Réponse Succès",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Changement Formule": {
+      "main": [
+        [
+          {
+            "node": "IF - Upgrade ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Upgrade ?": {
+      "main": [
+        [
+          {
+            "node": "Email Upgrade",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Downgrade",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Upgrade": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Downgrade": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-12-30T12:00:00.000Z",
+  "versionId": "1"
+}
+
