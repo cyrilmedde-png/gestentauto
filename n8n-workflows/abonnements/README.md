@@ -1,211 +1,375 @@
-# 💳 Workflows - Gestion des Abonnements
+# 📦 Workflows N8N - Abonnements Stripe
 
-## Description
-Workflows pour la gestion du cycle de vie des abonnements Stripe (création, renouvellement, annulation, paiements).
+## 🎯 Description
 
----
-
-## 📁 Workflows (À créer)
-
-### 🔮 creer-abonnement.json
-**Statut** : À développer  
-**Webhook** : `/webhook/creer-abonnement`
-
-**Déclencheur** : Client converti (fin essai ou inscription directe)
-
-**Actions prévues** :
-- ✅ Création client Stripe
-- 💳 Création abonnement Stripe
-- 📧 Email confirmation abonnement
-- 📱 SMS confirmation
-- 🔄 Mise à jour statut dans `subscriptions`
+Ce dossier contient tous les workflows N8N pour la gestion automatisée des abonnements Stripe.
 
 ---
 
-### 🔮 renouveler-abonnement.json
-**Statut** : À développer  
-**Webhook** : Webhook Stripe `invoice.payment_succeeded`
+## 🔄 Workflows Disponibles (7)
 
-**Actions prévues** :
-- ✅ Mise à jour date de renouvellement
-- 📧 Email reçu de paiement
-- 🔔 Notification in-app
+### 1️⃣ `creer-abonnement.json` - Confirmation Nouvel Abonnement
 
----
+**Webhook** : `https://n8n.talosprimes.com/webhook/abonnement-cree`
 
-### 🔮 echec-paiement.json
-**Statut** : À développer  
-**Webhook** : Webhook Stripe `invoice.payment_failed`
+**Trigger** : API Route `/api/stripe/webhooks/stripe` (événement `checkout.session.completed`)
 
-**Actions prévues** :
-- ❌ Alerte échec paiement
-- 📧 Email demande mise à jour moyen de paiement
-- 📱 SMS alerte
-- 🔔 Notification in-app
-- ⏸️ Suspension compte après 3 échecs
-
----
-
-### 🔮 annuler-abonnement.json
-**Statut** : À développer  
-**Webhook** : `/webhook/annuler-abonnement`
-
-**Déclencheur** : Client demande annulation
-
-**Actions prévues** :
-- 🛑 Annulation abonnement Stripe
-- 📧 Email confirmation annulation
-- 📋 Email questionnaire satisfaction
-- 🔄 Mise à jour statut `cancelled`
-- 📊 Export données client (RGPD)
-
----
-
-### 🔮 rappel-renouvellement.json
-**Statut** : À développer  
-**Déclencheur** : Cron (3 jours avant renouvellement)
-
-**Actions prévues** :
-- 📧 Email rappel renouvellement
-- 💰 Montant à payer
-- 📅 Date de prélèvement
-
----
-
-### 🔮 upgrade-downgrade-plan.json
-**Statut** : À développer  
-**Webhook** : `/webhook/change-plan`
-
-**Déclencheur** : Client change de formule
-
-**Actions prévues** :
-- 🔄 Mise à jour abonnement Stripe (prorata)
-- 📧 Email confirmation changement
-- 🔔 Notification in-app
-- 📦 Activation/Désactivation modules
-
----
-
-## 💰 Formules Prévues
-
-| Formule | Prix (€/mois) | Utilisateurs | Modules |
-|---------|---------------|--------------|---------|
-| **Starter** | 29€ | 1 | Leads, Clients |
-| **Business** | 79€ | 5 | Tous modules |
-| **Enterprise** | 149€ | Illimité | Tous modules + API |
-
----
-
-## ⚙️ Configuration Requise
-
-### Credentials N8N
-- **Stripe API** : Clé secrète `sk_live_...`
-- **Resend API** : Pour les emails
-- **Twilio API** : Pour les SMS
-
-### Variables d'environnement
-```env
-STRIPE_SECRET_KEY=sk_live_...
-STRIPE_PUBLISHABLE_KEY=pk_live_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-RESEND_API_KEY=your_resend_key
+**Données reçues** :
+```json
+{
+  "email": "client@exemple.com",
+  "userId": "user-id",
+  "subscriptionId": "sub_xxxxx",
+  "planName": "Business",
+  "amount": 79,
+  "current_period_start": "2025-01-01",
+  "current_period_end": "2025-02-01"
+}
 ```
 
-### Webhooks Stripe à Configurer
-- `customer.subscription.created`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
-- `invoice.payment_succeeded`
-- `invoice.payment_failed`
-- `invoice.upcoming`
-
-**URL webhook** : `https://n8n.talosprimes.com/webhook/stripe-events`
+**Actions** :
+1. Envoie email de bienvenue professionnel
+2. Récapitulatif abonnement + prix
+3. Lien vers plateforme
+4. Informations support
 
 ---
 
-## 🔄 Cycle de Vie d'un Abonnement
+### 2️⃣ `renouveler-abonnement.json` - Reçu de Paiement Mensuel
 
-```
-Essai terminé → Conversion
-    ↓
-Création abonnement Stripe
-    ↓
-Email confirmation + SMS
-    ↓
-Renouvellement mensuel automatique
-    ↓
-    ├── Paiement OK → Email reçu
-    └── Paiement KO → Email + SMS alerte
-                    ↓
-                3 échecs → Suspension
-    ↓
-Client annule OU Upgrade/Downgrade
-    ↓
-Email confirmation + MAJ Stripe
+**Webhook** : `https://n8n.talosprimes.com/webhook/renouveler-abonnement`
+
+**Trigger** : API Route `/api/stripe/webhooks/stripe` (événement `invoice.payment_succeeded`)
+
+**Données reçues** :
+```json
+{
+  "email": "client@exemple.com",
+  "first_name": "Jean",
+  "amount": 79,
+  "payment_date": "2025-02-01",
+  "plan_name": "Business",
+  "invoice_number": "INV-2025-001",
+  "next_payment_date": "2025-03-01",
+  "invoice_pdf": "https://..."
+}
 ```
 
----
-
-## 📊 Statuts des Abonnements
-
-| Statut | Description | Action |
-|--------|-------------|--------|
-| `active` | Abonnement actif | Client utilise l'app |
-| `past_due` | Paiement en retard | Envoyer relances |
-| `unpaid` | Non payé (après relances) | Suspendre compte |
-| `canceled` | Annulé | Archiver données |
-| `incomplete` | Paiement initial en attente | Relancer |
-| `trialing` | En période d'essai | Préparer conversion |
+**Actions** :
+1. Envoie reçu de paiement
+2. Détails facture
+3. Lien téléchargement PDF
+4. Date prochain prélèvement
 
 ---
 
-## 🧪 Tests
+### 3️⃣ `echec-paiement.json` - Alertes Échec Paiement
 
-### Environnement de Test Stripe
-1. Utiliser les clés **test** de Stripe (`sk_test_...`)
-2. Utiliser les cartes de test :
-   - `4242 4242 4242 4242` : Paiement réussi
-   - `4000 0000 0000 0002` : Paiement refusé
-   - Date : N'importe quelle date future
-   - CVC : N'importe quel 3 chiffres
+**Webhook** : `https://n8n.talosprimes.com/webhook/echec-paiement`
 
-### Tester les Webhooks
+**Trigger** : API Route `/api/stripe/webhooks/stripe` (événement `invoice.payment_failed`)
+
+**Données reçues** :
+```json
+{
+  "email": "client@exemple.com",
+  "first_name": "Jean",
+  "phone": "+33612345678",
+  "amount": 79,
+  "plan_name": "Business",
+  "attempt_count": 1,
+  "failure_reason": "Fonds insuffisants",
+  "company_id": "xxx",
+  "subscription_id": "sub_xxx"
+}
+```
+
+**Actions** :
+- **Si < 3 échecs** :
+  1. Envoie email alerte
+  2. Envoie SMS alerte
+  3. Demande mise à jour carte
+  
+- **Si 3 échecs** :
+  1. Déclenche workflow `suspendre-compte`
+  2. Email/SMS suspension
+
+---
+
+### 4️⃣ `annuler-abonnement.json` - Confirmation Annulation
+
+**Webhook** : `https://n8n.talosprimes.com/webhook/annuler-abonnement`
+
+**Trigger** : API Route `/api/stripe/webhooks/stripe` (événement `customer.subscription.deleted`)
+
+**Données reçues** :
+```json
+{
+  "email": "client@exemple.com",
+  "first_name": "Jean",
+  "plan_name": "Business",
+  "cancel_at": "2025-02-01",
+  "access_until": "2025-02-01"
+}
+```
+
+**Actions** :
+1. Envoie email annulation
+2. Date fin d'accès
+3. Conservation données (30j)
+4. Lien questionnaire satisfaction
+5. Bouton réactivation
+
+---
+
+### 5️⃣ `upgrade-downgrade-plan.json` - Changement de Formule
+
+**Webhook** : `https://n8n.talosprimes.com/webhook/changement-formule`
+
+**Trigger** : API Route `/api/stripe/webhooks/stripe` (événement `customer.subscription.updated`)
+
+**Données reçues** :
+```json
+{
+  "email": "client@exemple.com",
+  "first_name": "Jean",
+  "change_type": "upgrade", // ou "downgrade"
+  "old_plan_name": "Starter",
+  "new_plan_name": "Business",
+  "old_price": 29,
+  "new_price": 79,
+  "prorated_amount": 25,
+  "next_billing_date": "2025-02-01",
+  "new_features": "<li>5 utilisateurs</li><li>10 GB stockage</li>..."
+}
+```
+
+**Actions** :
+- **Si Upgrade** :
+  1. Envoie email félicitations
+  2. Nouvelles fonctionnalités
+  3. Calcul prorata
+  
+- **Si Downgrade** :
+  1. Envoie email confirmation
+  2. Crédit prorata
+
+---
+
+### 6️⃣ `rappel-renouvellement.json` - Rappel J-7
+
+**Trigger** : Cron quotidien (tous les jours à 9h)
+
+**API appelée** : `https://www.talosprimes.com/api/internal/subscriptions/expiring-soon`
+
+**Données reçues** :
+```json
+{
+  "subscriptions": [
+    {
+      "email": "client@exemple.com",
+      "first_name": "Jean",
+      "renewal_date": "2025-02-01",
+      "amount": 79,
+      "plan_name": "Business",
+      "payment_method": "Visa **** 4242",
+      "card_last4": "4242"
+    }
+  ]
+}
+```
+
+**Actions** :
+1. Récupère abonnements J-7
+2. Envoie email rappel pour chaque client
+3. Informe du prélèvement à venir
+4. Lien pour changer formule/moyen paiement
+
+---
+
+### 7️⃣ `suspendre-compte.json` - Suspension Compte
+
+**Webhook** : `https://n8n.talosprimes.com/webhook/suspendre-compte`
+
+**Trigger** : 
+- Workflow `echec-paiement.json` (après 3 échecs)
+- Admin manuel
+
+**Données reçues** :
+```json
+{
+  "email": "client@exemple.com",
+  "first_name": "Jean",
+  "phone": "+33612345678",
+  "subscription_id": "sub_xxx",
+  "company_id": "xxx",
+  "reason": "3 échecs de paiement consécutifs",
+  "suspended_at": "2025-01-15"
+}
+```
+
+**Actions** :
+1. Appelle API `/api/internal/subscriptions/suspend`
+2. Envoie email suspension détaillé
+3. Envoie SMS urgence
+4. Explique démarches réactivation
+5. Informe suppression données (30j)
+
+---
+
+## 📊 Flow Global
+
+```
+1. CLIENT s'abonne
+   → creer-abonnement.json
+   
+2. TOUS LES MOIS : Renouvellement auto
+   → renouveler-abonnement.json
+   
+3. SI échec paiement
+   → echec-paiement.json
+   → (après 3 échecs) suspendre-compte.json
+   
+4. SI CLIENT annule
+   → annuler-abonnement.json
+   
+5. SI CLIENT change formule
+   → upgrade-downgrade-plan.json
+   
+6. TOUS LES JOURS (J-7)
+   → rappel-renouvellement.json
+```
+
+---
+
+## 🔧 Installation
+
+### 1. Importer les Workflows
+
+Pour chaque fichier `.json` :
+
+1. Se connecter à https://n8n.talosprimes.com
+2. Cliquer **"+ → Import from File"**
+3. Sélectionner le fichier
+4. Vérifier/Configurer les credentials :
+   - **Resend** (Email)
+   - **Twilio** (SMS, optionnel en dev)
+5. **ACTIVER le workflow** ⚡ (bouton en haut à droite)
+
+### 2. Vérifier les Webhooks
+
+**URLs à configurer dans Stripe Dashboard** :
+```
+https://n8n.talosprimes.com/webhook/abonnement-cree
+https://n8n.talosprimes.com/webhook/renouveler-abonnement
+https://n8n.talosprimes.com/webhook/echec-paiement
+https://n8n.talosprimes.com/webhook/annuler-abonnement
+https://n8n.talosprimes.com/webhook/changement-formule
+https://n8n.talosprimes.com/webhook/suspendre-compte
+```
+
+**Note** : Ces webhooks sont appelés depuis l'API Route `/api/stripe/webhooks/stripe`, pas directement par Stripe.
+
+---
+
+## 🧪 Tester les Workflows
+
+### Test Local
+
 ```bash
-# Installer Stripe CLI
-brew install stripe/stripe-cli/stripe
+# Tester un webhook manuellement
+curl -X POST https://n8n.talosprimes.com/webhook/abonnement-cree \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@exemple.com",
+    "first_name": "Test",
+    "last_name": "User",
+    "amount": 79,
+    "plan_name": "Business"
+  }'
+```
 
-# Écouter les webhooks en local
-stripe listen --forward-to https://n8n.talosprimes.com/webhook/stripe-events
+### Test avec Stripe CLI
 
-# Déclencher un événement test
-stripe trigger payment_intent.succeeded
+```bash
+# Déclencher un événement Stripe
+stripe trigger checkout.session.completed
+
+# Vérifier logs N8N
+# → Aller sur n8n.talosprimes.com
+# → Cliquer sur le workflow
+# → Onglet "Executions"
 ```
 
 ---
 
-## 📚 Documentation à Créer
+## 📧 Credentials Requises
 
-- [ ] Guide intégration Stripe
-- [ ] Guide webhooks Stripe
-- [ ] API routes pour abonnements
-- [ ] UI changement de formule
-- [ ] UI annulation abonnement
-- [ ] Politique de remboursement
+### Resend (Email)
+
+1. Se connecter à https://resend.com
+2. Créer API Key
+3. Configurer dans N8N :
+   - **Name** : `Resend API`
+   - **API Key** : `re_xxxxx`
+
+### Twilio (SMS) - Optionnel
+
+1. Se connecter à https://twilio.com
+2. Récupérer Account SID + Auth Token
+3. Configurer dans N8N :
+   - **Name** : `Twilio SMS`
+   - **Account SID** : `ACxxxxx`
+   - **Auth Token** : `xxxxx`
 
 ---
 
-## 🔧 Maintenance
+## 📈 Monitoring
 
-- **Responsable** : Admin plateforme
-- **Statut** : 🔮 Planifié
-- **Priorité** : Haute
-- **Date début prévue** : Après mise en place des essais
+### Vérifier les Executions
+
+1. Aller sur https://n8n.talosprimes.com
+2. Cliquer sur un workflow
+3. Onglet **"Executions"**
+4. Voir :
+   - ✅ Succès
+   - ❌ Erreurs
+   - 🕐 Temps d'exécution
+   - 📊 Données input/output
+
+### Logs Application
+
+```bash
+# Sur le VPS
+pm2 logs n8n --lines 50
+
+# Filtrer par workflow
+pm2 logs n8n | grep "abonnement-cree"
+```
 
 ---
 
-## 📚 Ressources
+## ⚠️ Notes Importantes
 
-- [Documentation Stripe](https://stripe.com/docs)
-- [Stripe Webhooks](https://stripe.com/docs/webhooks)
-- [Stripe Testing](https://stripe.com/docs/testing)
+1. **Tous les workflows doivent être ACTIVÉS** pour fonctionner
+2. **Mode Test** : Utiliser des adresses email réelles pour recevoir les mails
+3. **SMS** : Désactivés en mode dev (Twilio trial), activés en prod
+4. **Cron** : `rappel-renouvellement.json` tourne tous les jours à 9h
+5. **Webhooks** : Appelés via API Route, pas directement par Stripe
 
+---
+
+## 🎯 Prochaines Améliorations
+
+- [ ] Ajouter notifications Slack pour admins
+- [ ] Workflow remerciement après 1 mois
+- [ ] Workflow demande avis après 3 mois
+- [ ] Workflow offre parrainage
+- [ ] Dashboard analytics N8N
+
+---
+
+**Créé le** : 30 décembre 2025  
+**Status** : ✅ Complet et Fonctionnel  
+**Workflows** : 7/7  
+**Emails Templates** : HTML responsive + Dark mode
