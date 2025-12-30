@@ -43,6 +43,10 @@ export async function POST(request: Request) {
     let n8nData = null
     
     try {
+      console.log('🔄 Appel du webhook N8N...')
+      console.log('URL:', 'https://n8n.talosprimes.com/webhook/inscription-utilisateur')
+      console.log('Données:', { first_name, last_name, email, phone, company })
+      
       const n8nResponse = await fetch(
         'https://n8n.talosprimes.com/webhook/inscription-utilisateur',
         {
@@ -60,13 +64,23 @@ export async function POST(request: Request) {
         }
       )
 
+      console.log('📊 Réponse N8N Status:', n8nResponse.status)
+      console.log('📊 Réponse N8N Headers:', Object.fromEntries(n8nResponse.headers.entries()))
+
       if (!n8nResponse.ok) {
         const errorText = await n8nResponse.text()
-        console.error('Erreur N8N:', errorText)
+        console.error('❌ Erreur N8N Status:', n8nResponse.status)
+        console.error('❌ Erreur N8N Response:', errorText)
+        
         return NextResponse.json(
           {
             success: false,
-            error: 'Le workflow N8N n\'est pas accessible. Vérifiez qu\'il est activé.',
+            error: `Le workflow N8N a retourné une erreur (Code ${n8nResponse.status}). Détails: ${errorText.substring(0, 200)}`,
+            debug: {
+              status: n8nResponse.status,
+              statusText: n8nResponse.statusText,
+              response: errorText.substring(0, 500),
+            }
           },
           { status: 500 }
         )
@@ -74,18 +88,29 @@ export async function POST(request: Request) {
 
       // Vérifier si la réponse contient du JSON
       const contentType = n8nResponse.headers.get('content-type')
+      console.log('📄 Content-Type:', contentType)
+      
       if (contentType && contentType.includes('application/json')) {
         n8nData = await n8nResponse.json()
+        console.log('✅ Données N8N reçues:', n8nData)
       } else {
         const textResponse = await n8nResponse.text()
-        console.log('Réponse N8N (non-JSON):', textResponse)
+        console.log('⚠️ Réponse N8N (non-JSON):', textResponse)
       }
     } catch (n8nError) {
-      console.error('Erreur lors de l\'appel N8N:', n8nError)
+      console.error('💥 Exception lors de l\'appel N8N:', n8nError)
+      console.error('💥 Message d\'erreur:', n8nError instanceof Error ? n8nError.message : 'Erreur inconnue')
+      console.error('💥 Stack:', n8nError instanceof Error ? n8nError.stack : '')
+      
       return NextResponse.json(
         {
           success: false,
-          error: 'Le workflow N8N n\'est pas configuré. Veuillez l\'importer et l\'activer dans N8N.',
+          error: `Impossible de contacter le workflow N8N. ${n8nError instanceof Error ? n8nError.message : 'Erreur de connexion'}`,
+          debug: {
+            errorType: n8nError instanceof Error ? n8nError.constructor.name : 'Unknown',
+            errorMessage: n8nError instanceof Error ? n8nError.message : String(n8nError),
+            suggestion: 'Vérifiez que N8N est en ligne et que le workflow "Inscription Utilisateur Automatique" est ACTIVÉ (bouton vert).',
+          }
         },
         { status: 500 }
       )
