@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerClient, createAdminClient } from '@/lib/supabase/server'
+import { isPlatformCompany } from '@/lib/platform/supabase'
 
 export async function POST(request: Request) {
   try {
@@ -16,25 +17,25 @@ export async function POST(request: Request) {
       )
     }
 
-    // Vérifier que l'utilisateur est admin plateforme
+    // Vérifier que l'utilisateur est admin plateforme (même logique que check-user-type)
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('role_id, roles(name)')
+      .select('company_id')
       .eq('id', user.id)
       .single()
 
-    if (userError || !userData) {
+    if (userError || !userData || !userData.company_id) {
       return NextResponse.json(
         { success: false, error: 'Utilisateur non trouvé' },
         { status: 404 }
       )
     }
 
-    // Vérifier le rôle
-    const roleName = (userData.roles as any)?.name || (userData.roles as any)?.[0]?.name
-    if (roleName !== 'Administrateur Plateforme') {
+    // Utiliser la même logique que ProtectedPlatformRoute
+    const isAdmin = await isPlatformCompany(userData.company_id)
+    if (!isAdmin) {
       return NextResponse.json(
-        { success: false, error: 'Accès non autorisé. Réservé aux administrateurs.' },
+        { success: false, error: 'Accès non autorisé. Réservé aux administrateurs plateforme.' },
         { status: 403 }
       )
     }
