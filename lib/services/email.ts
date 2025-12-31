@@ -17,7 +17,7 @@ function createResendClient() {
 /**
  * Configuration par défaut pour les emails
  */
-const DEFAULT_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@talosprime.fr'
+const DEFAULT_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@talosprimes.com'
 const DEFAULT_FROM_NAME = process.env.RESEND_FROM_NAME || 'TalosPrime'
 
 /**
