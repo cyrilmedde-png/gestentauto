@@ -1,0 +1,310 @@
+{
+  "name": "Gestion des Plans - Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "plan-modified",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-plan-modified",
+      "name": "Webhook Plan Modifié",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "plan-modified"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.planName }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "validate-data",
+      "name": "Valider Données",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "notifications@talosprimes.com",
+        "toEmail": "admin@talosprimes.com",
+        "subject": "🎛️ Plan Modifié: {{ $json.planName }}",
+        "emailType": "html",
+        "message": `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+    .info-box { background: white; border-left: 4px solid #667eea; padding: 15px; margin: 15px 0; border-radius: 5px; }
+    .changes { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0; border-radius: 5px; }
+    .footer { text-align: center; margin-top: 20px; color: #6c757d; font-size: 12px; }
+    .label { font-weight: bold; color: #667eea; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎛️ Modification de Plan</h1>
+      <p>Un plan d'abonnement a été modifié</p>
+    </div>
+    <div class="content">
+      <div class="info-box">
+        <p><span class="label">📦 Plan:</span> {{ $json.planName }}</p>
+        <p><span class="label">🆔 Plan ID:</span> {{ $json.planId }}</p>
+        <p><span class="label">👤 Modifié par:</span> {{ $json.modifiedBy }}</p>
+        <p><span class="label">📅 Date:</span> {{ $json.modifiedAt }}</p>
+      </div>
+
+      <div class="changes">
+        <h3>📝 Modifications effectuées:</h3>
+        <pre style="background: white; padding: 15px; border-radius: 5px; overflow-x: auto;">{{ JSON.stringify($json.changes, null, 2) }}</pre>
+      </div>
+
+      <p style="margin-top: 20px;">
+        <strong>⚠️ Actions recommandées:</strong>
+      </p>
+      <ul>
+        <li>Vérifier que les modifications sont conformes</li>
+        <li>Vérifier l'impact sur les clients existants</li>
+        <li>Mettre à jour la documentation si nécessaire</li>
+        <li>Communiquer aux clients si prix ou quotas changent</li>
+      </ul>
+
+      <p style="text-align: center; margin-top: 30px;">
+        <a href="https://www.talosprimes.com/platform/plans" 
+           style="background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+          🎛️ Voir la Gestion des Plans
+        </a>
+      </p>
+    </div>
+    <div class="footer">
+      <p>Talos Prime - Gestion des Abonnements</p>
+      <p>Cet email est envoyé automatiquement lors de modifications de plans.</p>
+    </div>
+  </div>
+</body>
+</html>`
+      },
+      "id": "send-email-admin",
+      "name": "Email Admin",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [650, 200],
+      "credentials": {
+        "smtp": {
+          "id": "resend_smtp",
+          "name": "Resend SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "postMessage",
+        "channel": "#admin-notifications",
+        "text": "🎛️ *Plan Modifié: {{ $json.planName }}*\n\n📋 *Plan ID:* `{{ $json.planId }}`\n👤 *Modifié par:* {{ $json.modifiedBy }}\n📅 *Date:* {{ $json.modifiedAt }}\n\n📝 *Modifications:*\n```\n{{ JSON.stringify($json.changes, null, 2) }}\n```\n\n🔗 <https://www.talosprimes.com/platform/plans|Voir la Gestion des Plans>",
+        "otherOptions": {}
+      },
+      "id": "send-slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack_api",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "ADMIN_USER_ID",
+          "mode": "id"
+        },
+        "text": "🎛️ *Plan Modifié: {{ $json.planName }}*\n\n📦 Plan: {{ $json.planName }}\n👤 Par: {{ $json.modifiedBy }}\n📅 Date: {{ $json.modifiedAt }}\n\n📝 Voir les détails sur le dashboard admin.",
+        "otherOptions": {}
+      },
+      "id": "send-telegram",
+      "name": "Telegram (Optionnel)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [650, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram_bot",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "public",
+        "table": "plan_modification_history",
+        "columns": "plan_id,modified_by,changes,modified_at",
+        "additionalFields": {}
+      },
+      "id": "log-to-database",
+      "name": "Log en BDD (Historique)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase PostgreSQL"
+        }
+      },
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Notifications envoyées\", \"timestamp\": $now } }}"
+      },
+      "id": "respond-success",
+      "name": "Réponse Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": false, \"error\": \"Données invalides\" } }}",
+        "responseCode": 400
+      },
+      "id": "respond-error",
+      "name": "Erreur Validation",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Plan Modifié": {
+      "main": [
+        [
+          {
+            "node": "Valider Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valider Données": {
+      "main": [
+        [
+          {
+            "node": "Email Admin",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram (Optionnel)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Erreur Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Admin": {
+      "main": [
+        [
+          {
+            "node": "Log en BDD (Historique)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Notification": {
+      "main": [
+        [
+          {
+            "node": "Log en BDD (Historique)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram (Optionnel)": {
+      "main": [
+        [
+          {
+            "node": "Log en BDD (Historique)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log en BDD (Historique)": {
+      "main": [
+        [
+          {
+            "node": "Réponse Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "id": "gestion-plans",
+  "meta": {
+    "instanceId": "talos-prime-n8n"
+  },
+  "tags": [
+    {
+      "createdAt": "2025-12-31T00:00:00.000Z",
+      "updatedAt": "2025-12-31T00:00:00.000Z",
+      "id": "plans",
+      "name": "plans"
+    },
+    {
+      "createdAt": "2025-12-31T00:00:00.000Z",
+      "updatedAt": "2025-12-31T00:00:00.000Z",
+      "id": "notifications",
+      "name": "notifications"
+    }
+  ]
+}
+

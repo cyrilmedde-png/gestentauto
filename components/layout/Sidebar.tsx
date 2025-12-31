@@ -50,6 +50,7 @@ export function Sidebar() {
     { icon: Users, label: 'Clients', href: '/platform/clients' },
     { icon: Users, label: 'Utilisateurs', href: '/platform/users' },
     { icon: CreditCard, label: 'Abonnements', href: '/platform/subscriptions' },
+    { icon: Settings, label: 'Gestion des Plans', href: '/platform/plans' },
     { icon: Package, label: 'Modules', href: '/platform/modules' },
     { icon: BarChart, label: 'Analytics', href: '/platform/analytics' },
     { icon: Settings, label: 'Paramètres', href: '/platform/settings' },
