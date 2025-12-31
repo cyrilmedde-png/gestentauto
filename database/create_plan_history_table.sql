@@ -178,7 +178,8 @@ CREATE TRIGGER trigger_cleanup_old_plan_history
 -- DONNÉES DE TEST (Optionnel)
 -- =====================================================
 
--- Insérer un log de test
+-- Insérer un log de test (DÉCOMMENTER SI BESOIN)
+/*
 INSERT INTO plan_modification_history (
   plan_id,
   modified_by,
@@ -193,30 +194,40 @@ SELECT
 FROM subscription_plans
 WHERE name = 'business'
 LIMIT 1;
+*/
 
 -- =====================================================
 -- REQUÊTES UTILES
 -- =====================================================
 
 -- Voir les 10 dernières modifications
-SELECT * FROM plan_modifications_detail LIMIT 10;
+-- SELECT * FROM plan_modifications_detail LIMIT 10;
 
 -- Voir l'historique d'un plan spécifique
-SELECT * FROM get_plan_history('uuid-du-plan');
+-- SELECT * FROM get_plan_history('remplacer-par-uuid-du-plan');
+
+-- Exemple avec un plan réel (récupérer d'abord l'ID):
+/*
+SELECT id FROM subscription_plans WHERE name = 'starter';
+-- Puis utiliser l'ID retourné:
+SELECT * FROM get_plan_history('ID_RETOURNÉ_ICI');
+*/
 
 -- Voir les stats des 30 derniers jours
-SELECT * FROM get_modification_stats(30);
+-- SELECT * FROM get_modification_stats(30);
 
 -- Voir combien de fois chaque plan a été modifié
-SELECT * FROM plan_modifications_summary;
+-- SELECT * FROM plan_modifications_summary;
 
 -- Voir qui a le plus modifié de plans
+/*
 SELECT 
   modified_by,
   COUNT(*) AS modifications
 FROM plan_modification_history
 GROUP BY modified_by
 ORDER BY modifications DESC;
+*/
 
 -- =====================================================
 -- VÉRIFICATIONS
