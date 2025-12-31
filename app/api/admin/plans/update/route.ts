@@ -50,6 +50,23 @@ export async function POST(request: Request) {
       )
     }
 
+    // ============================================================================
+    // RÉCUPÉRER LE PLAN AVANT MODIFICATION (pour historique)
+    // ============================================================================
+    const { data: currentPlan, error: fetchError } = await supabaseAdmin
+      .from('subscription_plans')
+      .select('*')
+      .eq('id', planId)
+      .single()
+
+    if (fetchError || !currentPlan) {
+      console.error('❌ Plan non trouvé:', fetchError)
+      return NextResponse.json(
+        { success: false, error: 'Plan non trouvé' },
+        { status: 404 }
+      )
+    }
+
     // Préparer les données de mise à jour
     const updateData: any = {
       updated_at: new Date().toISOString()
@@ -83,21 +100,74 @@ export async function POST(request: Request) {
       )
     }
 
-    // Déclencher le workflow N8N pour notifier les changements
+    // ============================================================================
+    // CONSTRUIRE L'OBJET CHANGES DÉTAILLÉ (old → new)
+    // ============================================================================
+    const detailedChanges: any = {}
+    
+    if (currentPlan.display_name !== updatedPlan.display_name) {
+      detailedChanges.display_name = { old: currentPlan.display_name, new: updatedPlan.display_name }
+    }
+    if (currentPlan.description !== updatedPlan.description) {
+      detailedChanges.description = { old: currentPlan.description, new: updatedPlan.description }
+    }
+    if (currentPlan.price_monthly !== updatedPlan.price_monthly) {
+      detailedChanges.price_monthly = { old: currentPlan.price_monthly, new: updatedPlan.price_monthly }
+    }
+    if (currentPlan.max_users !== updatedPlan.max_users) {
+      detailedChanges.max_users = { old: currentPlan.max_users, new: updatedPlan.max_users }
+    }
+    if (currentPlan.max_leads !== updatedPlan.max_leads) {
+      detailedChanges.max_leads = { old: currentPlan.max_leads, new: updatedPlan.max_leads }
+    }
+    if (currentPlan.max_storage_gb !== updatedPlan.max_storage_gb) {
+      detailedChanges.max_storage_gb = { old: currentPlan.max_storage_gb, new: updatedPlan.max_storage_gb }
+    }
+    if (currentPlan.max_workflows !== updatedPlan.max_workflows) {
+      detailedChanges.max_workflows = { old: currentPlan.max_workflows, new: updatedPlan.max_workflows }
+    }
+    if (JSON.stringify(currentPlan.features) !== JSON.stringify(updatedPlan.features)) {
+      detailedChanges.features = { old: currentPlan.features, new: updatedPlan.features }
+    }
+
+    // ============================================================================
+    // DÉCLENCHER LE WORKFLOW N8N
+    // ============================================================================
+    const n8nWebhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.talosprimes.com'
+    
     try {
-      await fetch(process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL + '/webhook/plan-modified', {
+      console.log('🔔 Déclenchement workflow N8N: plan-modified')
+      
+      const n8nResponse = await fetch(`${n8nWebhookUrl}/webhook/plan-modified`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          eventType: 'plan_updated',
           planId: updatedPlan.id,
           planName: updatedPlan.display_name,
-          changes: updates,
           modifiedBy: user.email,
-          modifiedAt: new Date().toISOString()
+          modifiedAt: new Date().toISOString(),
+          changes: detailedChanges,
+          plan: {
+            id: updatedPlan.id,
+            name: updatedPlan.name,
+            display_name: updatedPlan.display_name,
+            price_monthly: updatedPlan.price_monthly,
+            max_users: updatedPlan.max_users,
+            max_leads: updatedPlan.max_leads,
+            max_storage_gb: updatedPlan.max_storage_gb,
+            max_workflows: updatedPlan.max_workflows
+          }
         })
       })
+      
+      if (n8nResponse.ok) {
+        console.log('✅ Workflow N8N déclenché avec succès')
+      } else {
+        console.warn('⚠️ Workflow N8N échoué (non bloquant):', n8nResponse.status)
+      }
     } catch (webhookError) {
-      console.error('Erreur webhook N8N:', webhookError)
+      console.error('⚠️ Erreur webhook N8N (non bloquant):', webhookError)
       // Ne pas faire échouer la requête si le webhook échoue
     }
 
