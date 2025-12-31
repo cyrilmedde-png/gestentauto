@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Package, Users, TrendingUp, DollarSign } from 'lucide-react'
+import { MainLayout } from '@/components/layout/MainLayout'
+import { ProtectedPlatformRoute } from '@/components/auth/ProtectedPlatformRoute'
 import CreateCustomPlanModal from '@/components/admin/CreateCustomPlanModal'
 
-export default function SubscriptionsAdminPage() {
+function SubscriptionsAdminContent() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [plans, setPlans] = useState<any[]>([])
   const [subscriptions, setSubscriptions] = useState<any[]>([])
@@ -55,186 +57,184 @@ export default function SubscriptionsAdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Chargement...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Chargement...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
+    <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
+              💳 Gestion des Abonnements
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Gérer les formules et créer des abonnements sur-mesure
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2 sm:py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors shadow-sm whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">Créer Formule Custom</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="border border-border/50 rounded-lg p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                💳 Gestion des Abonnements
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Gérer les formules et créer des abonnements sur-mesure
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">
+                Abonnements Actifs
+              </p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">
+                {stats.totalSubscriptions}
               </p>
             </div>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-border/50 rounded-lg p-4 sm:p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">
+                Revenu Mensuel
+              </p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">
+                {stats.totalRevenue.toFixed(2)}€
+              </p>
+            </div>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500/10 rounded-lg flex items-center justify-center">
+              <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-border/50 rounded-lg p-4 sm:p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">
+                Clients Actifs
+              </p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">
+                {stats.activeCustomers}
+              </p>
+            </div>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500/10 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Formules Disponibles */}
+      <div className="border border-border/50 rounded-lg">
+        <div className="p-4 sm:p-6 border-b border-border/50">
+          <h2 className="text-lg sm:text-xl font-semibold text-foreground flex items-center">
+            <Package className="w-5 h-5 mr-2" />
+            Formules Disponibles
+          </h2>
+        </div>
+
+        <div className="p-4 sm:p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {plans.map((plan) => (
+              <div
+                key={plan.id}
+                className="border border-border/50 rounded-lg p-4 sm:p-6 hover:border-primary/50 transition-colors"
+              >
+                {/* Badge Custom */}
+                {plan.name.startsWith('custom_') && (
+                  <div className="mb-3">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-600">
+                      🎨 Custom
+                    </span>
+                  </div>
+                )}
+
+                {/* Nom */}
+                <h3 className="text-base sm:text-lg font-bold text-foreground mb-2">
+                  {plan.displayName}
+                </h3>
+
+                {/* Prix */}
+                <div className="mb-4">
+                  <span className="text-2xl sm:text-3xl font-bold text-foreground">
+                    {plan.price}€
+                  </span>
+                  <span className="text-sm text-muted-foreground">/mois</span>
+                </div>
+
+                {/* Quotas */}
+                <div className="space-y-2 text-xs sm:text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Users:</span>
+                    <span className="font-medium text-foreground">
+                      {plan.quotas.maxUsers || '∞'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Leads:</span>
+                    <span className="font-medium text-foreground">
+                      {plan.quotas.maxLeads || '∞'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Storage:</span>
+                    <span className="font-medium text-foreground">
+                      {plan.quotas.maxStorageGb ? `${plan.quotas.maxStorageGb} GB` : '∞'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Workflows:</span>
+                    <span className="font-medium text-foreground">
+                      {plan.quotas.maxWorkflows || '∞'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Stripe IDs */}
+                {plan.stripeProductId && (
+                  <div className="mt-4 pt-4 border-t border-border/50">
+                    <p className="text-xs text-muted-foreground break-all">
+                      Product: {plan.stripeProductId}
+                    </p>
+                    <p className="text-xs text-muted-foreground break-all">
+                      Price: {plan.stripePriceId}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Card Créer Custom */}
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg"
+              className="border-2 border-dashed border-border/50 rounded-lg p-4 sm:p-6 hover:border-primary/50 transition-colors flex flex-col items-center justify-center min-h-[300px] group"
             >
-              <Plus className="w-5 h-5" />
-              <span>Créer Formule Custom</span>
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                <Plus className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
+              </div>
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">
+                Créer Formule Custom
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground text-center">
+                Créer une formule sur-mesure pour un client spécifique
+              </p>
             </button>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  Abonnements Actifs
-                </p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {stats.totalSubscriptions}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  Revenu Mensuel
-                </p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {stats.totalRevenue.toFixed(2)}€
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  Clients Actifs
-                </p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {stats.activeCustomers}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Formules Disponibles */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-              <Package className="w-5 h-5 mr-2" />
-              Formules Disponibles
-            </h2>
-          </div>
-
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {plans.map((plan) => (
-                <div
-                  key={plan.id}
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
-                >
-                  {/* Badge Custom */}
-                  {plan.name.startsWith('custom_') && (
-                    <div className="mb-3">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-                        🎨 Custom
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Nom */}
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                    {plan.displayName}
-                  </h3>
-
-                  {/* Prix */}
-                  <div className="mb-4">
-                    <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                      {plan.price}€
-                    </span>
-                    <span className="text-gray-500 dark:text-gray-400">/mois</span>
-                  </div>
-
-                  {/* Quotas */}
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Users:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {plan.quotas.maxUsers || '∞'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Leads:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {plan.quotas.maxLeads || '∞'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Storage:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {plan.quotas.maxStorageGb ? `${plan.quotas.maxStorageGb} GB` : '∞'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Workflows:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {plan.quotas.maxWorkflows || '∞'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Stripe IDs */}
-                  {plan.stripeProductId && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
-                        Product: {plan.stripeProductId}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
-                        Price: {plan.stripePriceId}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* Card Créer Custom */}
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 hover:border-blue-500 dark:hover:border-blue-400 transition-colors flex flex-col items-center justify-center min-h-[300px] group"
-              >
-                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
-                  <Plus className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Créer Formule Custom
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-                  Créer une formule sur-mesure pour un client spécifique
-                </p>
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -247,5 +247,16 @@ export default function SubscriptionsAdminPage() {
         />
       )}
     </div>
+  )
+}
+
+// Export avec les wrappers
+export default function SubscriptionsAdminPage() {
+  return (
+    <ProtectedPlatformRoute>
+      <MainLayout>
+        <SubscriptionsAdminContent />
+      </MainLayout>
+    </ProtectedPlatformRoute>
   )
 }
