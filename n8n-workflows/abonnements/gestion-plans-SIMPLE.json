@@ -1,0 +1,82 @@
+{
+  "name": "Gestion Plans - Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "plan-modified",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-plan-modified",
+      "name": "Webhook Plan Modifie",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "plan-modified"
+    },
+    {
+      "parameters": {
+        "fromEmail": "notifications@talosprimes.com",
+        "toEmail": "admin@talosprimes.com",
+        "subject": "Plan Modifie: {{ $json.planName }}",
+        "text": "Plan: {{ $json.planName }}\nModifie par: {{ $json.modifiedBy }}\nDate: {{ $json.modifiedAt }}\n\nModifications:\n{{ JSON.stringify($json.changes, null, 2) }}"
+      },
+      "id": "send-email",
+      "name": "Email Admin",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "credentials": {
+        "smtp": {
+          "id": "resend_smtp",
+          "name": "Resend SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Notification envoyee\" } }}"
+      },
+      "id": "respond-webhook",
+      "name": "Reponse Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Plan Modifie": {
+      "main": [
+        [
+          {
+            "node": "Email Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Admin": {
+      "main": [
+        [
+          {
+            "node": "Reponse Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1.0.0",
+  "id": "gestion-plans-simple",
+  "meta": {
+    "instanceId": "n8n-talos"
+  },
+  "tags": []
+}
+
