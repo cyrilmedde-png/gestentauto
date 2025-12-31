@@ -116,64 +116,63 @@ function BillingContent() {
         </div>
       )}
 
-        {/* Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Current Plan */}
-            <CurrentPlan
-              subscription={subscription}
-              onUpgrade={() => setShowUpgradeModal(true)}
-              onCancel={() => setShowCancelModal(true)}
-            />
+      {/* Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Current Plan */}
+          <CurrentPlan
+            subscription={subscription}
+            onUpgrade={() => setShowUpgradeModal(true)}
+            onCancel={() => setShowCancelModal(true)}
+          />
 
-            {/* Usage Stats */}
-            <UsageStats subscription={subscription} />
+          {/* Usage Stats */}
+          <UsageStats subscription={subscription} />
 
-            {/* Invoices */}
-            <InvoicesList />
+          {/* Invoices */}
+          <InvoicesList />
+        </div>
+
+        {/* Right Column - Sidebar */}
+        <div className="space-y-6">
+          {/* Payment Methods */}
+          <PaymentMethodsList />
+
+          {/* Quick Actions */}
+          <div className="border border-border/50 rounded-lg p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold text-foreground mb-4 flex items-center">
+              <TrendingUp className="w-5 h-5 mr-2" />
+              Actions Rapides
+            </h3>
+            <div className="space-y-3">
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="w-full flex items-center justify-center px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors text-sm sm:text-base"
+              >
+                <Package className="w-4 h-4 mr-2" />
+                Changer de formule
+              </button>
+              <button
+                onClick={() => router.push('/support')}
+                className="w-full flex items-center justify-center px-4 py-2 border border-border/50 hover:bg-muted text-foreground rounded-lg transition-colors text-sm sm:text-base"
+              >
+                Contacter le support
+              </button>
+            </div>
           </div>
 
-          {/* Right Column - Sidebar */}
-          <div className="space-y-6">
-            {/* Payment Methods */}
-            <PaymentMethodsList />
-
-            {/* Quick Actions */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                <TrendingUp className="w-5 h-5 mr-2" />
-                Actions Rapides
-              </h3>
-              <div className="space-y-3">
-                <button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                >
-                  <Package className="w-4 h-4 mr-2" />
-                  Changer de formule
-                </button>
-                <button
-                  onClick={() => router.push('/support')}
-                  className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
-                >
-                  Contacter le support
-                </button>
-              </div>
-            </div>
-
-            {/* Help Box */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
-              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                💡 Besoin d'aide ?
-              </h3>
-              <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-                Notre équipe est disponible pour vous aider avec votre abonnement.
-              </p>
-              <div className="space-y-1 text-sm text-blue-600 dark:text-blue-400">
-                <p>📧 billing@talosprimes.com</p>
-                <p>📱 +33 X XX XX XX XX</p>
-              </div>
+          {/* Help Box */}
+          <div className="bg-primary/10 rounded-lg p-4 sm:p-6 border border-primary/20">
+            <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-2">
+              💡 Besoin d'aide ?
+            </h3>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+              Notre équipe est disponible pour vous aider avec votre abonnement.
+            </p>
+            <div className="space-y-1 text-xs sm:text-sm text-muted-foreground">
+              <p>📧 billing@talosprimes.com</p>
+              <p>📱 +33 X XX XX XX XX</p>
             </div>
           </div>
         </div>
