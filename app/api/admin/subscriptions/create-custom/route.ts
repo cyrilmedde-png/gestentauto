@@ -38,7 +38,16 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    if (userError || !userData || userData.roles?.name !== 'Administrateur Plateforme') {
+    if (userError || !userData) {
+      return NextResponse.json(
+        { success: false, error: 'Utilisateur non trouvé' },
+        { status: 404 }
+      )
+    }
+
+    // Vérifier le rôle (userData.roles peut être un objet ou un tableau selon le schéma)
+    const roleName = (userData.roles as any)?.name || (userData.roles as any)?.[0]?.name
+    if (roleName !== 'Administrateur Plateforme') {
       return NextResponse.json(
         { success: false, error: 'Accès non autorisé. Réservé aux administrateurs.' },
         { status: 403 }
