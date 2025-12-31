@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServerClient, createAdminClient } from '@/lib/supabase/server'
-import { cookies } from 'next/headers'
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies()
-    const supabase = await createServerClient(cookieStore)
+    const supabase = await createServerClient()
     const supabaseAdmin = createAdminClient()
 
     // Vérifier l'authentification
