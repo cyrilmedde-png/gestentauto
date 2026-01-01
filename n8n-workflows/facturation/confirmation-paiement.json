@@ -1,0 +1,224 @@
+{
+  "name": "✅ Confirmation Paiement Reçu",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "confirmation-paiement",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-paiement",
+      "name": "Webhook - Déclenchement",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "confirmation-paiement"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.document_id }}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{ $json.body.amount }}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{ $json.body.customer_email }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "validation-donnees",
+      "name": "Validation Données",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/billing/documents/={{ $json.body.document_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-document",
+      "name": "Récupérer Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Supabase Service Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@talosprimes.com",
+        "toEmail": "={{ $json.body.customer_email }}",
+        "subject": "✅ Paiement confirmé - Facture {{ $json.data.data.document_number }}",
+        "emailFormat": "html",
+        "text": "",
+        "html": "<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }\n    .success-icon { font-size: 64px; margin-bottom: 10px; }\n    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }\n    .success-box { background: #D1FAE5; border-left: 4px solid #10B981; padding: 20px; margin: 20px 0; border-radius: 8px; }\n    .detail-box { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #10B981; }\n    .detail-row { display: flex; justify-content: space-between; margin: 10px 0; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }\n    .label { font-weight: bold; color: #6b7280; }\n    .value { color: #111827; }\n    .amount-paid { font-size: 32px; font-weight: bold; color: #10B981; text-align: center; margin: 20px 0; }\n    .button { display: inline-block; background: #10B981; color: white !important; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }\n    .button:hover { background: #059669; }\n    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <div class=\"success-icon\">✅</div>\n      <h1>Paiement Confirmé !</h1>\n      <p>Facture {{ $json.data.data.document_number }}</p>\n    </div>\n    \n    <div class=\"content\">\n      <p>Bonjour <strong>{{ $json.body.customer_name || 'Client' }}</strong>,</p>\n      \n      <div class=\"success-box\">\n        <p style=\"margin: 0; font-size: 18px;\">\n          <strong>🎉 Nous avons bien reçu votre paiement !</strong>\n        </p>\n      </div>\n      \n      <div class=\"amount-paid\">\n        {{ $json.body.amount }}€\n      </div>\n      \n      <div class=\"detail-box\">\n        <h3>💳 Détails du Paiement</h3>\n        <div class=\"detail-row\">\n          <span class=\"label\">Facture:</span>\n          <span class=\"value\">{{ $json.data.data.document_number }}</span>\n        </div>\n        <div class=\"detail-row\">\n          <span class=\"label\">Montant payé:</span>\n          <span class=\"value\"><strong>{{ $json.body.amount }}€</strong></span>\n        </div>\n        <div class=\"detail-row\">\n          <span class=\"label\">Date de paiement:</span>\n          <span class=\"value\">{{ $json.body.payment_date || new Date().toLocaleDateString('fr-FR') }}</span>\n        </div>\n        <div class=\"detail-row\">\n          <span class=\"label\">Méthode:</span>\n          <span class=\"value\">{{ $json.body.payment_method || 'Virement bancaire' }}</span>\n        </div>\n        {{#if $json.body.transaction_reference}}\n        <div class=\"detail-row\">\n          <span class=\"label\">Référence:</span>\n          <span class=\"value\">{{ $json.body.transaction_reference }}</span>\n        </div>\n        {{/if}}\n      </div>\n      \n      <div class=\"detail-box\">\n        <h3>📄 Récapitulatif Facture</h3>\n        <div class=\"detail-row\">\n          <span class=\"label\">Montant initial:</span>\n          <span class=\"value\">{{ $json.data.data.total_amount }}€</span>\n        </div>\n        <div class=\"detail-row\">\n          <span class=\"label\">Déjà payé:</span>\n          <span class=\"value\">{{ ($json.data.data.paid_amount || 0) + parseFloat($json.body.amount) }}€</span>\n        </div>\n        <div class=\"detail-row\" style=\"border-bottom: none;\">\n          <span class=\"label\">Solde restant:</span>\n          <span class=\"value\"><strong>{{ Math.max(0, $json.data.data.total_amount - (($json.data.data.paid_amount || 0) + parseFloat($json.body.amount))).toFixed(2) }}€</strong></span>\n        </div>\n      </div>\n      \n      {{#if (Math.max(0, $json.data.data.total_amount - (($json.data.data.paid_amount || 0) + parseFloat($json.body.amount))) === 0) }}\n      <div class=\"success-box\">\n        <p style=\"margin: 0; text-align: center; font-size: 18px;\">\n          <strong>🎊 Votre facture est maintenant entièrement réglée !</strong>\n        </p>\n      </div>\n      {{/if}}\n      \n      <div style=\"text-align: center;\">\n        <a href=\"https://www.talosprimes.com/documents/{{ $json.body.document_id }}/recu\" class=\"button\">\n          📥 Télécharger le Reçu\n        </a>\n      </div>\n      \n      <p>Un reçu de paiement détaillé est disponible en téléchargement.</p>\n      \n      <p>Merci de votre confiance !</p>\n      \n      <p>Cordialement,<br>L'équipe Talosprime</p>\n      \n      <div class=\"footer\">\n        <p>📧 contact@talosprimes.com | 📞 01 XX XX XX XX</p>\n        <p>Talosprime - Solution de gestion automatisée</p>\n      </div>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "send-email",
+      "name": "Envoyer Email Confirmation",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [850, 200],
+      "credentials": {
+        "smtp": {
+          "id": "2",
+          "name": "Resend SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/subscription-logs/log",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "paiement_recu"
+            },
+            {
+              "name": "level",
+              "value": "success"
+            },
+            {
+              "name": "message",
+              "value": "Paiement de {{ $json.body.amount }}€ reçu pour {{ $json.data.data.document_number }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ document_id: $json.body.document_id, document_number: $json.data.data.document_number, amount: $json.body.amount, payment_method: $json.body.payment_method }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-action",
+      "name": "Logger l'Action",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Email de confirmation envoyé à ' + $json.body.customer_email }) }}"
+      },
+      "id": "response-success",
+      "name": "Réponse Succès",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: 'Données invalides' }) }}"
+      },
+      "id": "response-error",
+      "name": "Réponse Erreur",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 400]
+    }
+  ],
+  "connections": {
+    "Webhook - Déclenchement": {
+      "main": [
+        [
+          {
+            "node": "Validation Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Données": {
+      "main": [
+        [
+          {
+            "node": "Récupérer Document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Réponse Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Récupérer Document": {
+      "main": [
+        [
+          {
+            "node": "Envoyer Email Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envoyer Email Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Logger l'Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Logger l'Action": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "id": "confirmation-paiement",
+  "meta": {
+    "instanceId": "talosprime"
+  },
+  "tags": [
+    {
+      "name": "facturation",
+      "createdAt": "2026-01-01T20:00:00.000Z",
+      "updatedAt": "2026-01-01T20:00:00.000Z",
+      "id": "1"
+    }
+  ]
+}
+
