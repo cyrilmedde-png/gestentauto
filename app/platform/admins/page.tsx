@@ -247,6 +247,9 @@ export default function AdminsPage() {
               <p className="text-sm text-blue-300">
                 <strong>ℹ️ Note :</strong> L'administrateur aura accès à toutes les fonctionnalités plateforme (logs, gestion plans, abonnements, etc.)
               </p>
+              <p className="text-sm text-blue-300 mt-2">
+                <strong>🔐 Compte automatique :</strong> Si l'email n'existe pas, un compte sera créé automatiquement avec un mot de passe temporaire envoyé par email.
+              </p>
             </div>
           </div>
 
@@ -351,7 +354,8 @@ export default function AdminsPage() {
                 <ul className="list-disc list-inside space-y-1 text-yellow-300/80">
                   <li>Les administrateurs ont accès à toutes les fonctionnalités sensibles</li>
                   <li>Retirer un admin ne supprime pas son compte, seulement ses droits admin</li>
-                  <li>Un email doit d'abord exister dans auth.users pour être promu admin</li>
+                  <li>Si l'email n'existe pas, un compte sera créé automatiquement avec mot de passe temporaire</li>
+                  <li>Le nouvel admin devra changer son mot de passe à la première connexion</li>
                 </ul>
               </div>
             </div>
