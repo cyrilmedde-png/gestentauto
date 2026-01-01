@@ -5,7 +5,7 @@
 
 -- 1. Créer la table
 CREATE TABLE IF NOT EXISTS public.subscription_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID DEFAULT gen_random_uuid(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
   -- Identification
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS public.subscription_logs (
   ip_address TEXT,
   user_agent TEXT,
   
-  -- Index
+  -- Contrainte clé primaire
   CONSTRAINT subscription_logs_pkey PRIMARY KEY (id)
 );
 
