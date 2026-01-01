@@ -101,6 +101,8 @@ export default function AdminsPage() {
     }
 
     try {
+      console.log('🔄 Retrait admin:', { adminId, adminEmail })
+      
       const response = await fetch('/api/admin/users/remove-admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,6 +111,8 @@ export default function AdminsPage() {
 
       const data = await response.json()
 
+      console.log('📥 Response:', data)
+
       if (data.success) {
         showMessage('success', `✅ ${adminEmail} n'est plus administrateur`)
         loadAdmins()
@@ -116,7 +120,7 @@ export default function AdminsPage() {
         showMessage('error', data.error || 'Erreur lors de la suppression')
       }
     } catch (error) {
-      console.error('Erreur:', error)
+      console.error('❌ Erreur:', error)
       showMessage('error', 'Erreur de connexion')
     }
   }

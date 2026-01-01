@@ -53,6 +53,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log('🔍 Tentative de retrait admin:', { user_id, by: user.email })
+
     // Empêcher de se retirer soi-même
     if (user_id === user.id) {
       return NextResponse.json(
@@ -61,21 +63,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Récupérer l'user à retirer
-    const { data: targetUser } = await supabaseAdmin
-      .from('users')
-      .select('email, company_id')
-      .eq('id', user_id)
-      .single()
-
-    if (!targetUser) {
-      return NextResponse.json(
-        { success: false, error: 'Utilisateur non trouvé' },
-        { status: 404 }
-      )
-    }
-
-    // Récupérer le platform_company_id pour vérifier
+    // Compter le nombre d'admins actuels
     const { data: platformSetting } = await supabaseAdmin
       .from('settings')
       .select('value')
@@ -86,6 +74,49 @@ export async function POST(request: NextRequest) {
       ? platformSetting.value 
       : (platformSetting?.value as any)?.[0] || platformSetting?.value
 
+    const { data: allAdmins, error: countError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('company_id', platformCompanyId)
+
+    if (countError) {
+      console.error('❌ Erreur comptage admins:', countError)
+    }
+
+    console.log('📊 Nombre d\'admins actuels:', allAdmins?.length || 0)
+
+    // Empêcher de retirer le dernier admin
+    if (allAdmins && allAdmins.length <= 1) {
+      return NextResponse.json(
+        { success: false, error: 'Impossible de retirer le dernier administrateur de la plateforme' },
+        { status: 400 }
+      )
+    }
+
+    // Récupérer l'user à retirer
+    const { data: targetUser, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('email, company_id')
+      .eq('id', user_id)
+      .single()
+
+    if (fetchError) {
+      console.error('❌ Erreur fetch user:', fetchError)
+      return NextResponse.json(
+        { success: false, error: `Erreur: ${fetchError.message}` },
+        { status: 500 }
+      )
+    }
+
+    if (!targetUser) {
+      return NextResponse.json(
+        { success: false, error: 'Utilisateur non trouvé' },
+        { status: 404 }
+      )
+    }
+
+    console.log('👤 User à retirer:', { email: targetUser.email, company_id: targetUser.company_id })
+
     // Vérifier qu'il est bien admin avant de retirer
     if (targetUser.company_id !== platformCompanyId) {
       return NextResponse.json(
@@ -93,6 +124,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    console.log('🔄 Mise à jour company_id à NULL pour:', user_id)
 
     // Mettre company_id à NULL (retire les droits admin)
     const { error: updateError } = await supabaseAdmin
@@ -104,12 +137,14 @@ export async function POST(request: NextRequest) {
       .eq('id', user_id)
 
     if (updateError) {
-      console.error('Erreur update user:', updateError)
+      console.error('❌ Erreur update user:', updateError)
       return NextResponse.json(
-        { success: false, error: 'Erreur lors de la mise à jour' },
+        { success: false, error: `Erreur lors de la mise à jour: ${updateError.message}` },
         { status: 500 }
       )
     }
+
+    console.log('✅ Admin retiré avec succès:', targetUser.email)
 
     // Optionnel : Envoyer un email de notification
     try {
