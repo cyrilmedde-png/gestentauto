@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { isPlatformCompany } from '@/lib/services/auth-helpers'
+import { isPlatformCompany } from '@/lib/platform/supabase'
 
 /**
  * GET /api/admin/logs
@@ -37,7 +37,15 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    if (!userData || !isPlatformCompany(userData.company_id)) {
+    if (!userData || !userData.company_id) {
+      return NextResponse.json(
+        { success: false, error: 'Utilisateur non trouvé' },
+        { status: 404 }
+      )
+    }
+
+    const isAdmin = await isPlatformCompany(userData.company_id)
+    if (!isAdmin) {
       return NextResponse.json(
         { success: false, error: 'Accès réservé aux administrateurs' },
         { status: 403 }
