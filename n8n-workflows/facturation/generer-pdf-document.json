@@ -1,0 +1,324 @@
+{
+  "name": "📄 Générer PDF Document",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generer-pdf",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-pdf",
+      "name": "Webhook - Déclenchement",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "generer-pdf"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.document_id }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "validation-donnees",
+      "name": "Validation Données",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/billing/documents/={{ $json.body.document_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-document",
+      "name": "Récupérer Document + Items",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Supabase Service Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/billing/settings",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-settings",
+      "name": "Récupérer Paramètres",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Supabase Service Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Générer le HTML complet du PDF\nconst doc = $input.first().json.data.data;\nconst items = doc.items || [];\nconst settings = $input.last().json.data || {};\n\n// Type de document\nconst docTypes = {\n  quote: { label: 'DEVIS', color: '#4F46E5', icon: '📋' },\n  proforma: { label: 'PROFORMA', color: '#8B5CF6', icon: '🧾' },\n  invoice: { label: 'FACTURE', color: '#10B981', icon: '💰' },\n  credit_note: { label: 'AVOIR', color: '#EF4444', icon: '↩️' },\n  purchase_invoice: { label: 'FACTURE D\\'ACHAT', color: '#F59E0B', icon: '📥' }\n};\n\nconst docType = docTypes[doc.document_type] || docTypes.invoice;\n\n// Formatter date\nconst formatDate = (dateStr) => {\n  if (!dateStr) return 'N/A';\n  const date = new Date(dateStr);\n  return date.toLocaleDateString('fr-FR', {\n    year: 'numeric',\n    month: 'long',\n    day: 'numeric'\n  });\n};\n\n// Formatter montant\nconst formatAmount = (amount) => {\n  return new Intl.NumberFormat('fr-FR', {\n    style: 'currency',\n    currency: 'EUR'\n  }).format(amount || 0);\n};\n\n// Générer lignes items\nconst itemsHtml = items.map(item => `\n  <tr>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e5e7eb;\">\n      <strong>${item.name}</strong>\n      ${item.description ? `<br><small style=\"color: #6b7280;\">${item.description}</small>` : ''}\n      ${item.sku ? `<br><small style=\"color: #9ca3af;\">Réf: ${item.sku}</small>` : ''}\n    </td>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;\">${item.quantity}</td>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;\">${item.unit || 'unité'}</td>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;\">${formatAmount(item.unit_price)}</td>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;\">${item.tax_rate}%</td>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;\"><strong>${formatAmount(item.total)}</strong></td>\n  </tr>\n`).join('');\n\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <title>${doc.document_number}</title>\n  <style>\n    @page {\n      size: A4;\n      margin: 0;\n    }\n    * {\n      margin: 0;\n      padding: 0;\n      box-sizing: border-box;\n    }\n    body {\n      font-family: 'Segoe UI', Arial, sans-serif;\n      font-size: 11pt;\n      line-height: 1.5;\n      color: #1f2937;\n      background: white;\n    }\n    .page {\n      width: 210mm;\n      min-height: 297mm;\n      padding: 20mm;\n      margin: 0 auto;\n      background: white;\n    }\n    .header {\n      display: flex;\n      justify-content: space-between;\n      align-items: start;\n      margin-bottom: 30px;\n      padding-bottom: 20px;\n      border-bottom: 3px solid ${docType.color};\n    }\n    .logo {\n      font-size: 28px;\n      font-weight: bold;\n      color: ${docType.color};\n    }\n    .doc-info {\n      text-align: right;\n    }\n    .doc-type {\n      font-size: 24px;\n      font-weight: bold;\n      color: ${docType.color};\n      margin-bottom: 10px;\n    }\n    .doc-number {\n      font-size: 14px;\n      color: #6b7280;\n    }\n    .parties {\n      display: flex;\n      justify-content: space-between;\n      margin-bottom: 30px;\n    }\n    .party-box {\n      width: 48%;\n      padding: 15px;\n      background: #f9fafb;\n      border-left: 4px solid ${docType.color};\n      border-radius: 4px;\n    }\n    .party-title {\n      font-weight: bold;\n      color: ${docType.color};\n      margin-bottom: 10px;\n      font-size: 12px;\n      text-transform: uppercase;\n    }\n    .party-content p {\n      margin: 4px 0;\n      font-size: 10pt;\n    }\n    .dates-info {\n      margin-bottom: 20px;\n      padding: 15px;\n      background: #f3f4f6;\n      border-radius: 4px;\n    }\n    .dates-info table {\n      width: 100%;\n    }\n    .dates-info td {\n      padding: 5px 10px;\n      font-size: 10pt;\n    }\n    .dates-info td:first-child {\n      color: #6b7280;\n      font-weight: 600;\n    }\n    .items-table {\n      width: 100%;\n      border-collapse: collapse;\n      margin-bottom: 20px;\n    }\n    .items-table thead {\n      background: ${docType.color};\n      color: white;\n    }\n    .items-table th {\n      padding: 12px;\n      text-align: left;\n      font-weight: 600;\n      font-size: 10pt;\n    }\n    .items-table td {\n      font-size: 10pt;\n    }\n    .totals {\n      float: right;\n      width: 40%;\n      margin-top: 20px;\n    }\n    .totals table {\n      width: 100%;\n      border-collapse: collapse;\n    }\n    .totals td {\n      padding: 8px 10px;\n      border-bottom: 1px solid #e5e7eb;\n    }\n    .totals td:first-child {\n      color: #6b7280;\n      font-weight: 600;\n    }\n    .totals td:last-child {\n      text-align: right;\n    }\n    .total-row {\n      background: ${docType.color};\n      color: white;\n      font-size: 14pt;\n      font-weight: bold;\n    }\n    .total-row td {\n      border: none !important;\n    }\n    .notes {\n      clear: both;\n      margin-top: 40px;\n      padding: 15px;\n      background: #fef3c7;\n      border-left: 4px solid #f59e0b;\n      border-radius: 4px;\n    }\n    .notes h4 {\n      color: #92400e;\n      margin-bottom: 10px;\n    }\n    .notes p {\n      font-size: 9pt;\n      color: #78350f;\n      margin: 5px 0;\n    }\n    .footer {\n      margin-top: 40px;\n      padding-top: 20px;\n      border-top: 2px solid #e5e7eb;\n      text-align: center;\n      font-size: 9pt;\n      color: #6b7280;\n    }\n    .footer p {\n      margin: 3px 0;\n    }\n    @media print {\n      .page {\n        margin: 0;\n        border: none;\n      }\n    }\n  </style>\n</head>\n<body>\n  <div class=\"page\">\n    <!-- Header -->\n    <div class=\"header\">\n      <div>\n        <div class=\"logo\">${docType.icon} ${settings.company_legal_name || 'Talosprime'}</div>\n        <p style=\"color: #6b7280; font-size: 10pt; margin-top: 5px;\">${settings.company_address || ''}</p>\n        <p style=\"color: #6b7280; font-size: 10pt;\">📞 ${settings.company_phone || ''} | 📧 ${settings.company_email || ''}</p>\n        ${settings.vat_number ? `<p style=\"color: #6b7280; font-size: 9pt; margin-top: 5px;\">TVA: ${settings.vat_number}</p>` : ''}\n      </div>\n      <div class=\"doc-info\">\n        <div class=\"doc-type\">${docType.label}</div>\n        <div class=\"doc-number\">${doc.document_number}</div>\n      </div>\n    </div>\n\n    <!-- Parties -->\n    <div class=\"parties\">\n      <div class=\"party-box\">\n        <div class=\"party-title\">Émetteur</div>\n        <div class=\"party-content\">\n          <p><strong>${settings.company_legal_name || 'Talosprime'}</strong></p>\n          <p>${settings.company_address || ''}</p>\n          ${settings.vat_number ? `<p>TVA: ${settings.vat_number}</p>` : ''}\n        </div>\n      </div>\n      <div class=\"party-box\">\n        <div class=\"party-title\">${doc.document_type === 'purchase_invoice' ? 'Fournisseur' : 'Client'}</div>\n        <div class=\"party-content\">\n          <p><strong>${doc.customer_name}</strong></p>\n          ${doc.customer_address ? `<p>${doc.customer_address}</p>` : ''}\n          ${doc.customer_siren ? `<p>SIREN: ${doc.customer_siren}</p>` : ''}\n          ${doc.customer_vat_number ? `<p>TVA: ${doc.customer_vat_number}</p>` : ''}\n          ${doc.customer_email ? `<p>📧 ${doc.customer_email}</p>` : ''}\n        </div>\n      </div>\n    </div>\n\n    <!-- Dates -->\n    <div class=\"dates-info\">\n      <table>\n        <tr>\n          <td width=\"30%\">Date d'émission:</td>\n          <td><strong>${formatDate(doc.issue_date)}</strong></td>\n          ${doc.reference ? `<td width=\"20%\">Référence:</td><td><strong>${doc.reference}</strong></td>` : '<td></td><td></td>'}\n        </tr>\n        ${doc.due_date ? `\n        <tr>\n          <td>Date d'échéance:</td>\n          <td><strong style=\"color: ${docType.color};\">${formatDate(doc.due_date)}</strong></td>\n          <td></td><td></td>\n        </tr>` : ''}\n        ${doc.valid_until ? `\n        <tr>\n          <td>Valable jusqu'au:</td>\n          <td><strong style=\"color: ${docType.color};\">${formatDate(doc.valid_until)}</strong></td>\n          <td></td><td></td>\n        </tr>` : ''}\n      </table>\n    </div>\n\n    <!-- Items -->\n    <table class=\"items-table\">\n      <thead>\n        <tr>\n          <th>Désignation</th>\n          <th style=\"text-align: center; width: 80px;\">Qté</th>\n          <th style=\"text-align: center; width: 80px;\">Unité</th>\n          <th style=\"text-align: right; width: 100px;\">P.U. HT</th>\n          <th style=\"text-align: center; width: 60px;\">TVA</th>\n          <th style=\"text-align: right; width: 100px;\">Total TTC</th>\n        </tr>\n      </thead>\n      <tbody>\n        ${itemsHtml || '<tr><td colspan=\"6\" style=\"padding: 20px; text-align: center; color: #9ca3af;\">Aucune ligne</td></tr>'}\n      </tbody>\n    </table>\n\n    <!-- Totaux -->\n    <div class=\"totals\">\n      <table>\n        <tr>\n          <td>Sous-total HT</td>\n          <td>${formatAmount(doc.subtotal)}</td>\n        </tr>\n        <tr>\n          <td>TVA (${doc.tax_rate}%)</td>\n          <td>${formatAmount(doc.tax_amount)}</td>\n        </tr>\n        ${doc.discount_amount ? `\n        <tr>\n          <td>Remise</td>\n          <td>-${formatAmount(doc.discount_amount)}</td>\n        </tr>` : ''}\n        <tr class=\"total-row\">\n          <td>TOTAL TTC</td>\n          <td>${formatAmount(doc.total_amount)}</td>\n        </tr>\n        ${doc.paid_amount && doc.paid_amount > 0 ? `\n        <tr>\n          <td>Déjà payé</td>\n          <td>${formatAmount(doc.paid_amount)}</td>\n        </tr>\n        <tr style=\"background: #fef3c7;\">\n          <td><strong>Reste à payer</strong></td>\n          <td><strong>${formatAmount((doc.total_amount || 0) - (doc.paid_amount || 0))}</strong></td>\n        </tr>` : ''}\n      </table>\n    </div>\n\n    <!-- Notes -->\n    ${doc.notes || doc.payment_terms || doc.terms_and_conditions ? `\n    <div class=\"notes\">\n      ${doc.payment_terms ? `\n      <h4>💳 Modalités de paiement</h4>\n      <p>${doc.payment_terms}</p>\n      ` : ''}\n      ${settings.iban ? `\n      <p style=\"margin-top: 10px;\"><strong>Coordonnées bancaires:</strong></p>\n      <p>IBAN: ${settings.iban}${settings.bic ? ` | BIC: ${settings.bic}` : ''}</p>\n      ` : ''}\n      ${doc.notes ? `\n      <h4 style=\"margin-top: 15px;\">📝 Notes</h4>\n      <p>${doc.notes}</p>\n      ` : ''}\n      ${doc.terms_and_conditions ? `\n      <h4 style=\"margin-top: 15px;\">📜 Conditions générales</h4>\n      <p>${doc.terms_and_conditions}</p>\n      ` : ''}\n    </div>` : ''}\n\n    <!-- Footer -->\n    <div class=\"footer\">\n      ${settings.legal_notice || '<p>TVA non applicable, article 293 B du CGI</p>'}\n      <p style=\"margin-top: 10px;\">En cas de retard de paiement, une pénalité de 3 fois le taux d'intérêt légal sera appliquée.</p>\n      <p>Indemnité forfaitaire pour frais de recouvrement: 40€</p>\n      <p style=\"margin-top: 10px; font-weight: 600;\">${settings.company_legal_name || 'Talosprime'} - ${settings.company_address || ''}</p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\nreturn [{ json: { html, document: doc } }];"
+      },
+      "id": "generate-html",
+      "name": "Générer HTML PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://api.html2pdf.app/v1/generate",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "html",
+              "value": "={{ $json.html }}"
+            },
+            {
+              "name": "format",
+              "value": "A4"
+            },
+            {
+              "name": "printBackground",
+              "value": "true"
+            },
+            {
+              "name": "margin",
+              "value": "={{ { top: '0', right: '0', bottom: '0', left: '0' } }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "convert-to-pdf",
+      "name": "Convertir en PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 200],
+      "notes": "Alternative: https://pdfapi.io ou Puppeteer local"
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/billing/documents/={{ $json.document.id }}",
+        "method": "PUT",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "pdf_url",
+              "value": "={{ $json.pdf_url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "save-pdf-url",
+      "name": "Sauvegarder URL PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1450, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Supabase Service Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/subscription-logs/log",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "pdf_genere"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            },
+            {
+              "name": "message",
+              "value": "PDF généré pour {{ $json.document.document_number }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ document_id: $json.document.id, document_number: $json.document.document_number, document_type: $json.document.document_type, pdf_url: $json.pdf_url }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-action",
+      "name": "Logger Génération",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1650, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, pdf_url: $json.pdf_url, document_number: $json.document.document_number }) }}"
+      },
+      "id": "response-success",
+      "name": "Réponse Succès",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1850, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: 'document_id requis' }) }}"
+      },
+      "id": "response-error",
+      "name": "Réponse Erreur",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 400]
+    }
+  ],
+  "connections": {
+    "Webhook - Déclenchement": {
+      "main": [
+        [
+          {
+            "node": "Validation Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Données": {
+      "main": [
+        [
+          {
+            "node": "Récupérer Document + Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Réponse Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Récupérer Document + Items": {
+      "main": [
+        [
+          {
+            "node": "Récupérer Paramètres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Récupérer Paramètres": {
+      "main": [
+        [
+          {
+            "node": "Générer HTML PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générer HTML PDF": {
+      "main": [
+        [
+          {
+            "node": "Convertir en PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir en PDF": {
+      "main": [
+        [
+          {
+            "node": "Sauvegarder URL PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sauvegarder URL PDF": {
+      "main": [
+        [
+          {
+            "node": "Logger Génération",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Logger Génération": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "id": "generer-pdf",
+  "meta": {
+    "instanceId": "talosprime"
+  },
+  "tags": [
+    {
+      "name": "facturation",
+      "createdAt": "2026-01-01T20:00:00.000Z",
+      "updatedAt": "2026-01-01T20:00:00.000Z",
+      "id": "1"
+    }
+  ]
+}
+
