@@ -1,0 +1,369 @@
+{
+  "name": "🔔 Relance Factures Impayées",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "id": "cron-daily",
+      "name": "Cron - Tous les jours 10h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/billing/documents",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "qs": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "invoice"
+            },
+            {
+              "name": "limit",
+              "value": "200"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-invoices",
+      "name": "Récupérer Factures",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Supabase Service Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filtrer et catégoriser les factures impayées selon délai\nconst today = new Date();\nconst invoicesToRemind = [];\n\nfor (const item of $input.all()) {\n  const invoices = item.json.data || [];\n  \n  for (const invoice of invoices) {\n    // Ignorer si payée, annulée ou pas d'échéance\n    if (!invoice.due_date || !invoice.customer_email) continue;\n    if (invoice.status === 'paid' || invoice.status === 'cancelled') continue;\n    \n    const dueDate = new Date(invoice.due_date);\n    const daysOverdue = Math.ceil((today - dueDate) / (1000 * 60 * 60 * 24));\n    const remainingAmount = (invoice.total_amount || 0) - (invoice.paid_amount || 0);\n    \n    // Relance J-3 (avant échéance)\n    if (daysOverdue === -3) {\n      invoicesToRemind.push({\n        json: {\n          ...invoice,\n          reminder_level: 0,\n          reminder_type: 'preventive',\n          days_overdue: daysOverdue,\n          remaining_amount: remainingAmount,\n          due_date_formatted: dueDate.toLocaleDateString('fr-FR', {\n            weekday: 'long',\n            year: 'numeric',\n            month: 'long',\n            day: 'numeric'\n          })\n        }\n      });\n    }\n    // Relance J+7 (1ère relance)\n    else if (daysOverdue === 7) {\n      invoicesToRemind.push({\n        json: {\n          ...invoice,\n          reminder_level: 1,\n          reminder_type: 'first',\n          days_overdue: daysOverdue,\n          remaining_amount: remainingAmount,\n          due_date_formatted: dueDate.toLocaleDateString('fr-FR')\n        }\n      });\n    }\n    // Relance J+15 (2ème relance)\n    else if (daysOverdue === 15) {\n      invoicesToRemind.push({\n        json: {\n          ...invoice,\n          reminder_level: 2,\n          reminder_type: 'second',\n          days_overdue: daysOverdue,\n          remaining_amount: remainingAmount,\n          due_date_formatted: dueDate.toLocaleDateString('fr-FR')\n        }\n      });\n    }\n    // Relance J+30 (dernière relance)\n    else if (daysOverdue === 30) {\n      invoicesToRemind.push({\n        json: {\n          ...invoice,\n          reminder_level: 3,\n          reminder_type: 'final',\n          days_overdue: daysOverdue,\n          remaining_amount: remainingAmount,\n          due_date_formatted: dueDate.toLocaleDateString('fr-FR')\n        }\n      });\n    }\n  }\n}\n\nreturn invoicesToRemind;"
+      },
+      "id": "categorize-invoices",
+      "name": "Catégoriser Factures à Relancer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.reminder_level }}",
+              "operation": "largerEqual",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "check-has-invoices",
+      "name": "A des Factures à Relancer ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "={{ $json.reminder_type }}"
+      },
+      "id": "switch-reminder-type",
+      "name": "Type de Relance",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@talosprimes.com",
+        "toEmail": "={{ $json.customer_email }}",
+        "subject": "🔔 Rappel : Facture {{ $json.document_number }} - Échéance dans 3 jours",
+        "emailFormat": "html",
+        "text": "",
+        "html": "<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }\n    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }\n    .info-box { background: #DBEAFE; border-left: 4px solid #3B82F6; padding: 20px; margin: 20px 0; border-radius: 8px; }\n    .detail-box { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }\n    .button { display: inline-block; background: #3B82F6; color: white !important; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }\n    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>🔔 Rappel Aimable</h1>\n    </div>\n    <div class=\"content\">\n      <p>Bonjour <strong>{{ $json.customer_name }}</strong>,</p>\n      <div class=\"info-box\">\n        <p style=\"margin: 0;\">Nous vous rappelons que l'échéance de votre facture <strong>{{ $json.document_number }}</strong> approche dans <strong>3 jours</strong>.</p>\n      </div>\n      <div class=\"detail-box\">\n        <p><strong>Montant à régler:</strong> {{ $json.remaining_amount }}€</p>\n        <p><strong>Échéance:</strong> {{ $json.due_date_formatted }}</p>\n      </div>\n      <div style=\"text-align: center;\">\n        <a href=\"https://www.talosprimes.com/pay/{{ $json.id }}\" class=\"button\">💳 Payer Maintenant</a>\n      </div>\n      <p>Cordialement,<br>L'équipe Talosprime</p>\n      <div class=\"footer\">\n        <p>📧 contact@talosprimes.com</p>\n      </div>\n    </div>\n  </div>\n</body>\n</html>"
+      },
+      "id": "send-preventive",
+      "name": "Email Préventif (J-3)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1250, 100],
+      "credentials": {
+        "smtp": {
+          "id": "2",
+          "name": "Resend SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@talosprimes.com",
+        "toEmail": "={{ $json.customer_email }}",
+        "subject": "⚠️ Relance : Facture {{ $json.document_number }} impayée depuis 7 jours",
+        "emailFormat": "html",
+        "text": "",
+        "html": "<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }\n    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }\n    .warning-box { background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 20px; margin: 20px 0; border-radius: 8px; }\n    .detail-box { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }\n    .button { display: inline-block; background: #F59E0B; color: white !important; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }\n    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>⚠️ 1ère Relance</h1>\n    </div>\n    <div class=\"content\">\n      <p>Bonjour <strong>{{ $json.customer_name }}</strong>,</p>\n      <div class=\"warning-box\">\n        <p><strong>Nous n'avons pas reçu le règlement de votre facture {{ $json.document_number }}</strong></p>\n        <p style=\"margin-bottom: 0;\">Échue depuis : <strong>{{ $json.days_overdue }} jours</strong></p>\n      </div>\n      <div class=\"detail-box\">\n        <p><strong>Montant dû:</strong> {{ $json.remaining_amount }}€</p>\n        <p><strong>Date d'échéance dépassée:</strong> {{ $json.due_date_formatted }}</p>\n      </div>\n      <p>Si le paiement a déjà été effectué, merci d'ignorer ce message.</p>\n      <div style=\"text-align: center;\">\n        <a href=\"https://www.talosprimes.com/pay/{{ $json.id }}\" class=\"button\">💳 Régler Maintenant</a>\n      </div>\n      <p>Cordialement,<br>L'équipe Talosprime</p>\n      <div class=\"footer\">\n        <p>📧 contact@talosprimes.com</p>\n      </div>\n    </div>\n  </div>\n</body>\n</html>"
+      },
+      "id": "send-first",
+      "name": "Email 1ère Relance (J+7)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1250, 200],
+      "credentials": {
+        "smtp": {
+          "id": "2",
+          "name": "Resend SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@talosprimes.com",
+        "toEmail": "={{ $json.customer_email }}",
+        "subject": "🚨 2ème Relance : Facture {{ $json.document_number }} - Action requise",
+        "emailFormat": "html",
+        "text": "",
+        "html": "<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }\n    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }\n    .urgent-box { background: #FEE2E2; border-left: 4px solid #EF4444; padding: 20px; margin: 20px 0; border-radius: 8px; }\n    .detail-box { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }\n    .button { display: inline-block; background: #EF4444; color: white !important; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }\n    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>🚨 2ème Relance - Urgent</h1>\n    </div>\n    <div class=\"content\">\n      <p>Bonjour <strong>{{ $json.customer_name }}</strong>,</p>\n      <div class=\"urgent-box\">\n        <p><strong>Malgré notre précédente relance, nous constatons que la facture {{ $json.document_number }} reste impayée.</strong></p>\n        <p style=\"margin-bottom: 0;\">Retard : <strong>{{ $json.days_overdue }} jours</strong></p>\n      </div>\n      <div class=\"detail-box\">\n        <p><strong>Montant dû:</strong> {{ $json.remaining_amount }}€</p>\n        <p><strong>Pénalités de retard applicables</strong></p>\n      </div>\n      <p>Nous vous demandons de régulariser votre situation dans les plus brefs délais.</p>\n      <div style=\"text-align: center;\">\n        <a href=\"https://www.talosprimes.com/pay/{{ $json.id }}\" class=\"button\">💳 Payer Immédiatement</a>\n      </div>\n      <p>Cordialement,<br>L'équipe Talosprime</p>\n      <div class=\"footer\">\n        <p>📧 contact@talosprimes.com</p>\n      </div>\n    </div>\n  </div>\n</body>\n</html>"
+      },
+      "id": "send-second",
+      "name": "Email 2ème Relance (J+15)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1250, 300],
+      "credentials": {
+        "smtp": {
+          "id": "2",
+          "name": "Resend SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@talosprimes.com",
+        "toEmail": "={{ $json.customer_email }}",
+        "cc": "admin@talosprimes.com",
+        "subject": "⛔ DERNIÈRE RELANCE : Facture {{ $json.document_number }} - Mise en demeure",
+        "emailFormat": "html",
+        "text": "",
+        "html": "<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }\n    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }\n    .critical-box { background: #FEE2E2; border: 2px solid #EF4444; padding: 20px; margin: 20px 0; border-radius: 8px; }\n    .detail-box { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }\n    .button { display: inline-block; background: #991B1B; color: white !important; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }\n    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>⛔ MISE EN DEMEURE</h1>\n    </div>\n    <div class=\"content\">\n      <p>Bonjour <strong>{{ $json.customer_name }}</strong>,</p>\n      <div class=\"critical-box\">\n        <p><strong style=\"color: #DC2626;\">DERNIÈRE RELANCE AVANT PROCÉDURE</strong></p>\n        <p>Facture {{ $json.document_number }} impayée depuis <strong>{{ $json.days_overdue }} jours</strong></p>\n      </div>\n      <div class=\"detail-box\">\n        <p><strong>Montant dû:</strong> {{ $json.remaining_amount }}€</p>\n        <p><strong>Pénalités encourues</strong></p>\n        <p style=\"color: #DC2626;\"><strong>Délai de régularisation: 8 jours</strong></p>\n      </div>\n      <p>En l'absence de règlement sous 8 jours, nous serons contraints d'engager une procédure de recouvrement.</p>\n      <div style=\"text-align: center;\">\n        <a href=\"https://www.talosprimes.com/pay/{{ $json.id }}\" class=\"button\">💳 Régler Immédiatement</a>\n      </div>\n      <p>Pour éviter toute procédure, contactez-nous urgemment.</p>\n      <p>Service Comptabilité<br>Talosprime</p>\n      <div class=\"footer\">\n        <p>📧 comptabilite@talosprimes.com | 📞 01 XX XX XX XX</p>\n      </div>\n    </div>\n  </div>\n</body>\n</html>"
+      },
+      "id": "send-final",
+      "name": "Email Dernière Relance (J+30)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1250, 400],
+      "credentials": {
+        "smtp": {
+          "id": "2",
+          "name": "Resend SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/subscription-logs/log",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "relance_facture"
+            },
+            {
+              "name": "level",
+              "value": "={{ $json.reminder_level >= 2 ? 'warning' : 'info' }}"
+            },
+            {
+              "name": "message",
+              "value": "Relance niveau {{ $json.reminder_level }} envoyée pour {{ $json.document_number }} - J{{ $json.days_overdue > 0 ? '+' : '' }}{{ $json.days_overdue }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ document_id: $json.id, document_number: $json.document_number, reminder_level: $json.reminder_level, days_overdue: $json.days_overdue, remaining_amount: $json.remaining_amount }) }}"
+            }
+          ]
+        }
+      },
+      "id": "log-reminder",
+      "name": "Logger Relance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1450, 250]
+    },
+    {
+      "parameters": {},
+      "id": "no-invoices",
+      "name": "Aucune Facture à Relancer",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1050, 500]
+    }
+  ],
+  "connections": {
+    "Cron - Tous les jours 10h": {
+      "main": [
+        [
+          {
+            "node": "Récupérer Factures",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Récupérer Factures": {
+      "main": [
+        [
+          {
+            "node": "Catégoriser Factures à Relancer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catégoriser Factures à Relancer": {
+      "main": [
+        [
+          {
+            "node": "A des Factures à Relancer ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "A des Factures à Relancer ?": {
+      "main": [
+        [
+          {
+            "node": "Type de Relance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aucune Facture à Relancer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Type de Relance": {
+      "main": [
+        [
+          {
+            "node": "Email Préventif (J-3)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email 1ère Relance (J+7)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email 2ème Relance (J+15)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Dernière Relance (J+30)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Préventif (J-3)": {
+      "main": [
+        [
+          {
+            "node": "Logger Relance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email 1ère Relance (J+7)": {
+      "main": [
+        [
+          {
+            "node": "Logger Relance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email 2ème Relance (J+15)": {
+      "main": [
+        [
+          {
+            "node": "Logger Relance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Dernière Relance (J+30)": {
+      "main": [
+        [
+          {
+            "node": "Logger Relance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "id": "relance-factures",
+  "meta": {
+    "instanceId": "talosprime"
+  },
+  "tags": [
+    {
+      "name": "facturation",
+      "createdAt": "2026-01-01T20:00:00.000Z",
+      "updatedAt": "2026-01-01T20:00:00.000Z",
+      "id": "1"
+    },
+    {
+      "name": "relances",
+      "createdAt": "2026-01-01T20:00:00.000Z",
+      "updatedAt": "2026-01-01T20:00:00.000Z",
+      "id": "2"
+    }
+  ]
+}
+
