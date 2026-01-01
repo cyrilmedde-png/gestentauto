@@ -115,6 +115,44 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Abonnement annulé:', subscription.stripe_subscription_id)
 
+    // 🔔 Déclencher workflow N8N pour annulation (côté client)
+    try {
+      console.log('🔔 Déclenchement workflow N8N: annuler-abonnement')
+      const n8nWebhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL + '/webhook/annuler-abonnement'
+      
+      // Récupérer le plan name
+      const { data: plan } = await supabase
+        .from('subscription_plans')
+        .select('display_name')
+        .eq('id', subscription.plan_id)
+        .single()
+
+      const n8nResponse = await fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventType: 'subscription_canceled_by_client',
+          email: user.email,
+          first_name: user.user_metadata?.first_name || '',
+          last_name: user.user_metadata?.last_name || '',
+          plan_name: plan?.display_name || 'N/A',
+          canceled_at: new Date().toISOString(),
+          access_until: subscription.current_period_end,
+          cancel_at_period_end: cancel_at_period_end,
+          cancel_reason: reason || null,
+          subscription_id: subscription.stripe_subscription_id,
+        })
+      })
+
+      if (n8nResponse.ok) {
+        console.log('✅ Workflow N8N "annuler-abonnement" déclenché avec succès')
+      } else {
+        console.warn('⚠️ Workflow N8N échoué (non bloquant):', n8nResponse.status)
+      }
+    } catch (webhookError) {
+      console.error('❌ Erreur webhook N8N (non bloquant):', webhookError)
+    }
+
     return NextResponse.json({
       success: true,
       message: cancel_at_period_end

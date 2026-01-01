@@ -156,6 +156,39 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Formule changée:', subscription.stripe_subscription_id)
 
+    // 🔔 Déclencher workflow N8N pour changement de formule
+    try {
+      console.log('🔔 Déclenchement workflow N8N: changement-formule')
+      const n8nWebhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL + '/webhook/changement-formule'
+      
+      const n8nResponse = await fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventType: isUpgrade ? 'upgrade' : 'downgrade',
+          email: user.email,
+          first_name: user.user_metadata?.first_name || '',
+          last_name: user.user_metadata?.last_name || '',
+          change_type: isUpgrade ? 'upgrade' : 'downgrade',
+          old_plan_name: subscription.plan.display_name,
+          new_plan_name: newPlan.display_name,
+          old_price: subscription.plan.price_monthly,
+          new_price: newPlan.price_monthly,
+          prorated_amount: Math.abs(newPlan.price_monthly - subscription.plan.price_monthly),
+          next_billing_date: new Date(updatedSubscription.current_period_end * 1000).toISOString(),
+          subscription_id: subscription.stripe_subscription_id,
+        })
+      })
+
+      if (n8nResponse.ok) {
+        console.log('✅ Workflow N8N "changement-formule" déclenché avec succès')
+      } else {
+        console.warn('⚠️ Workflow N8N échoué (non bloquant):', n8nResponse.status)
+      }
+    } catch (webhookError) {
+      console.error('❌ Erreur webhook N8N (non bloquant):', webhookError)
+    }
+
     return NextResponse.json({
       success: true,
       message: isUpgrade 
