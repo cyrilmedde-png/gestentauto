@@ -1,113 +1,153 @@
 {
-  "name": "Rappel Renouvellement (J-7)",
+  "name": "Rappel Renouvellement J-7",
   "nodes": [
     {
       "parameters": {
-        "rule": {
-          "interval": [
+        "httpMethod": "POST",
+        "path": "rappel-renouvellement",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-rappel-j7",
+      "name": "Webhook Rappel J-7",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "rappel-renouvellement-j7"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
             {
-              "triggerAtHour": 9
+              "value1": "={{$json.body.email}}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{$json.body.subscription_id}}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{$json.body.plan_name}}",
+              "operation": "isNotEmpty"
             }
           ]
         }
       },
-      "id": "cron-daily",
-      "name": "Cron - Tous les jours 9h",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.1,
-      "position": [250, 400]
+      "id": "validation-donnees",
+      "name": "Validation Données",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
     },
     {
       "parameters": {
+        "url": "={{$json.body.app_url}}/api/email/send",
         "method": "POST",
-        "url": "https://www.talosprimes.com/api/internal/subscriptions/expiring-soon",
-        "authentication": "none",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "days_until_renewal",
-              "value": "7"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": \"{{$json.body.email}}\",\n  \"subject\": \"⏰ Votre abonnement se renouvelle dans 7 jours\",\n  \"html\": \"<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;color:#333}.header{background:#4F46E5;color:white;padding:20px;text-align:center}.content{padding:30px}.highlight{background:#F3F4F6;padding:15px;border-radius:8px;margin:20px 0}.cta{background:#4F46E5;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:20px}.footer{background:#F9FAFB;padding:20px;text-align:center;font-size:12px;color:#6B7280}</style></head><body><div class='header'><h1>⏰ Rappel de Renouvellement</h1></div><div class='content'><p>Bonjour {{$json.body.first_name}},</p><p>Nous vous rappelons que votre abonnement <strong>{{$json.body.plan_name}}</strong> sera renouvelé automatiquement dans <strong>7 jours</strong>.</p><div class='highlight'><h3>📋 Détails de l'abonnement</h3><p><strong>Formule :</strong> {{$json.body.plan_name}}</p><p><strong>Montant :</strong> {{$json.body.amount}}€/mois</p><p><strong>Date de renouvellement :</strong> {{$json.body.renewal_date}}</p><p><strong>Moyen de paiement :</strong> {{$json.body.payment_method}}</p></div><p><strong>Aucune action n'est requise</strong> de votre part. Le paiement sera effectué automatiquement avec votre moyen de paiement enregistré.</p><h3>💡 Besoin de modifier quelque chose ?</h3><ul><li>Changer votre formule ? <a href='{{$json.body.app_url}}/billing'>Gérer mon abonnement</a></li><li>Mettre à jour votre carte bancaire ? <a href='{{$json.body.app_url}}/billing'>Modifier mon moyen de paiement</a></li><li>Annuler votre abonnement ? <a href='{{$json.body.app_url}}/billing'>Résilier</a></li></ul><p><a href='{{$json.body.app_url}}/billing' class='cta'>Gérer mon abonnement</a></p><p>Merci de votre confiance !</p><p>L'équipe TalosPrimes</p></div><div class='footer'><p>© 2026 TalosPrimes - Tous droits réservés</p><p>Si vous avez des questions, contactez-nous : <a href='mailto:support@talosprimes.com'>support@talosprimes.com</a></p></div></body></html>\"\n}",
         "options": {}
       },
-      "id": "fetch-expiring",
-      "name": "Récupérer Abonnements J-7",
+      "id": "email-rappel",
+      "name": "Email Rappel J-7",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [470, 400]
+      "position": [650, 200]
     },
     {
       "parameters": {
-        "jsCode": "// Séparer les abonnements en items individuels\nconst subscriptions = $input.first().json.subscriptions || [];\n\nreturn subscriptions.map(sub => ({ json: sub }));"
-      },
-      "id": "split-items",
-      "name": "Séparer en Items",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [690, 400]
-    },
-    {
-      "parameters": {
+        "url": "={{$json.body.app_url}}/api/sms/send",
         "method": "POST",
-        "url": "https://www.talosprimes.com/api/email/send",
-        "authentication": "none",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "to",
-              "value": "={{ $json.email }}"
-            },
-            {
-              "name": "subject",
-              "value": "💳 Rappel : Renouvellement Talos Prime dans 7 jours"
-            },
-            {
-              "name": "html",
-              "value": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;\"><div style=\"background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;\"><h1 style=\"color: white; margin: 0; font-size: 28px;\">💳 Rappel de Renouvellement</h1></div><div style=\"background-color: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);\"><p style=\"font-size: 16px; color: #333; margin-bottom: 15px;\">Bonjour <strong>{{ $json.first_name || 'Cher client' }}</strong>,</p><p style=\"font-size: 16px; color: #333; margin-bottom: 25px;\">Votre abonnement Talos Prime sera renouvelé dans <strong>7 jours</strong>.</p><div style=\"background: #dbeafe; border-left: 4px solid #3b82f6; padding: 25px; margin: 30px 0; border-radius: 8px;\"><h2 style=\"color: #1e40af; margin-top: 0; font-size: 20px;\">📋 Prochain prélèvement</h2><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Date :</strong> {{ $json.renewal_date }}</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Montant :</strong> {{ $json.amount }}€</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Formule :</strong> {{ $json.plan_name }}</p><p style=\"margin: 10px 0; font-size: 15px;\"><strong>Moyen de paiement :</strong> {{ $json.payment_method }}</p></div><div style=\"background: #f0fdf4; border: 1px solid #86efac; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #15803d; font-size: 16px; margin-top: 0;\">✅ Tout est prêt !</h3><p style=\"margin: 10px 0; font-size: 14px; color: #166534;\">Votre carte se terminant par <strong>{{ $json.card_last4 }}</strong> sera automatiquement débitée le {{ $json.renewal_date }}.</p><p style=\"margin: 10px 0; font-size: 14px; color: #166534;\">Aucune action n'est requise de votre part.</p></div><div style=\"background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 30px 0; border-radius: 8px;\"><h3 style=\"color: #92400e; margin-top: 0; font-size: 18px;\">💡 Envie de changer ?</h3><p style=\"margin: 10px 0; font-size: 14px; color: #78350f;\">Vous pouvez à tout moment :</p><ul style=\"color: #78350f; font-size: 14px; line-height: 1.8; margin: 10px 0; padding-left: 20px;\"><li>Passer à une formule supérieure</li><li>Passer à une formule inférieure</li><li>Mettre à jour votre moyen de paiement</li><li>Annuler votre abonnement</li></ul></div><div style=\"text-align: center; margin: 35px 0;\"><a href=\"https://www.talosprimes.com/billing\" style=\"display: inline-block; background: #3b82f6; color: white; padding: 14px 35px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); margin: 5px;\">📊 Gérer mon abonnement</a></div><div style=\"margin-top: 35px; padding-top: 25px; border-top: 1px solid #e5e7eb;\"><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">Questions ?</p><p style=\"font-size: 14px; color: #666; margin: 5px 0;\">📧 Email : billing@talosprimes.com</p></div><p style=\"font-size: 14px; color: #999; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;\">Merci de votre confiance - L'équipe Talos Prime</p></div></div>"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": \"{{$json.body.phone}}\",\n  \"message\": \"⏰ Rappel TalosPrimes : Votre abonnement {{$json.body.plan_name}} ({{$json.body.amount}}€) se renouvelle dans 7 jours. Aucune action requise. Plus d'infos sur votre compte.\"\n}",
         "options": {}
       },
-      "id": "send-email-reminder",
-      "name": "Email Rappel",
+      "id": "sms-rappel",
+      "name": "SMS Rappel (optionnel)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [910, 400]
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\": true, \"message\": \"Rappel J-7 envoyé\"}",
+        "options": {}
+      },
+      "id": "response-success",
+      "name": "Response Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\": false, \"message\": \"Données invalides\"}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "response-error",
+      "name": "Response Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 500]
     }
   ],
   "connections": {
-    "Cron - Tous les jours 9h": {
+    "Webhook Rappel J-7": {
       "main": [
         [
           {
-            "node": "Récupérer Abonnements J-7",
+            "node": "Validation Données",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Récupérer Abonnements J-7": {
+    "Validation Données": {
       "main": [
         [
           {
-            "node": "Séparer en Items",
+            "node": "Email Rappel J-7",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "SMS Rappel (optionnel)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Response Error",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Séparer en Items": {
+    "Email Rappel J-7": {
       "main": [
         [
           {
-            "node": "Email Rappel",
+            "node": "Response Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS Rappel (optionnel)": {
+      "main": [
+        [
+          {
+            "node": "Response Success",
             "type": "main",
             "index": 0
           }
@@ -115,14 +155,12 @@
       ]
     }
   },
-  "pinData": {},
-  "settings": {
-    "executionOrder": "v1"
+  "active": false,
+  "settings": {},
+  "versionId": "1",
+  "id": "rappel-renouvellement-j7",
+  "meta": {
+    "instanceId": "talosprime-production"
   },
-  "staticData": null,
-  "tags": [],
-  "triggerCount": 0,
-  "updatedAt": "2025-12-30T12:00:00.000Z",
-  "versionId": "1"
+  "tags": []
 }
-
