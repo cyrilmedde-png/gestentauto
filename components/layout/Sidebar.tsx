@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Home, FileText, Users, Settings, Menu, UserPlus, Package, UserCheck, BarChart, CreditCard, ListChecks, type LucideIcon } from 'lucide-react'
+import { Home, FileText, Users, Settings, Menu, UserPlus, Package, UserCheck, BarChart, CreditCard, ListChecks, Shield, type LucideIcon } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
@@ -52,6 +52,7 @@ export function Sidebar() {
     { icon: CreditCard, label: 'Abonnements', href: '/platform/subscriptions' },
     { icon: Settings, label: 'Gestion des Plans', href: '/platform/plans' },
     { icon: ListChecks, label: 'Logs Système', href: '/platform/logs' },
+    { icon: Shield, label: 'Administrateurs', href: '/platform/admins' },
     { icon: Package, label: 'Modules', href: '/platform/modules' },
     { icon: BarChart, label: 'Analytics', href: '/platform/analytics' },
     { icon: Settings, label: 'Paramètres', href: '/platform/settings' },
