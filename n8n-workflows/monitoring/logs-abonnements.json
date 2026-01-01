@@ -1,0 +1,196 @@
+{
+  "name": "Logs Abonnements Centralisés",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "log-subscription",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-log",
+      "name": "Webhook Log",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "log-subscription-event"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.body.event_type}}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{$json.body.status}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "validation-log",
+      "name": "Validation Données",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO subscription_logs (\n  event_type,\n  subscription_id,\n  company_id,\n  user_id,\n  status,\n  details,\n  error_message,\n  source,\n  ip_address,\n  user_agent\n) VALUES (\n  '{{$json.body.event_type}}',\n  {{$json.body.subscription_id ? \"'\" + $json.body.subscription_id + \"'\" : \"NULL\"}},\n  {{$json.body.company_id ? \"'\" + $json.body.company_id + \"'\" : \"NULL\"}},\n  {{$json.body.user_id ? \"'\" + $json.body.user_id + \"'\" : \"NULL\"}},\n  '{{$json.body.status}}',\n  '{{JSON.stringify($json.body.details || {})}}'::jsonb,\n  {{$json.body.error_message ? \"'\" + $json.body.error_message.replace(/'/g, \"''\") + \"'\" : \"NULL\"}},\n  '{{$json.body.source || \"n8n\"}}',\n  {{$json.body.ip_address ? \"'\" + $json.body.ip_address + \"'\" : \"NULL\"}},\n  {{$json.body.user_agent ? \"'\" + $json.body.user_agent + \"'\" : \"NULL\"}}\n) RETURNING id, created_at;",
+        "options": {}
+      },
+      "id": "insert-log-supabase",
+      "name": "Insert Log Supabase",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [650, 200],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-postgres",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.body.status}}",
+              "value2": "error"
+            }
+          ]
+        }
+      },
+      "id": "check-if-error",
+      "name": "Si Erreur Critique ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.body.app_url || 'https://www.talosprimes.com'}}/api/email/send",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": \"admin@talosprimes.com\",\n  \"subject\": \"🚨 Erreur Critique Abonnement - {{$json.body.event_type}}\",\n  \"html\": \"<html><head><style>body{font-family:Arial,sans-serif;color:#333}.header{background:#DC2626;color:white;padding:20px;text-align:center}.content{padding:30px}.error{background:#FEE2E2;border-left:4px solid #DC2626;padding:15px;margin:20px 0}.footer{background:#F9FAFB;padding:20px;text-align:center;font-size:12px;color:#6B7280}</style></head><body><div class='header'><h1>🚨 Erreur Critique</h1></div><div class='content'><h2>Détails de l'erreur</h2><div class='error'><p><strong>Type d'événement:</strong> {{$json.body.event_type}}</p><p><strong>Subscription ID:</strong> {{$json.body.subscription_id || 'N/A'}}</p><p><strong>Company ID:</strong> {{$json.body.company_id || 'N/A'}}</p><p><strong>Erreur:</strong> {{$json.body.error_message || 'Aucun message'}}</p><p><strong>Date:</strong> {{new Date().toLocaleString('fr-FR')}}</p></div><h3>Détails complets (JSON):</h3><pre style='background:#F3F4F6;padding:15px;border-radius:8px;overflow-x:auto'>{{JSON.stringify($json.body.details, null, 2)}}</pre><p><a href='https://www.talosprimes.com/platform/logs' style='background:#DC2626;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:20px'>Voir les logs</a></p></div><div class='footer'><p>© 2026 TalosPrimes - Logs Automatiques</p></div></body></html>\"\n}",
+        "options": {}
+      },
+      "id": "alert-admin-email",
+      "name": "Alerte Email Admin (Erreur)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"message\": \"Log enregistré\",\n  \"log_id\": \"{{$json.id}}\",\n  \"timestamp\": \"{{$json.created_at}}\"\n}",
+        "options": {}
+      },
+      "id": "response-success",
+      "name": "Response Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\": false, \"message\": \"Données invalides\"}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "response-error",
+      "name": "Response Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Log": {
+      "main": [
+        [
+          {
+            "node": "Validation Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Données": {
+      "main": [
+        [
+          {
+            "node": "Insert Log Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Response Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Log Supabase": {
+      "main": [
+        [
+          {
+            "node": "Si Erreur Critique ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Si Erreur Critique ?": {
+      "main": [
+        [
+          {
+            "node": "Alerte Email Admin (Erreur)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Response Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alerte Email Admin (Erreur)": {
+      "main": [
+        [
+          {
+            "node": "Response Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1",
+  "id": "logs-abonnements-centralises",
+  "meta": {
+    "instanceId": "talosprime-production"
+  },
+  "tags": []
+}
+

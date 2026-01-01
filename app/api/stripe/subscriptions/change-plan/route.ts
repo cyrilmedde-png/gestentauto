@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe/config'
+import { logSuccess, logError } from '@/lib/services/subscription-logger'
 
 /**
  * POST /api/stripe/subscriptions/change-plan
@@ -156,6 +157,24 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Formule changée:', subscription.stripe_subscription_id)
 
+    // 📊 Logger l'événement
+    await logSuccess(
+      isUpgrade ? 'plan_upgraded' : 'plan_downgraded',
+      subscription.stripe_subscription_id,
+      {
+        old_plan_name: subscription.plan.display_name,
+        new_plan_name: newPlan.display_name,
+        old_price: subscription.plan.price_monthly,
+        new_price: newPlan.price_monthly,
+        user_email: user.email
+      },
+      {
+        company_id: userData.company_id,
+        user_id: user.id,
+        source: 'api'
+      }
+    )
+
     // 🔔 Déclencher workflow N8N pour changement de formule
     try {
       console.log('🔔 Déclenchement workflow N8N: changement-formule')
@@ -208,6 +227,21 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('❌ Erreur changement formule:', error)
+    
+    // 📊 Logger l'erreur
+    await logError(
+      'plan_upgraded', // ou 'plan_downgraded', mais on ne peut pas savoir ici
+      error as Error,
+      undefined, // subscription_id non disponible ici
+      {
+        error_step: 'change_plan_api',
+        user_email: 'unknown'
+      },
+      {
+        source: 'api'
+      }
+    )
+    
     return NextResponse.json(
       {
         success: false,
