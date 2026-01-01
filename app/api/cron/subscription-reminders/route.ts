@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         amount,
         current_period_end,
         company_id,
-        plan:subscription_plans (
+        plan:subscription_plans!inner (
           display_name,
           name
         )
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
             first_name: userData.first_name || '',
             last_name: userData.last_name || '',
             phone: userData.phone || null,
-            plan_name: subscription.plan?.display_name || subscription.plan?.name || 'N/A',
+            plan_name: (subscription.plan as any)?.display_name || (subscription.plan as any)?.name || 'N/A',
             amount: subscription.amount,
             renewal_date: new Date(subscription.current_period_end).toLocaleDateString('fr-FR', {
               weekday: 'long',
