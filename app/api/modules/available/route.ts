@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { isPlatformCompany } from '@/lib/platform/supabase'
 
 /**
  * GET /api/modules/available
  * Récupère les modules disponibles pour l'utilisateur connecté
  * Filtre selon:
  *   - Modules activés pour son entreprise
+ *   - Pour la plateforme (Groupe MCLEM) : retourne tous les modules
  *   - Modules selon son plan d'abonnement (si configuré)
  */
 export async function GET(request: NextRequest) {
@@ -35,8 +37,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Récupérer modules activés pour cette entreprise
-    const { data: modules, error: modulesError } = await supabase
+    // Vérifier si l'utilisateur est de la plateforme
+    const isPlatform = await isPlatformCompany(userData.company_id)
+    
+    // Construire la requête : pour la plateforme, récupérer tous les modules
+    let modulesQuery = supabase
       .from('modules')
       .select(`
         id,
@@ -63,9 +68,19 @@ export async function GET(request: NextRequest) {
           is_platform_only
         )
       `)
-      .eq('company_id', userData.company_id)
-      .eq('is_active', true)
-      .order('order_index', { ascending: true })
+    
+    if (isPlatform) {
+      // Pour la plateforme, retourner tous les modules (pas de filtre company_id)
+      modulesQuery = modulesQuery.order('order_index', { ascending: true })
+    } else {
+      // Pour les clients, filtrer par company_id et is_active
+      modulesQuery = modulesQuery
+        .eq('company_id', userData.company_id)
+        .eq('is_active', true)
+        .order('order_index', { ascending: true })
+    }
+    
+    const { data: modules, error: modulesError } = await modulesQuery
 
     if (modulesError) {
       console.error('Error fetching modules:', modulesError)
