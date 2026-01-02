@@ -96,8 +96,25 @@ function FacturationContent() {
       const statsResponse = await fetch('/api/billing/stats')
       const statsData = await statsResponse.json()
 
-      if (statsData.success) {
-        setStats(statsData.data)
+      if (statsData.success && statsData.data?.stats) {
+        const apiStats = statsData.data.stats
+        // Mapper la structure de l'API vers celle attendue par le composant
+        setStats({
+          total_revenue: apiStats.revenue || 0,
+          pending_amount: apiStats.pendingInvoices?.amount || 0,
+          overdue_amount: apiStats.overdueInvoices?.amount || 0,
+          quotes_count: apiStats.quotes?.total || 0,
+          invoices_count: apiStats.pendingInvoices?.count || 0
+        })
+      } else {
+        // Valeurs par défaut si l'API ne retourne pas de stats
+        setStats({
+          total_revenue: 0,
+          pending_amount: 0,
+          overdue_amount: 0,
+          quotes_count: 0,
+          invoices_count: 0
+        })
       }
     } catch (err: any) {
       console.error('Erreur:', err)
@@ -231,7 +248,7 @@ function FacturationContent() {
               <div>
                 <p className="text-sm text-muted-foreground">Chiffre d'affaires</p>
                 <p className="text-2xl font-bold text-foreground mt-1">
-                  {stats.total_revenue.toFixed(2)} €
+                  {(stats.total_revenue || 0).toFixed(2)} €
                 </p>
               </div>
               <div className="bg-green-500/20 p-3 rounded-lg">
@@ -245,7 +262,7 @@ function FacturationContent() {
               <div>
                 <p className="text-sm text-muted-foreground">En attente</p>
                 <p className="text-2xl font-bold text-foreground mt-1">
-                  {stats.pending_amount.toFixed(2)} €
+                  {(stats.pending_amount || 0).toFixed(2)} €
                 </p>
               </div>
               <div className="bg-yellow-500/20 p-3 rounded-lg">
@@ -387,7 +404,7 @@ function FacturationContent() {
                       {new Date(doc.issue_date).toLocaleDateString('fr-FR')}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="font-medium text-foreground">{doc.total_amount.toFixed(2)} €</span>
+                      <span className="font-medium text-foreground">{(doc.total_amount || 0).toFixed(2)} €</span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {getStatusBadge(doc.status)}
