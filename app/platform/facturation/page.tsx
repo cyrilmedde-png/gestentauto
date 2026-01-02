@@ -84,7 +84,11 @@ function FacturationContent() {
 
       // Charger les documents
       const docsResponse = await fetch(`/api/billing/documents?${params.toString()}`)
-      const docsData = await docsResponse.json()
+      if (!docsResponse.ok) {
+        throw new Error(`Erreur HTTP: ${docsResponse.status}`)
+      }
+      const textData = await docsResponse.text()
+      const docsData = textData ? JSON.parse(textData) : { success: false, error: 'Réponse vide' }
 
       if (docsData.success) {
         setDocuments(docsData.data || [])
@@ -94,20 +98,8 @@ function FacturationContent() {
 
       // Charger les statistiques
       const statsResponse = await fetch('/api/billing/stats')
-      const statsData = await statsResponse.json()
-
-      if (statsData.success && statsData.data?.stats) {
-        const apiStats = statsData.data.stats
-        // Mapper la structure de l'API vers celle attendue par le composant
-        setStats({
-          total_revenue: apiStats.revenue || 0,
-          pending_amount: apiStats.pendingInvoices?.amount || 0,
-          overdue_amount: apiStats.overdueInvoices?.amount || 0,
-          quotes_count: apiStats.quotes?.total || 0,
-          invoices_count: apiStats.pendingInvoices?.count || 0
-        })
-      } else {
-        // Valeurs par défaut si l'API ne retourne pas de stats
+      if (!statsResponse.ok) {
+        console.warn('Erreur lors du chargement des stats, utilisation des valeurs par défaut')
         setStats({
           total_revenue: 0,
           pending_amount: 0,
@@ -115,10 +107,39 @@ function FacturationContent() {
           quotes_count: 0,
           invoices_count: 0
         })
+      } else {
+        const textStats = await statsResponse.text()
+        const statsData = textStats ? JSON.parse(textStats) : { success: false }
+
+        if (statsData.success && statsData.data?.stats) {
+          const apiStats = statsData.data.stats
+          // Mapper la structure de l'API vers celle attendue par le composant
+          setStats({
+            total_revenue: apiStats.revenue || 0,
+            pending_amount: apiStats.pendingInvoices?.amount || 0,
+            overdue_amount: apiStats.overdueInvoices?.amount || 0,
+            quotes_count: apiStats.quotes?.total || 0,
+            invoices_count: apiStats.pendingInvoices?.count || 0
+          })
+        } else {
+          // Valeurs par défaut si l'API ne retourne pas de stats
+          setStats({
+            total_revenue: 0,
+            pending_amount: 0,
+            overdue_amount: 0,
+            quotes_count: 0,
+            invoices_count: 0
+          })
+        }
       }
     } catch (err: any) {
       console.error('Erreur:', err)
-      setError(err.message || 'Erreur lors du chargement')
+      // Gérer les erreurs de parsing JSON
+      if (err instanceof SyntaxError) {
+        setError('Erreur de format de données reçues du serveur')
+      } else {
+        setError(err.message || 'Erreur lors du chargement')
+      }
     } finally {
       setLoading(false)
     }
@@ -166,11 +187,13 @@ function FacturationContent() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
+        const text = await response.text()
+        const errorData = text ? JSON.parse(text) : {}
         throw new Error(errorData.error || 'Erreur lors de l\'envoi')
       }
 
-      const responseData = await response.json()
+      const textResponse = await response.text()
+      const responseData = textResponse ? JSON.parse(textResponse) : { success: true }
       const documentLabel = getDocumentTypeLabel(documentType)
       setSuccess(`${documentLabel} envoyé(e) avec succès à ${document.customer_email} !`)
       setTimeout(() => setSuccess(null), 5000)
@@ -199,7 +222,12 @@ function FacturationContent() {
         }),
       })
 
-      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`)
+      }
+
+      const textData = await response.text()
+      const data = textData ? JSON.parse(textData) : { success: false, error: 'Réponse vide' }
 
       if (!data.success) {
         throw new Error(data.error || 'Erreur lors de la mise à jour')
