@@ -114,12 +114,14 @@ CREATE INDEX IF NOT EXISTS idx_plan_modules_included ON subscription_plan_module
 -- ============================================================================
 
 -- Trigger updated_at pour module_categories
+DROP TRIGGER IF EXISTS update_module_categories_updated_at ON module_categories;
 CREATE TRIGGER update_module_categories_updated_at 
   BEFORE UPDATE ON module_categories
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger updated_at pour subscription_plan_modules
+DROP TRIGGER IF EXISTS update_subscription_plan_modules_updated_at ON subscription_plan_modules;
 CREATE TRIGGER update_subscription_plan_modules_updated_at 
   BEFORE UPDATE ON subscription_plan_modules
   FOR EACH ROW 
@@ -215,11 +217,13 @@ CREATE POLICY "Users can view modules in their company"
   );
 
 -- Policy: Tout le monde peut voir les catégories
+DROP POLICY IF EXISTS "Anyone can view module categories" ON module_categories;
 CREATE POLICY "Anyone can view module categories"
   ON module_categories FOR SELECT
   USING (true);
 
 -- Policy: Seuls admins plateforme peuvent modifier catégories
+DROP POLICY IF EXISTS "Platform admins can manage categories" ON module_categories;
 CREATE POLICY "Platform admins can manage categories"
   ON module_categories FOR ALL
   USING (
@@ -231,6 +235,7 @@ CREATE POLICY "Platform admins can manage categories"
   );
 
 -- Policy: Admins plateforme peuvent voir tous les plan_modules
+DROP POLICY IF EXISTS "Platform admins can view plan modules" ON subscription_plan_modules;
 CREATE POLICY "Platform admins can view plan modules"
   ON subscription_plan_modules FOR SELECT
   USING (
@@ -242,6 +247,7 @@ CREATE POLICY "Platform admins can view plan modules"
   );
 
 -- Policy: Admins plateforme peuvent gérer plan_modules
+DROP POLICY IF EXISTS "Platform admins can manage plan modules" ON subscription_plan_modules;
 CREATE POLICY "Platform admins can manage plan modules"
   ON subscription_plan_modules FOR ALL
   USING (
