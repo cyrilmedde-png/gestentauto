@@ -695,6 +695,13 @@ AND NOT EXISTS (
 -- 9. LIER MODULES AUX PLANS STRIPE
 -- ============================================================================
 
+-- ============================================================================
+-- 9. LIER MODULES AUX PLANS STRIPE (Optionnel - À configurer plus tard)
+-- ============================================================================
+-- Cette section est commentée car vous allez configurer les packs plus tard
+-- Décommentez quand vous aurez créé vos plans Stripe
+
+/*
 -- Plan STARTER (29€)
 INSERT INTO subscription_plan_modules (plan_id, module_name, is_included, limits)
 SELECT 
@@ -703,7 +710,7 @@ SELECT
   true,
   '{"max_leads_per_month": 50}'::jsonb
 FROM subscription_plans sp
-WHERE sp.stripe_plan_name = 'Starter'
+WHERE sp.name = 'starter'  -- Utilise colonne 'name' au lieu de 'stripe_plan_name'
 ON CONFLICT (plan_id, module_name) DO UPDATE SET
   is_included = EXCLUDED.is_included,
   limits = EXCLUDED.limits;
@@ -711,7 +718,7 @@ ON CONFLICT (plan_id, module_name) DO UPDATE SET
 INSERT INTO subscription_plan_modules (plan_id, module_name, is_included)
 SELECT sp.id, 'onboarding', true
 FROM subscription_plans sp
-WHERE sp.stripe_plan_name = 'Starter'
+WHERE sp.name = 'starter'
 ON CONFLICT (plan_id, module_name) DO NOTHING;
 
 INSERT INTO subscription_plan_modules (plan_id, module_name, is_included, limits)
@@ -721,13 +728,12 @@ SELECT
   true,
   '{"max_tasks": 100}'::jsonb
 FROM subscription_plans sp
-WHERE sp.stripe_plan_name = 'Starter'
+WHERE sp.name = 'starter'
 ON CONFLICT (plan_id, module_name) DO UPDATE SET
   is_included = EXCLUDED.is_included,
   limits = EXCLUDED.limits;
 
 -- Plan BUSINESS (79€)
--- Inclut tout de Starter + nouveaux modules
 INSERT INTO subscription_plan_modules (plan_id, module_name, is_included, limits)
 SELECT 
   sp.id,
@@ -742,13 +748,12 @@ SELECT
     ELSE '{}'::jsonb
   END
 FROM subscription_plans sp
-WHERE sp.stripe_plan_name = 'Business'
+WHERE sp.name = 'business'
 ON CONFLICT (plan_id, module_name) DO UPDATE SET
   is_included = EXCLUDED.is_included,
   limits = EXCLUDED.limits;
 
 -- Plan PREMIUM (149€)
--- Inclut tout de Business + modules finance
 INSERT INTO subscription_plan_modules (plan_id, module_name, is_included, limits)
 SELECT 
   sp.id,
@@ -770,10 +775,13 @@ SELECT
     ELSE '{}'::jsonb
   END
 FROM subscription_plans sp
-WHERE sp.stripe_plan_name = 'Premium'
+WHERE sp.name = 'premium'
 ON CONFLICT (plan_id, module_name) DO UPDATE SET
   is_included = EXCLUDED.is_included,
   limits = EXCLUDED.limits;
+*/
+
+-- Note: Cette section sera activée quand vous configurerez vos packs Stripe
 
 -- ============================================================================
 -- ✅ MIGRATION TERMINÉE !
