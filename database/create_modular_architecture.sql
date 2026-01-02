@@ -843,6 +843,19 @@ AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'crm'
 );
 
+-- Mettre à jour le module CRM existant
+UPDATE modules SET 
+  category_id = (SELECT id FROM module_categories WHERE name = 'business'),
+  display_name = 'CRM',
+  description = 'Gestion de la relation client (contacts, opportunités)',
+  icon = 'Users',
+  route = '/platform/crm',
+  min_plan = 'business',
+  status = 'planned',
+  order_index = 4,
+  default_limits = '{"max_contacts": 500, "max_deals": 100}'::jsonb
+WHERE module_name = 'crm';
+
 -- FINANCE
 INSERT INTO modules (
   company_id,
@@ -877,6 +890,19 @@ AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'comptabilite'
 );
 
+-- Mettre à jour le module Comptabilité existant
+UPDATE modules SET 
+  category_id = (SELECT id FROM module_categories WHERE name = 'finance'),
+  display_name = 'Comptabilité',
+  description = 'Plan comptable, écritures, déclarations TVA',
+  icon = 'Calculator',
+  route = '/platform/comptabilite',
+  min_plan = 'premium',
+  status = 'planned',
+  order_index = 1,
+  default_limits = '{}'::jsonb
+WHERE module_name = 'comptabilite';
+
 INSERT INTO modules (
   company_id,
   module_name,
@@ -907,6 +933,18 @@ WHERE key = 'platform_company_id'
 AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'tresorerie'
 );
+
+-- Mettre à jour le module Trésorerie existant
+UPDATE modules SET 
+  category_id = (SELECT id FROM module_categories WHERE name = 'finance'),
+  display_name = 'Trésorerie',
+  description = 'Suivi de trésorerie et prévisions',
+  icon = 'TrendingUp',
+  route = '/platform/tresorerie',
+  min_plan = 'premium',
+  status = 'planned',
+  order_index = 2
+WHERE module_name = 'tresorerie';
 
 -- RH
 INSERT INTO modules (
@@ -942,6 +980,19 @@ AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'employes'
 );
 
+-- Mettre à jour le module Employés existant
+UPDATE modules SET 
+  category_id = (SELECT id FROM module_categories WHERE name = 'rh'),
+  display_name = 'Employés',
+  description = 'Gestion des employés et contrats',
+  icon = 'UserCheck',
+  route = '/platform/employes',
+  min_plan = 'business',
+  status = 'planned',
+  order_index = 1,
+  default_limits = '{"max_employees": 10}'::jsonb
+WHERE module_name = 'employes';
+
 INSERT INTO modules (
   company_id,
   module_name,
@@ -973,6 +1024,18 @@ AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'conges'
 );
 
+-- Mettre à jour le module Congés existant
+UPDATE modules SET 
+  category_id = (SELECT id FROM module_categories WHERE name = 'rh'),
+  display_name = 'Congés',
+  description = 'Gestion des congés et absences',
+  icon = 'Calendar',
+  route = '/platform/conges',
+  min_plan = 'business',
+  status = 'planned',
+  order_index = 2
+WHERE module_name = 'conges';
+
 INSERT INTO modules (
   company_id,
   module_name,
@@ -1003,6 +1066,18 @@ WHERE key = 'platform_company_id'
 AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'paie'
 );
+
+-- Mettre à jour le module Paie existant
+UPDATE modules SET 
+  category_id = (SELECT id FROM module_categories WHERE name = 'rh'),
+  display_name = 'Paie',
+  description = 'Gestion de la paie et bulletins',
+  icon = 'Wallet',
+  route = '/platform/paie',
+  min_plan = 'premium',
+  status = 'planned',
+  order_index = 3
+WHERE module_name = 'paie';
 
 -- LOGISTIQUE
 INSERT INTO modules (
@@ -1038,6 +1113,19 @@ AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'stock'
 );
 
+-- Mettre à jour le module Stock existant
+UPDATE modules SET 
+  category_id = (SELECT id FROM module_categories WHERE name = 'logistique'),
+  display_name = 'Stock',
+  description = 'Gestion des stocks et inventaires',
+  icon = 'Package',
+  route = '/platform/stock',
+  min_plan = 'business',
+  status = 'planned',
+  order_index = 1,
+  default_limits = '{"max_products": 1000}'::jsonb
+WHERE module_name = 'stock';
+
 -- GESTION
 INSERT INTO modules (
   company_id,
@@ -1072,6 +1160,19 @@ AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'taches'
 );
 
+-- Mettre à jour le module Tâches existant
+UPDATE modules SET 
+  category_id = (SELECT id FROM module_categories WHERE name = 'gestion'),
+  display_name = 'Tâches',
+  description = 'Gestion des tâches et to-do lists',
+  icon = 'CheckSquare',
+  route = '/platform/taches',
+  min_plan = 'starter',
+  status = 'planned',
+  order_index = 1,
+  default_limits = '{"max_tasks": 100}'::jsonb
+WHERE module_name = 'taches';
+
 INSERT INTO modules (
   company_id,
   module_name,
@@ -1105,6 +1206,19 @@ AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'projets'
 );
 
+-- Mettre à jour le module Projets existant
+UPDATE modules SET 
+  category_id = (SELECT id FROM module_categories WHERE name = 'gestion'),
+  display_name = 'Projets',
+  description = 'Gestion de projets et suivi',
+  icon = 'FolderKanban',
+  route = '/platform/projets',
+  min_plan = 'business',
+  status = 'planned',
+  order_index = 2,
+  default_limits = '{"max_projects": 10}'::jsonb
+WHERE module_name = 'projets';
+
 -- DOCUMENTS
 INSERT INTO modules (
   company_id,
@@ -1136,6 +1250,18 @@ WHERE key = 'platform_company_id'
 AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'documents'
 );
+
+-- Mettre à jour le module Documents existant
+UPDATE modules SET 
+  category_id = (SELECT id FROM module_categories WHERE name = 'documents'),
+  display_name = 'GED',
+  description = 'Gestion électronique de documents',
+  icon = 'FileStack',
+  route = '/platform/documents',
+  min_plan = 'business',
+  status = 'planned',
+  order_index = 1
+WHERE module_name = 'documents';
 
 -- ============================================================================
 -- 9. LIER MODULES AUX PLANS STRIPE
