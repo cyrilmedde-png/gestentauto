@@ -317,6 +317,37 @@ UPDATE modules SET
 WHERE module_name = 'settings';
 
 -- PLATEFORME
+-- Créer ou mettre à jour les modules de la plateforme pour Groupe MCLEM
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  status,
+  order_index,
+  is_active
+)
+SELECT 
+  (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1),
+  'platform_clients',
+  (SELECT id FROM module_categories WHERE name = 'platform'),
+  'Gestion Clients',
+  'Administration des entreprises clientes',
+  'Building2',
+  '/platform/clients',
+  'production',
+  1,
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'platform_clients' 
+  AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+)
+ON CONFLICT DO NOTHING;
+
 UPDATE modules SET 
   category_id = (SELECT id FROM module_categories WHERE name = 'platform'),
   display_name = 'Gestion Clients',
@@ -324,8 +355,40 @@ UPDATE modules SET
   icon = 'Building2',
   route = '/platform/clients',
   status = 'production',
-  order_index = 1
-WHERE module_name = 'platform_clients';
+  order_index = 1,
+  is_active = true
+WHERE module_name = 'platform_clients'
+AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1);
+
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  status,
+  order_index,
+  is_active
+)
+SELECT 
+  (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1),
+  'platform_plans',
+  (SELECT id FROM module_categories WHERE name = 'platform'),
+  'Plans & Abonnements',
+  'Gestion des plans Stripe et abonnements',
+  'CreditCard',
+  '/platform/plans',
+  'production',
+  2,
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'platform_plans' 
+  AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+)
+ON CONFLICT DO NOTHING;
 
 UPDATE modules SET 
   category_id = (SELECT id FROM module_categories WHERE name = 'platform'),
@@ -334,8 +397,40 @@ UPDATE modules SET
   icon = 'CreditCard',
   route = '/platform/plans',
   status = 'production',
-  order_index = 2
-WHERE module_name = 'platform_plans';
+  order_index = 2,
+  is_active = true
+WHERE module_name = 'platform_plans'
+AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1);
+
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  status,
+  order_index,
+  is_active
+)
+SELECT 
+  (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1),
+  'platform_modules',
+  (SELECT id FROM module_categories WHERE name = 'platform'),
+  'Gestion Modules',
+  'Activation/désactivation modules par client',
+  'Package',
+  '/platform/modules',
+  'production',
+  3,
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'platform_modules' 
+  AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+)
+ON CONFLICT DO NOTHING;
 
 UPDATE modules SET 
   category_id = (SELECT id FROM module_categories WHERE name = 'platform'),
@@ -344,8 +439,251 @@ UPDATE modules SET
   icon = 'Package',
   route = '/platform/modules',
   status = 'production',
-  order_index = 3
-WHERE module_name = 'platform_modules';
+  order_index = 3,
+  is_active = true
+WHERE module_name = 'platform_modules'
+AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1);
+
+-- Ajouter les autres modules de la plateforme
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  status,
+  order_index,
+  is_active
+)
+SELECT 
+  (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1),
+  'platform_leads',
+  (SELECT id FROM module_categories WHERE name = 'platform'),
+  'Leads',
+  'Gestion des leads et pré-inscriptions',
+  'UserPlus',
+  '/platform/leads',
+  'production',
+  4,
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'platform_leads' 
+  AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  status,
+  order_index,
+  is_active
+)
+SELECT 
+  (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1),
+  'platform_onboarding',
+  (SELECT id FROM module_categories WHERE name = 'platform'),
+  'Onboarding',
+  'Processus d''intégration clients',
+  'UserCheck',
+  '/platform/onboarding',
+  'production',
+  5,
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'platform_onboarding' 
+  AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  status,
+  order_index,
+  is_active
+)
+SELECT 
+  (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1),
+  'platform_subscriptions',
+  (SELECT id FROM module_categories WHERE name = 'platform'),
+  'Abonnements',
+  'Gestion des abonnements clients',
+  'CreditCard',
+  '/platform/subscriptions',
+  'production',
+  6,
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'platform_subscriptions' 
+  AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  status,
+  order_index,
+  is_active
+)
+SELECT 
+  (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1),
+  'platform_settings',
+  (SELECT id FROM module_categories WHERE name = 'platform'),
+  'Paramètres',
+  'Configuration de la plateforme',
+  'Settings',
+  '/platform/settings',
+  'production',
+  7,
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'platform_settings' 
+  AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  status,
+  order_index,
+  is_active
+)
+SELECT 
+  (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1),
+  'platform_admins',
+  (SELECT id FROM module_categories WHERE name = 'platform'),
+  'Administrateurs',
+  'Gestion des administrateurs plateforme',
+  'Shield',
+  '/platform/admins',
+  'production',
+  8,
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'platform_admins' 
+  AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  status,
+  order_index,
+  is_active
+)
+SELECT 
+  (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1),
+  'platform_logs',
+  (SELECT id FROM module_categories WHERE name = 'platform'),
+  'Logs Système',
+  'Logs et traçabilité système',
+  'FileText',
+  '/platform/logs',
+  'production',
+  9,
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'platform_logs' 
+  AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  status,
+  order_index,
+  is_active
+)
+SELECT 
+  (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1),
+  'platform_analytics',
+  (SELECT id FROM module_categories WHERE name = 'platform'),
+  'Analytics',
+  'Statistiques et analyses plateforme',
+  'BarChart',
+  '/platform/analytics',
+  'production',
+  10,
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'platform_analytics' 
+  AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  status,
+  order_index,
+  is_active
+)
+SELECT 
+  (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1),
+  'platform_users',
+  (SELECT id FROM module_categories WHERE name = 'platform'),
+  'Utilisateurs',
+  'Gestion des utilisateurs plateforme',
+  'Users',
+  '/platform/users',
+  'production',
+  11,
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'platform_users' 
+  AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+)
+ON CONFLICT DO NOTHING;
 
 -- BUSINESS
 UPDATE modules SET 
