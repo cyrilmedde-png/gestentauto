@@ -30,6 +30,8 @@ export async function verifyN8NAuth(request: NextRequest): Promise<{ valid: bool
  * Récupère un document avec ses items pour N8N
  */
 export async function getDocumentForN8N(documentId: string) {
+  console.log('[getDocumentForN8N] Recherche document ID:', documentId)
+  
   const supabase = createAdminClient()
   
   // Récupérer le document
@@ -39,16 +41,43 @@ export async function getDocumentForN8N(documentId: string) {
     .eq('id', documentId)
     .single()
   
-  if (docError || !document) {
+  if (docError) {
+    console.error('[getDocumentForN8N] Erreur Supabase:', docError)
+    console.error('[getDocumentForN8N] Code erreur:', docError.code)
+    console.error('[getDocumentForN8N] Message:', docError.message)
+    console.error('[getDocumentForN8N] Détails:', docError.details)
+    return { data: null, error: `Erreur base de données: ${docError.message}` }
+  }
+  
+  if (!document) {
+    console.log('[getDocumentForN8N] Document non trouvé avec ID:', documentId)
+    // Vérifier si d'autres documents existent (pour debug)
+    const { data: allDocs, error: listError } = await supabase
+      .from('billing_documents')
+      .select('id, document_number, document_type')
+      .limit(5)
+    console.log('[getDocumentForN8N] Documents existants (premiers 5):', allDocs)
     return { data: null, error: 'Document non trouvé' }
   }
   
+  console.log('[getDocumentForN8N] Document trouvé:', {
+    id: document.id,
+    document_number: document.document_number,
+    document_type: document.document_type
+  })
+  
   // Récupérer les items
-  const { data: items } = await supabase
+  const { data: items, error: itemsError } = await supabase
     .from('billing_document_items')
     .select('*')
     .eq('document_id', documentId)
     .order('position', { ascending: true })
+  
+  if (itemsError) {
+    console.error('[getDocumentForN8N] Erreur récupération items:', itemsError)
+  } else {
+    console.log('[getDocumentForN8N] Items trouvés:', items?.length || 0)
+  }
   
   return {
     data: {

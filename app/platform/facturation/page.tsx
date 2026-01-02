@@ -124,13 +124,34 @@ function FacturationContent() {
     }
   }
 
+  const getDocumentTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      quote: 'Devis',
+      invoice: 'Facture',
+      proforma: 'Proforma',
+      credit_note: 'Avoir',
+    }
+    return labels[type] || type
+  }
+
   const handleSendDocument = async (documentId: string, documentType: string) => {
     try {
+      setError(null)
+      setSuccess(null)
+      
       const document = documents.find(d => d.id === documentId)
-      if (!document) return
+      if (!document) {
+        throw new Error('Document non trouvé')
+      }
 
-      // Appeler le workflow N8N correspondant
-      const webhookUrl = documentType === 'quote' 
+      if (!document.customer_email) {
+        throw new Error('Email client manquant')
+      }
+
+      // Déterminer le type de document pour l'URL du webhook
+      // Pour quote : webhook devis, pour les autres (invoice, proforma, credit_note) : webhook facture
+      const docTypeForWebhook = documentType === 'quote' ? 'quote' : 'invoice'
+      const webhookUrl = docTypeForWebhook === 'quote' 
         ? 'https://n8n.talosprimes.com/webhook/envoyer-devis'
         : 'https://n8n.talosprimes.com/webhook/envoyer-facture'
 
@@ -145,12 +166,19 @@ function FacturationContent() {
       })
 
       if (!response.ok) {
-        throw new Error('Erreur lors de l\'envoi')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Erreur lors de l\'envoi')
       }
 
-      setSuccess(`${documentType === 'quote' ? 'Devis' : 'Facture'} envoyé(e) avec succès !`)
-      setTimeout(() => setSuccess(null), 3000)
-      loadData()
+      const responseData = await response.json()
+      const documentLabel = getDocumentTypeLabel(documentType)
+      setSuccess(`${documentLabel} envoyé(e) avec succès à ${document.customer_email} !`)
+      setTimeout(() => setSuccess(null), 5000)
+      
+      // Recharger les données après un court délai
+      setTimeout(() => {
+        loadData()
+      }, 1000)
     } catch (err: any) {
       setError(err.message || 'Erreur lors de l\'envoi')
       setTimeout(() => setError(null), 5000)
@@ -211,16 +239,6 @@ function FacturationContent() {
         {badge.label}
       </span>
     )
-  }
-
-  const getDocumentTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      quote: 'Devis',
-      invoice: 'Facture',
-      proforma: 'Proforma',
-      credit_note: 'Avoir',
-    }
-    return labels[type] || type
   }
 
   const filteredDocuments = documents.filter(doc => 
@@ -445,14 +463,24 @@ function FacturationContent() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {/* Bouton Envoyer (draft → sent) */}
+                        {/* Bouton Renvoyer par email (toujours visible si email client présent) */}
+                        {doc.customer_email && (
+                          <button
+                            onClick={() => handleSendDocument(doc.id, doc.document_type)}
+                            className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                            title="Renvoyer par email"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        )}
+                        {/* Bouton Marquer comme envoyé (draft → sent) */}
                         {doc.status === 'draft' && (
                           <button
                             onClick={() => handleUpdateStatus(doc.id, 'sent')}
-                            className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                            className="p-2 text-gray-400 hover:bg-gray-500/10 rounded-lg transition-colors"
                             title="Marquer comme envoyé"
                           >
-                            <Send className="w-4 h-4" />
+                            <CheckCircle className="w-4 h-4" />
                           </button>
                         )}
                         {/* Bouton Marquer comme payé (sent → paid) */}
