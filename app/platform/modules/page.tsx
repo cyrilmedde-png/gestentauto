@@ -249,12 +249,53 @@ function ModulesManagement() {
         </div>
       </div>
 
+      {/* Liste de tous les modules disponibles (même sans clients) */}
+      {availableModules.length > 0 && (
+        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4 sm:p-6 mb-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Modules Disponibles</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Liste de tous les modules disponibles dans le système. Activez-les pour chaque client ci-dessous.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {availableModules.map((module) => (
+              <div
+                key={module.id}
+                className="p-4 border border-border/50 rounded-lg bg-background/30"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Package className="w-4 h-4 text-primary" />
+                      <h4 className="font-medium text-foreground text-sm">{module.name}</h4>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {module.description}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-border/30">
+                  <span className="text-xs text-muted-foreground">
+                    Catégorie: {module.category}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Liste des clients avec leurs modules */}
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-foreground mb-4">Activation par Client</h2>
+      </div>
       {filteredClients.length === 0 ? (
         <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-8 sm:p-12 text-center">
           <Building2 className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
           <p className="text-muted-foreground">
             {searchTerm ? 'Aucun client ne correspond à votre recherche' : 'Aucun client pour le moment'}
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Créez votre premier client pour activer les modules
           </p>
         </div>
       ) : (
