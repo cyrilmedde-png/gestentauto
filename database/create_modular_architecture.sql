@@ -324,6 +324,51 @@ WHERE module_name = 'settings';
 
 -- PLATEFORME
 -- Créer ou mettre à jour les modules de la plateforme pour Groupe MCLEM
+
+-- Dashboard (premier module)
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  status,
+  order_index,
+  is_active
+)
+SELECT 
+  (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1),
+  'platform_dashboard',
+  (SELECT id FROM module_categories WHERE name = 'platform'),
+  'Dashboard',
+  'Tableau de bord plateforme',
+  'LayoutDashboard',
+  '/platform/dashboard',
+  'production',
+  0,
+  true
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'platform_dashboard' 
+  AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+)
+ON CONFLICT DO NOTHING;
+
+UPDATE modules SET 
+  category_id = (SELECT id FROM module_categories WHERE name = 'platform'),
+  display_name = 'Dashboard',
+  description = 'Tableau de bord plateforme',
+  icon = 'LayoutDashboard',
+  route = '/platform/dashboard',
+  status = 'production',
+  order_index = 0,
+  is_active = true
+WHERE module_name = 'platform_dashboard'
+AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1);
+
+-- Gestion Clients
 INSERT INTO modules (
   company_id,
   module_name,
