@@ -26,11 +26,11 @@ export default function LandingPage() {
           if (data.isPlatform) {
             router.push('/platform/dashboard')
           } else {
-            router.push('/dashboard')
+            router.push('/platform/dashboard')
           }
         })
         .catch(() => {
-          router.push('/dashboard')
+          router.push('/platform/dashboard')
         })
     } else if (!loading && !user) {
       // Afficher le contenu après un court délai pour l'animation

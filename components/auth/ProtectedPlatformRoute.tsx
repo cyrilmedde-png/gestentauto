@@ -58,8 +58,8 @@ export function ProtectedPlatformRoute({ children }: { children: React.ReactNode
             platformId: data.platformId || data.platform?.extracted_platform_id,
             comparison: data.comparison,
           })
-          // Si ce n'est pas un utilisateur plateforme, rediriger vers le dashboard client
-          router.push('/dashboard')
+          // Si ce n'est pas un utilisateur plateforme, rediriger vers le dashboard plateforme
+          router.push('/platform/dashboard')
           return
         }
         setIsPlatform(true)

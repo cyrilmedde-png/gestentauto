@@ -76,18 +76,18 @@ export default function LoginPage() {
               console.log('🚀 Redirection vers le dashboard plateforme...')
               router.push('/platform/dashboard')
             } else {
-              console.log('🚀 Redirection vers le dashboard client...')
-              router.push('/dashboard')
+              console.log('🚀 Redirection vers le dashboard plateforme...')
+              router.push('/platform/dashboard')
             }
           } else {
-            // En cas d'erreur, rediriger par défaut vers le dashboard client
-            console.log('⚠️ Impossible de déterminer le type d\'utilisateur, redirection par défaut vers /dashboard')
-            router.push('/dashboard')
+            // En cas d'erreur, rediriger par défaut vers le dashboard plateforme
+            console.log('⚠️ Impossible de déterminer le type d\'utilisateur, redirection par défaut vers /platform/dashboard')
+            router.push('/platform/dashboard')
           }
         } catch (checkError) {
           console.error('Erreur lors de la vérification du type d\'utilisateur:', checkError)
-          // En cas d'erreur, rediriger par défaut vers le dashboard client
-          router.push('/dashboard')
+          // En cas d'erreur, rediriger par défaut vers le dashboard plateforme
+          router.push('/platform/dashboard')
         }
         
         router.refresh()
