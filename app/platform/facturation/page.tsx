@@ -300,7 +300,10 @@ function FacturationContent() {
               <div>
                 <p className="text-sm text-muted-foreground">Chiffre d'affaires</p>
                 <p className="text-2xl font-bold text-foreground mt-1">
-                  {(stats.total_revenue || 0).toFixed(2)} €
+                  {(() => {
+                    const revenue = Number(stats?.total_revenue) || 0
+                    return isNaN(revenue) ? '0.00' : revenue.toFixed(2)
+                  })()} €
                 </p>
               </div>
               <div className="bg-green-500/20 p-3 rounded-lg">
@@ -314,7 +317,10 @@ function FacturationContent() {
               <div>
                 <p className="text-sm text-muted-foreground">En attente</p>
                 <p className="text-2xl font-bold text-foreground mt-1">
-                  {(stats.pending_amount || 0).toFixed(2)} €
+                  {(() => {
+                    const pending = Number(stats?.pending_amount) || 0
+                    return isNaN(pending) ? '0.00' : pending.toFixed(2)
+                  })()} €
                 </p>
               </div>
               <div className="bg-yellow-500/20 p-3 rounded-lg">
@@ -328,7 +334,7 @@ function FacturationContent() {
               <div>
                 <p className="text-sm text-muted-foreground">Devis</p>
                 <p className="text-2xl font-bold text-foreground mt-1">
-                  {stats.quotes_count}
+                  {Number(stats?.quotes_count) || 0}
                 </p>
               </div>
               <div className="bg-blue-500/20 p-3 rounded-lg">
@@ -342,7 +348,7 @@ function FacturationContent() {
               <div>
                 <p className="text-sm text-muted-foreground">Factures</p>
                 <p className="text-2xl font-bold text-foreground mt-1">
-                  {stats.invoices_count}
+                  {Number(stats?.invoices_count) || 0}
                 </p>
               </div>
               <div className="bg-purple-500/20 p-3 rounded-lg">
@@ -453,10 +459,22 @@ function FacturationContent() {
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">
-                      {new Date(doc.issue_date).toLocaleDateString('fr-FR')}
+                      {doc.issue_date ? (() => {
+                        try {
+                          const date = new Date(doc.issue_date)
+                          return isNaN(date.getTime()) ? 'Date invalide' : date.toLocaleDateString('fr-FR')
+                        } catch {
+                          return 'Date invalide'
+                        }
+                      })() : '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="font-medium text-foreground">{(doc.total_amount || 0).toFixed(2)} €</span>
+                      <span className="font-medium text-foreground">
+                        {(() => {
+                          const amount = Number(doc.total_amount) || 0
+                          return isNaN(amount) ? '0.00' : amount.toFixed(2)
+                        })()} €
+                      </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {getStatusBadge(doc.status)}
