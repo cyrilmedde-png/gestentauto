@@ -8,9 +8,10 @@ import { BillingDocument, validateSiren } from '@/lib/services/billing'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createServerClient(request)
     
     // Vérifier authentification
@@ -34,7 +35,7 @@ export async function GET(
     const { data: document, error } = await supabase
       .from('billing_documents')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('company_id', userData.company_id)
       .single()
     
@@ -46,7 +47,7 @@ export async function GET(
     const { data: items } = await supabase
       .from('billing_document_items')
       .select('*')
-      .eq('document_id', params.id)
+      .eq('document_id', id)
       .order('position', { ascending: true })
     
     return NextResponse.json({
@@ -72,9 +73,10 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createServerClient(request)
     const supabaseAdmin = createAdminClient()
     
@@ -99,7 +101,7 @@ export async function PUT(
     const { data: existingDoc } = await supabase
       .from('billing_documents')
       .select('id, status')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('company_id', userData.company_id)
       .single()
     
@@ -133,7 +135,7 @@ export async function PUT(
         ...updateData,
         updated_at: new Date().toISOString()
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
     
@@ -168,9 +170,10 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createServerClient(request)
     const supabaseAdmin = createAdminClient()
     
@@ -195,7 +198,7 @@ export async function DELETE(
     const { data: document } = await supabase
       .from('billing_documents')
       .select('document_number, status')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('company_id', userData.company_id)
       .single()
     
@@ -214,7 +217,7 @@ export async function DELETE(
     const { error: deleteError } = await supabaseAdmin
       .from('billing_documents')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
     
     if (deleteError) {
       console.error('Erreur suppression document:', deleteError)

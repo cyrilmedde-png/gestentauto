@@ -8,9 +8,10 @@ import { BillingDocumentItem, calculateLineAmounts } from '@/lib/services/billin
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createServerClient(request)
     const supabaseAdmin = createAdminClient()
     
@@ -35,7 +36,7 @@ export async function PUT(
     const { data: existingItem } = await supabase
       .from('billing_document_items')
       .select('*, billing_documents!inner(company_id, status)')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
     
     if (!existingItem) {
@@ -81,7 +82,7 @@ export async function PUT(
         }),
         updated_at: new Date().toISOString()
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
     
@@ -117,9 +118,10 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createServerClient(request)
     const supabaseAdmin = createAdminClient()
     
@@ -144,7 +146,7 @@ export async function DELETE(
     const { data: existingItem } = await supabase
       .from('billing_document_items')
       .select('name, billing_documents!inner(company_id, status)')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
     
     if (!existingItem) {
@@ -169,7 +171,7 @@ export async function DELETE(
     const { error: deleteError } = await supabaseAdmin
       .from('billing_document_items')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
     
     if (deleteError) {
       console.error('Erreur suppression ligne:', deleteError)

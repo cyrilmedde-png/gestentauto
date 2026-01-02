@@ -8,9 +8,10 @@ import { getNextDocumentNumber } from '@/lib/services/billing'
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createServerClient(request)
     const supabaseAdmin = createAdminClient()
     
@@ -35,7 +36,7 @@ export async function POST(
     const { data: sourceDoc, error: fetchError } = await supabase
       .from('billing_documents')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('company_id', userData.company_id)
       .single()
     
@@ -47,7 +48,7 @@ export async function POST(
     const { data: sourceItems } = await supabase
       .from('billing_document_items')
       .select('*')
-      .eq('document_id', params.id)
+      .eq('document_id', id)
       .order('position', { ascending: true })
     
     // Récupérer le type de conversion souhaité

@@ -8,9 +8,10 @@ import { checkElectronicCompliance } from '@/lib/services/billing'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createServerClient(request)
     
     // Vérifier authentification
@@ -34,7 +35,7 @@ export async function GET(
     const { data: document } = await supabase
       .from('billing_documents')
       .select('id, document_number, document_type')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('company_id', userData.company_id)
       .single()
     
@@ -43,7 +44,7 @@ export async function GET(
     }
     
     // Vérifier la conformité via SQL function
-    const compliance = await checkElectronicCompliance(params.id)
+    const compliance = await checkElectronicCompliance(id)
     
     return NextResponse.json({
       success: true,
