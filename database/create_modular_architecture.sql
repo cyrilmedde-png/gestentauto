@@ -297,7 +297,7 @@ UPDATE modules SET
   display_name = 'Authentification',
   description = 'Système d''authentification et gestion sessions',
   icon = 'Lock',
-  route = '/auth',
+  route = '/platform/auth',
   status = 'production',
   order_index = 1
 WHERE module_name = 'auth';
@@ -317,7 +317,7 @@ UPDATE modules SET
   display_name = 'Paramètres',
   description = 'Configuration de l''entreprise',
   icon = 'Settings',
-  route = '/settings',
+  route = '/platform/settings',
   status = 'production',
   order_index = 3
 WHERE module_name = 'settings';
