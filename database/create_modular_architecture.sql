@@ -379,7 +379,7 @@ INSERT INTO modules (
   default_limits
 )
 SELECT 
-  (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1),
+  (value#>>'{}')::UUID,
   'crm',
   (SELECT id FROM module_categories WHERE name = 'business'),
   'CRM',
@@ -391,7 +391,9 @@ SELECT
   4,
   false,
   '{"max_contacts": 500, "max_deals": 100}'::jsonb
-WHERE NOT EXISTS (
+FROM settings
+WHERE key = 'platform_company_id'
+AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'crm'
 );
 
@@ -411,7 +413,7 @@ INSERT INTO modules (
   default_limits
 )
 SELECT 
-  (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1),
+  (value#>>'{}')::UUID,
   'comptabilite',
   (SELECT id FROM module_categories WHERE name = 'finance'),
   'Comptabilité',
@@ -423,7 +425,9 @@ SELECT
   1,
   false,
   '{}'::jsonb
-WHERE NOT EXISTS (
+FROM settings
+WHERE key = 'platform_company_id'
+AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'comptabilite'
 );
 
@@ -441,7 +445,7 @@ INSERT INTO modules (
   is_active
 )
 SELECT 
-  (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1),
+  (value#>>'{}')::UUID,
   'tresorerie',
   (SELECT id FROM module_categories WHERE name = 'finance'),
   'Trésorerie',
@@ -452,7 +456,9 @@ SELECT
   'planned',
   2,
   false
-WHERE NOT EXISTS (
+FROM settings
+WHERE key = 'platform_company_id'
+AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'tresorerie'
 );
 
@@ -472,7 +478,7 @@ INSERT INTO modules (
   default_limits
 )
 SELECT 
-  (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1),
+  (value#>>'{}')::UUID,
   'employes',
   (SELECT id FROM module_categories WHERE name = 'rh'),
   'Employés',
@@ -484,7 +490,9 @@ SELECT
   1,
   false,
   '{"max_employees": 10}'::jsonb
-WHERE NOT EXISTS (
+FROM settings
+WHERE key = 'platform_company_id'
+AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'employes'
 );
 
@@ -502,7 +510,7 @@ INSERT INTO modules (
   is_active
 )
 SELECT 
-  (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1),
+  (value#>>'{}')::UUID,
   'conges',
   (SELECT id FROM module_categories WHERE name = 'rh'),
   'Congés',
@@ -513,7 +521,9 @@ SELECT
   'planned',
   2,
   false
-WHERE NOT EXISTS (
+FROM settings
+WHERE key = 'platform_company_id'
+AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'conges'
 );
 
@@ -531,7 +541,7 @@ INSERT INTO modules (
   is_active
 )
 SELECT 
-  (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1),
+  (value#>>'{}')::UUID,
   'paie',
   (SELECT id FROM module_categories WHERE name = 'rh'),
   'Paie',
@@ -542,7 +552,9 @@ SELECT
   'planned',
   3,
   false
-WHERE NOT EXISTS (
+FROM settings
+WHERE key = 'platform_company_id'
+AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'paie'
 );
 
@@ -562,7 +574,7 @@ INSERT INTO modules (
   default_limits
 )
 SELECT 
-  (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1),
+  (value#>>'{}')::UUID,
   'stock',
   (SELECT id FROM module_categories WHERE name = 'logistique'),
   'Stock',
@@ -574,7 +586,9 @@ SELECT
   1,
   false,
   '{"max_products": 1000}'::jsonb
-WHERE NOT EXISTS (
+FROM settings
+WHERE key = 'platform_company_id'
+AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'stock'
 );
 
@@ -594,7 +608,7 @@ INSERT INTO modules (
   default_limits
 )
 SELECT 
-  (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1),
+  (value#>>'{}')::UUID,
   'taches',
   (SELECT id FROM module_categories WHERE name = 'gestion'),
   'Tâches',
@@ -606,7 +620,9 @@ SELECT
   1,
   false,
   '{"max_tasks": 100}'::jsonb
-WHERE NOT EXISTS (
+FROM settings
+WHERE key = 'platform_company_id'
+AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'taches'
 );
 
@@ -625,7 +641,7 @@ INSERT INTO modules (
   default_limits
 )
 SELECT 
-  (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1),
+  (value#>>'{}')::UUID,
   'projets',
   (SELECT id FROM module_categories WHERE name = 'gestion'),
   'Projets',
@@ -637,7 +653,9 @@ SELECT
   2,
   false,
   '{"max_projects": 10}'::jsonb
-WHERE NOT EXISTS (
+FROM settings
+WHERE key = 'platform_company_id'
+AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'projets'
 );
 
@@ -656,7 +674,7 @@ INSERT INTO modules (
   is_active
 )
 SELECT 
-  (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1),
+  (value#>>'{}')::UUID,
   'documents',
   (SELECT id FROM module_categories WHERE name = 'documents'),
   'GED',
@@ -667,7 +685,9 @@ SELECT
   'planned',
   1,
   false
-WHERE NOT EXISTS (
+FROM settings
+WHERE key = 'platform_company_id'
+AND NOT EXISTS (
   SELECT 1 FROM modules WHERE module_name = 'documents'
 );
 
