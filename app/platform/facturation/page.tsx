@@ -157,6 +157,40 @@ function FacturationContent() {
     }
   }
 
+  const handleUpdateStatus = async (documentId: string, newStatus: string) => {
+    try {
+      setError(null)
+      
+      const response = await fetch(`/api/billing/documents/${documentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: newStatus,
+          ...(newStatus === 'sent' && { sent_at: new Date().toISOString() }),
+          ...(newStatus === 'paid' && { paid_at: new Date().toISOString() }),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || 'Erreur lors de la mise à jour')
+      }
+
+      const statusLabels: Record<string, string> = {
+        sent: 'envoyé',
+        paid: 'payé',
+      }
+
+      setSuccess(`Statut mis à jour : ${statusLabels[newStatus] || newStatus}`)
+      setTimeout(() => setSuccess(null), 3000)
+      loadData()
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la mise à jour du statut')
+      setTimeout(() => setError(null), 5000)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { label: string; className: string; icon: any }> = {
       draft: { label: 'Brouillon', className: 'bg-gray-500/20 text-gray-400', icon: Clock },
@@ -411,13 +445,24 @@ function FacturationContent() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {/* Bouton Envoyer (draft → sent) */}
                         {doc.status === 'draft' && (
                           <button
-                            onClick={() => handleSendDocument(doc.id, doc.document_type)}
+                            onClick={() => handleUpdateStatus(doc.id, 'sent')}
                             className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
-                            title="Envoyer"
+                            title="Marquer comme envoyé"
                           >
                             <Send className="w-4 h-4" />
+                          </button>
+                        )}
+                        {/* Bouton Marquer comme payé (sent → paid) */}
+                        {doc.status === 'sent' && (
+                          <button
+                            onClick={() => handleUpdateStatus(doc.id, 'paid')}
+                            className="p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors"
+                            title="Marquer comme payé"
+                          >
+                            <CheckCircle className="w-4 h-4" />
                           </button>
                         )}
                         <button
