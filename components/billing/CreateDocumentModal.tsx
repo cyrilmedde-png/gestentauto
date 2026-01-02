@@ -9,7 +9,7 @@ import {
   calculateLineAmounts,
   calculateDocumentTotals,
   formatAmount
-} from '@/lib/services/billing'
+} from '@/lib/services/billing-utils'
 
 interface CreateDocumentModalProps {
   onClose: () => void
