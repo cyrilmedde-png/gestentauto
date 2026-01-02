@@ -20,6 +20,7 @@ import {
   Trash2,
   Euro
 } from 'lucide-react'
+import { CreateDocumentModal } from '@/components/billing/CreateDocumentModal'
 
 interface BillingDocument {
   id: string
@@ -424,7 +425,7 @@ function FacturationContent() {
         )}
       </div>
 
-      {/* Modal Création (TODO) */}
+      {/* Modal Création */}
       {showCreateModal && (
         <CreateDocumentModal
           onClose={() => setShowCreateModal(false)}
@@ -438,25 +439,4 @@ function FacturationContent() {
   )
 }
 
-// Modal de création simple (à développer)
-function CreateDocumentModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card border border-border rounded-lg max-w-2xl w-full p-6">
-        <h2 className="text-2xl font-bold text-foreground mb-4">Créer un document</h2>
-        <p className="text-muted-foreground mb-4">
-          Interface de création en cours de développement...
-        </p>
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors"
-          >
-            Fermer
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
