@@ -194,6 +194,26 @@ $$ LANGUAGE plpgsql;
 ALTER TABLE module_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_plan_modules ENABLE ROW LEVEL SECURITY;
 
+-- Activer RLS sur modules (si pas déjà fait)
+ALTER TABLE modules ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Les utilisateurs peuvent voir les modules de leur entreprise
+-- La plateforme peut voir tous les modules
+DROP POLICY IF EXISTS "Users can view modules in their company" ON modules;
+CREATE POLICY "Users can view modules in their company"
+  ON modules FOR SELECT
+  USING (
+    company_id IN (
+      SELECT company_id FROM users WHERE id = auth.uid()
+    )
+    OR
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE id = auth.uid() 
+      AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
+    )
+  );
+
 -- Policy: Tout le monde peut voir les catégories
 CREATE POLICY "Anyone can view module categories"
   ON module_categories FOR SELECT
@@ -206,7 +226,7 @@ CREATE POLICY "Platform admins can manage categories"
     EXISTS (
       SELECT 1 FROM users 
       WHERE id = auth.uid() 
-      AND company_id = (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1)
+      AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
     )
   );
 
@@ -217,7 +237,7 @@ CREATE POLICY "Platform admins can view plan modules"
     EXISTS (
       SELECT 1 FROM users 
       WHERE id = auth.uid() 
-      AND company_id = (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1)
+      AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
     )
   );
 
@@ -228,7 +248,7 @@ CREATE POLICY "Platform admins can manage plan modules"
     EXISTS (
       SELECT 1 FROM users 
       WHERE id = auth.uid() 
-      AND company_id = (SELECT id FROM companies WHERE name = 'Talosprime' LIMIT 1)
+      AND company_id = (SELECT id FROM companies WHERE name = 'Groupe MCLEM' LIMIT 1)
     )
   );
 

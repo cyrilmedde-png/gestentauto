@@ -172,12 +172,10 @@ export function SidebarModular() {
                   }}
                   className="text-foreground font-semibold text-lg hover:opacity-80 transition-opacity text-center w-full"
                 >
-                  Talos Prime
+                  Gestion
                 </button>
               ) : (
-                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold">
-                  T
-                </div>
+                <Menu className="w-6 h-6 text-foreground" />
               )}
             </div>
           </div>
