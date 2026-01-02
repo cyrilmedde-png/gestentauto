@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Sidebar } from './Sidebar'
+import { SidebarModular } from './SidebarModular'
 import { Header } from './Header'
 import { HeaderProvider, useHeader } from './HeaderContext'
 import { SidebarProvider, useSidebar } from './SidebarContext'
@@ -41,7 +41,7 @@ const MainLayoutContent = React.memo(({ children }: { children: React.ReactNode 
         backgroundColor: '#000000',
       }}
     >
-      <Sidebar />
+      <SidebarModular />
       <Header />
       <NotificationToast />
       <main 
