@@ -760,15 +760,52 @@ UPDATE modules SET
   order_index = 2
 WHERE module_name = 'onboarding' OR module_name = 'starter';
 
+-- Facturation : Créer ou mettre à jour pour toutes les entreprises
+INSERT INTO modules (
+  company_id,
+  module_name,
+  category_id,
+  display_name,
+  description,
+  icon,
+  route,
+  min_plan,
+  status,
+  order_index,
+  is_active,
+  default_limits
+)
+SELECT 
+  c.id,
+  'facturation',
+  (SELECT id FROM module_categories WHERE name = 'finance'),
+  'Facturation',
+  'Gestion devis, factures et paiements',
+  'FileText',
+  '/facturation',
+  'business',
+  'production',
+  1,
+  false,
+  '{"max_invoices_per_month": -1}'::jsonb
+FROM companies c
+WHERE NOT EXISTS (
+  SELECT 1 FROM modules 
+  WHERE module_name = 'facturation' 
+  AND company_id = c.id
+)
+ON CONFLICT DO NOTHING;
+
+-- Mettre à jour le module facturation existant (catégorie finance)
 UPDATE modules SET 
-  category_id = (SELECT id FROM module_categories WHERE name = 'business'),
+  category_id = (SELECT id FROM module_categories WHERE name = 'finance'),
   display_name = 'Facturation',
   description = 'Gestion devis, factures et paiements',
   icon = 'FileText',
   route = '/facturation',
   min_plan = 'business',
   status = 'production',
-  order_index = 3,
+  order_index = 1,
   default_limits = '{"max_invoices_per_month": -1}'::jsonb
 WHERE module_name = 'facturation';
 
