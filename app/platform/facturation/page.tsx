@@ -462,7 +462,12 @@ function FacturationContent() {
                       {doc.issue_date ? (() => {
                         try {
                           const date = new Date(doc.issue_date)
-                          return isNaN(date.getTime()) ? 'Date invalide' : date.toLocaleDateString('fr-FR')
+                          if (isNaN(date.getTime())) return 'Date invalide'
+                          // Formater la date manuellement pour éviter les problèmes de locales
+                          const day = String(date.getDate()).padStart(2, '0')
+                          const month = String(date.getMonth() + 1).padStart(2, '0')
+                          const year = date.getFullYear()
+                          return `${day}/${month}/${year}`
                         } catch {
                           return 'Date invalide'
                         }
