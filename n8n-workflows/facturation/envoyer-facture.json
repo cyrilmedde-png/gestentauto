@@ -42,7 +42,16 @@
     },
     {
       "parameters": {
-        "url": "https://www.talosprimes.com/api/n8n/billing/documents/={{ $json.body.document_id }}",
+        "url": "https://www.talosprimes.com/api/n8n/billing/documents",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "document_id",
+              "value": "={{ $json.body.document_id }}"
+            }
+          ]
+        },
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
