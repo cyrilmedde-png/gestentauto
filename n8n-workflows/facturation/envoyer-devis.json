@@ -12,7 +12,10 @@
       "name": "Webhook - Déclenchement",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [250, 300],
+      "position": [
+        250,
+        300
+      ],
       "webhookId": "envoyer-devis"
     },
     {
@@ -38,11 +41,23 @@
       "name": "Validation Données",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [450, 300]
+      "position": [
+        450,
+        300
+      ]
     },
     {
       "parameters": {
-        "url": "https://www.talosprimes.com/api/billing/documents/={{ $json.body.document_id }}",
+        "url": "https://www.talosprimes.com/api/n8n/billing/documents",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "document_id",
+              "value": "={{ $json.body.document_id }}"
+            }
+          ]
+        },
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -51,7 +66,10 @@
       "name": "Récupérer Document",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [650, 200],
+      "position": [
+        650,
+        200
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "1",
@@ -61,25 +79,192 @@
     },
     {
       "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "customer_email",
+              "name": "customer_email",
+              "value": "={{ $json.data.customer_email }}",
+              "type": "string"
+            },
+            {
+              "id": "customer_name",
+              "name": "customer_name",
+              "value": "={{ $json.data.customer_name }}",
+              "type": "string"
+            },
+            {
+              "id": "document_id",
+              "name": "document_id",
+              "value": "={{ $json.data.id }}",
+              "type": "string"
+            },
+            {
+              "id": "document_number",
+              "name": "document_number",
+              "value": "={{ $json.data.document_number }}",
+              "type": "string"
+            },
+            {
+              "id": "valid_until",
+              "name": "valid_until",
+              "value": "={{ $json.data.valid_until }}",
+              "type": "string"
+            },
+            {
+              "id": "issue_date",
+              "name": "issue_date",
+              "value": "={{ $json.data.issue_date }}",
+              "type": "string"
+            },
+            {
+              "id": "total_amount",
+              "name": "total_amount",
+              "value": "={{ $json.data.total_amount }}",
+              "type": "string"
+            },
+            {
+              "id": "subtotal",
+              "name": "subtotal",
+              "value": "={{ $json.data.subtotal }}",
+              "type": "string"
+            },
+            {
+              "id": "tax_rate",
+              "name": "tax_rate",
+              "value": "={{ $json.data.tax_rate }}",
+              "type": "string"
+            },
+            {
+              "id": "tax_amount",
+              "name": "tax_amount",
+              "value": "={{ $json.data.tax_amount }}",
+              "type": "string"
+            },
+            {
+              "id": "discount_amount",
+              "name": "discount_amount",
+              "value": "={{ $json.data.discount_amount }}",
+              "type": "string"
+            },
+            {
+              "id": "payment_terms",
+              "name": "payment_terms",
+              "value": "={{ $json.data.payment_terms }}",
+              "type": "string"
+            },
+            {
+              "id": "reference",
+              "name": "reference",
+              "value": "={{ $json.data.reference }}",
+              "type": "string"
+            },
+            {
+              "id": "document_data",
+              "name": "document_data",
+              "value": "={{ $json.data }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-document-data",
+      "name": "Extraire Données Document",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        750,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Générer le HTML de la devis avec les valeurs\nconst doc = $json;\n\nconst html = `<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }\n    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }\n    .alert-box { background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0; border-radius: 8px; }\n    .detail-box { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #4F46E5; }\n    .detail-row { display: flex; justify-content: space-between; margin: 10px 0; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }\n    .label { font-weight: bold; color: #6b7280; }\n    .value { color: #111827; }\n    .total { font-size: 28px; font-weight: bold; color: #4F46E5; }\n    .button { display: inline-block; background: #4F46E5; color: white !important; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }\n    .button:hover { background: #7C3AED; }\n    .button-secondary { background: #6B7280; }\n    .button-secondary:hover { background: #4B5563; }\n    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>📄 Devis</h1>\n      <p>Référence: ${doc.document_number || ''}</p>\n    </div>\n    <div class=\"content\">\n      <p>Bonjour <strong>${doc.customer_name || ''}</strong>,</p>\n      <p>Veuillez trouver ci-joint votre devis.</p>\n      <div class=\"alert-box\">\n        <strong>⏰ Valable jusqu'au:</strong> ${doc.valid_until || ''}<br>\n        <strong>💰 Montant total:</strong> ${doc.total_amount || 0}€ TTC\n      </div>\n      <div class=\"detail-box\">\n        <h3>📋 Détails de la Devis</h3>\n        <div class=\"detail-row\">\n          <span class=\"label\">Numéro:</span>\n          <span class=\"value\">${doc.document_number || ''}</span>\n        </div>\n        <div class=\"detail-row\">\n          <span class=\"label\">Date d'émission:</span>\n          <span class=\"value\">${doc.issue_date || ''}</span>\n        </div>\n        <div class=\"detail-row\">\n          <span class=\"label\">Valable jusqu'au:</span>\n          <span class=\"value\"><strong>${doc.valid_until || ''}</strong></span>\n        </div>\n        ${doc.reference ? `<div class=\"detail-row\">\n          <span class=\"label\">Référence:</span>\n          <span class=\"value\">${doc.reference}</span>\n        </div>` : ''}\n      </div>\n      <div class=\"detail-box\">\n        <h3>💰 Montants</h3>\n        <div class=\"detail-row\">\n          <span class=\"label\">Sous-total HT:</span>\n          <span class=\"value\">${doc.subtotal || 0}€</span>\n        </div>\n        <div class=\"detail-row\">\n          <span class=\"label\">TVA (${doc.tax_rate || 0}%):</span>\n          <span class=\"value\">${doc.tax_amount || 0}€</span>\n        </div>\n        ${doc.discount_amount ? `<div class=\"detail-row\">\n          <span class=\"label\">Remise:</span>\n          <span class=\"value\">-${doc.discount_amount}€</span>\n        </div>` : ''}\n        <div class=\"detail-row\" style=\"border-bottom: none;\">\n          <span class=\"label\">Total TTC:</span>\n          <span class=\"total\">${doc.total_amount || 0}€</span>\n        </div>\n      </div>\n      \n      <div style=\"text-align: center;\">\n        <a href=\"https://www.talosprimes.com/documents/${doc.document_id || ''}/pdf\" class=\"button\">\n          📥 Télécharger la Devis PDF\n        </a>\n        \n      </div>\n      <p style=\"text-align: center; color: #6b7280; font-size: 14px; margin-top: 20px;\">\n        En cas de question, contactez-nous à contact@talosprimes.com\n      </p>\n      <p>Cordialement,<br>L'équipe Talosprime</p>\n      <div class=\"footer\">\n        <p>📧 contact@talosprimes.com | 📞 01 XX XX XX XX</p>\n        <p>Talosprime - Solution de gestion automatisée</p>\n        <p style=\"font-size: 10px; margin-top: 10px;\">\n          TVA non applicable, article 293 B du CGI<br>\n          En cas de retard de paiement, une pénalité de 3 fois le taux d'intérêt légal sera appliquée.\n        </p>\n      </div>\n    </div>\n  </div>\n</body>\n</html>`;\n\nreturn [{ json: { ...doc, html_body: html, email_subject: `Devis ${doc.document_number || ''} - Talosprime` } }];",
+        "options": {}
+      },
+      "id": "generate-html-devis",
+      "name": "Générer HTML Devis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        200
+      ]
+    },
+    {
+      "parameters": {
         "fromEmail": "noreply@talosprimes.com",
-        "toEmail": "={{ $json.body.customer_email }}",
-        "subject": "Votre devis {{ $json.data.data.document_number }} - Talosprime",
+        "toEmail": "={{ $json.customer_email }}",
+        "subject": "={{ $json.email_subject }}",
         "emailFormat": "html",
         "text": "",
-        "html": "<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }\n    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }\n    .detail-box { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #4F46E5; }\n    .detail-row { display: flex; justify-content: space-between; margin: 10px 0; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }\n    .label { font-weight: bold; color: #6b7280; }\n    .value { color: #111827; }\n    .total { font-size: 24px; font-weight: bold; color: #4F46E5; }\n    .button { display: inline-block; background: #4F46E5; color: white !important; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }\n    .button:hover { background: #4338CA; }\n    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }\n    .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }\n    .items-table th { background: #f3f4f6; padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb; }\n    .items-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>💼 Nouveau Devis</h1>\n      <p>Référence: {{ $json.data.data.document_number }}</p>\n    </div>\n    \n    <div class=\"content\">\n      <p>Bonjour <strong>{{ $json.body.customer_name }}</strong>,</p>\n      \n      <p>Nous avons le plaisir de vous transmettre notre proposition commerciale.</p>\n      \n      <div class=\"detail-box\">\n        <h3>📄 Détails du Devis</h3>\n        <div class=\"detail-row\">\n          <span class=\"label\">Numéro:</span>\n          <span class=\"value\">{{ $json.data.data.document_number }}</span>\n        </div>\n        <div class=\"detail-row\">\n          <span class=\"label\">Date d'émission:</span>\n          <span class=\"value\">{{ $json.data.data.issue_date }}</span>\n        </div>\n        <div class=\"detail-row\">\n          <span class=\"label\">Valable jusqu'au:</span>\n          <span class=\"value\">{{ $json.data.data.valid_until }}</span>\n        </div>\n      </div>\n      \n      <div class=\"detail-box\">\n        <h3>💰 Montants</h3>\n        <div class=\"detail-row\">\n          <span class=\"label\">Sous-total HT:</span>\n          <span class=\"value\">{{ $json.data.data.subtotal }}€</span>\n        </div>\n        <div class=\"detail-row\">\n          <span class=\"label\">TVA ({{ $json.data.data.tax_rate }}%):</span>\n          <span class=\"value\">{{ $json.data.data.tax_amount }}€</span>\n        </div>\n        <div class=\"detail-row\" style=\"border-bottom: none;\">\n          <span class=\"label\">Total TTC:</span>\n          <span class=\"total\">{{ $json.data.data.total_amount }}€</span>\n        </div>\n      </div>\n      \n      <div style=\"text-align: center;\">\n        <a href=\"https://www.talosprimes.com/documents/{{ $json.body.document_id }}\" class=\"button\">\n          📥 Télécharger le Devis PDF\n        </a>\n      </div>\n      \n      <p><strong>Ce devis est valable {{ Math.ceil((new Date('{{ $json.data.data.valid_until }}') - new Date()) / (1000 * 60 * 60 * 24)) }} jours.</strong></p>\n      \n      <p>Pour toute question ou demande de modification, n'hésitez pas à nous contacter.</p>\n      \n      <p>Cordialement,<br>L'équipe Talosprime</p>\n      \n      <div class=\"footer\">\n        <p>📧 contact@talosprimes.com | 📞 01 XX XX XX XX</p>\n        <p>Talosprime - Solution de gestion automatisée</p>\n      </div>\n    </div>\n  </div>\n</body>\n</html>",
+        "html": "={{ $json.html_body }}",
         "options": {
           "allowUnauthorizedCerts": true
         }
       },
-      "id": "send-email",
+      "id": "send-email-devis",
       "name": "Envoyer Email Devis",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2,
-      "position": [850, 200],
+      "position": [
+        850,
+        200
+      ],
       "credentials": {
         "smtp": {
           "id": "2",
           "name": "Resend SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "merge-document-data",
+      "name": "Fusionner Données",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        950,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/n8n/billing/documents/={{ $json.document_id }}/status",
+        "sendQuery": false,
+        "method": "PUT",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "sent"
+            },
+            {
+              "name": "sent_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "update-status",
+      "name": "Mettre à jour Statut",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1050,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Supabase Service Key"
         }
       }
     },
@@ -100,11 +285,11 @@
             },
             {
               "name": "message",
-              "value": "Devis {{ $json.data.data.document_number }} envoyé à {{ $json.body.customer_email }}"
+              "value": "Devis ={{ $json.document_number }} envoyé à ={{ $json.customer_email }} - Montant: ={{ $json.total_amount }}€"
             },
             {
               "name": "metadata",
-              "value": "={{ JSON.stringify({ document_id: $json.body.document_id, document_number: $json.data.data.document_number, customer_email: $json.body.customer_email }) }}"
+              "value": "={{ JSON.stringify({ document_id: $json.document_id, document_number: $json.document_number, customer_email: $json.customer_email, amount: $json.total_amount, valid_until: $json.valid_until }) }}"
             }
           ]
         },
@@ -114,18 +299,24 @@
       "name": "Logger l'Action",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [1050, 200]
+      "position": [
+        1250,
+        200
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, message: 'Devis envoyé avec succès à ' + $json.body.customer_email }) }}"
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Devis envoyé avec succès à ' + $json.customer_email, document_number: $json.document_number }) }}"
       },
       "id": "response-success",
       "name": "Réponse Succès",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1250, 200]
+      "position": [
+        1450,
+        200
+      ]
     },
     {
       "parameters": {
@@ -136,18 +327,10 @@
       "name": "Réponse Erreur Validation",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [650, 400]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: false, error: 'Erreur lors de l\\'envoi: ' + $json.error.message }) }}"
-      },
-      "id": "response-error-send",
-      "name": "Réponse Erreur Envoi",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1050, 400]
+      "position": [
+        650,
+        400
+      ]
     }
   ],
   "connections": {
@@ -184,14 +367,25 @@
       "main": [
         [
           {
-            "node": "Envoyer Email Devis",
+            "node": "Extraire Données Document",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Envoyer Email Devis": {
+    "Envoyer Email Facture": {
+      "main": [
+        [
+          {
+            "node": "Fusionner Données",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Mettre à jour Statut": {
       "main": [
         [
           {
@@ -207,6 +401,44 @@
         [
           {
             "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraire Données Document": {
+      "main": [
+        [
+          {
+            "node": "Générer HTML Facture",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fusionner Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fusionner Données": {
+      "main": [
+        [
+          {
+            "node": "Mettre à jour Statut",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générer HTML Facture": {
+      "main": [
+        [
+          {
+            "node": "Envoyer Email Facture",
             "type": "main",
             "index": 0
           }
@@ -232,4 +464,3 @@
     }
   ]
 }
-
