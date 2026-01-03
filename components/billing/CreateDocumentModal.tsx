@@ -147,8 +147,20 @@ export function CreateDocumentModal({ onClose, onSuccess, defaultType = 'quote' 
         return
       }
 
-      // Créer le document
-      const documentData: Partial<BillingDocument> = {
+      // Récupérer le company_id de l'utilisateur
+      const userResponse = await fetch('/api/auth/current-user')
+      if (!userResponse.ok) {
+        throw new Error('Impossible de récupérer les informations de l\'utilisateur')
+      }
+      const userData = await userResponse.json()
+      if (!userData.success || !userData.data?.company_id) {
+        throw new Error('Entreprise non trouvée')
+      }
+      const companyId = userData.data.company_id
+
+      // Préparer les données pour le workflow N8N
+      const documentData = {
+        company_id: companyId,
         document_type: documentType,
         customer_name: customerName,
         customer_email: customerEmail || undefined,
@@ -164,14 +176,36 @@ export function CreateDocumentModal({ onClose, onSuccess, defaultType = 'quote' 
         tax_rate: taxRate,
         discount_amount: discountAmount,
         total_amount: totals.total,
-        status: 'draft'
+        status: 'draft',
+        items: validItems.map((item, index) => ({
+          position: index,
+          item_type: item.item_type || 'product',
+          name: item.name,
+          description: item.description || undefined,
+          sku: item.sku || undefined,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          unit: item.unit || 'unité',
+          tax_rate: item.tax_rate || taxRate,
+          subtotal: item.subtotal,
+          tax_amount: item.tax_amount,
+          total: item.total
+        }))
       }
 
-      const response = await fetch('/api/billing/documents/create', {
+      // Appeler le webhook N8N pour créer le document
+      const webhookUrl = 'https://n8n.talosprimes.com/webhook/creer-document'
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(documentData)
       })
+
+      if (!response.ok) {
+        const text = await response.text()
+        const errorData = text ? JSON.parse(text) : {}
+        throw new Error(errorData.error || 'Erreur lors de la création via N8N')
+      }
 
       const data = await response.json()
 
@@ -179,38 +213,19 @@ export function CreateDocumentModal({ onClose, onSuccess, defaultType = 'quote' 
         throw new Error(data.error || 'Erreur lors de la création')
       }
 
-      const documentId = data.data.id
-
-      // Ajouter les lignes
-      for (let i = 0; i < validItems.length; i++) {
-        const item = validItems[i]
-        const itemData = {
-          ...item,
-          document_id: documentId,
-          position: i,
-          tax_rate: item.tax_rate || taxRate
-        }
-
-        const itemResponse = await fetch('/api/billing/items/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(itemData)
-        })
-
-        const itemDataResult = await itemResponse.json()
-        if (!itemDataResult.success) {
-          console.error('Erreur création ligne:', itemDataResult.error)
-        }
+      const documentId = data.data?.id
+      if (!documentId) {
+        throw new Error('Document créé mais ID non retourné')
       }
 
       // Si demandé, envoyer via N8N
       if (sendAfterCreate && customerEmail) {
-        const webhookUrl = documentType === 'quote'
+        const sendWebhookUrl = documentType === 'quote'
           ? 'https://n8n.talosprimes.com/webhook/envoyer-devis'
           : 'https://n8n.talosprimes.com/webhook/envoyer-facture'
 
         try {
-          await fetch(webhookUrl, {
+          await fetch(sendWebhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

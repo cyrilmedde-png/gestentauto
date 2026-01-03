@@ -132,6 +132,40 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Document créé via N8N:', document.document_number)
     
+    // Créer les items (lignes) si fournis
+    if (documentData.items && Array.isArray(documentData.items) && documentData.items.length > 0) {
+      const itemsToInsert = documentData.items.map((item: any) => ({
+        document_id: document.id,
+        position: item.position,
+        item_type: item.item_type || 'product',
+        name: item.name,
+        description: item.description || null,
+        sku: item.sku || null,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        unit: item.unit || 'unité',
+        tax_rate: item.tax_rate || 20,
+        subtotal: item.subtotal || 0,
+        tax_amount: item.tax_amount || 0,
+        total: item.total || 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }))
+      
+      const { data: items, error: itemsError } = await supabaseAdmin
+        .from('billing_document_items')
+        .insert(itemsToInsert)
+        .select()
+      
+      if (itemsError) {
+        console.error('Erreur création items:', itemsError)
+        // Ne pas bloquer si les items échouent, le document est déjà créé
+        console.warn('⚠️ Document créé mais erreur lors de la création des items')
+      } else {
+        console.log(`✅ ${items?.length || 0} item(s) créé(s) pour le document ${document.document_number}`)
+      }
+    }
+    
     return NextResponse.json({
       success: true,
       data: document,
