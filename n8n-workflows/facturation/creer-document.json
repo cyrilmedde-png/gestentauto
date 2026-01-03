@@ -181,7 +181,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, message: $json.message, data: $json.data }) }}"
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Document créé avec succès', data: $('Créer Document').first().json.data || $('Créer Document').first().json }) }}"
       },
       "id": "response-success",
       "name": "Réponse Succès",
