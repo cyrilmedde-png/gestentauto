@@ -212,6 +212,31 @@ export async function POST(request: NextRequest) {
       throw insertError
     }
 
+    // Logger la création du lead
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/server')
+      const adminSupabase = createAdminClient()
+      
+      await adminSupabase.from('subscription_logs').insert({
+        event_type: 'lead_cree',
+        status: 'info',
+        details: {
+          lead_id: lead.id,
+          email: lead.email,
+          first_name: lead.first_name,
+          last_name: lead.last_name,
+          company_name: lead.company_name,
+          message: `Lead créé: ${lead.first_name || ''} ${lead.last_name || ''} (${lead.email})`.trim()
+        },
+        source: 'platform_api',
+        ip_address: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null,
+        user_agent: request.headers.get('user-agent') || null,
+      })
+    } catch (logError) {
+      // Ne pas bloquer si le log échoue
+      console.error('Error logging lead creation:', logError)
+    }
+
     // Envoyer l'email et SMS de confirmation de pré-inscription (ne pas bloquer si ça échoue)
     const leadName = lead.first_name && lead.last_name 
       ? `${lead.first_name} ${lead.last_name}` 
