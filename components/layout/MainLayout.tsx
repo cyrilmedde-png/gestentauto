@@ -30,8 +30,8 @@ const MainLayoutContent = React.memo(({ children }: { children: React.ReactNode 
     paddingTop: isMobile 
       ? '4rem'
       : (isHeaderVisible ? '4rem' : '1.5rem'),
-    paddingLeft: isMobile ? '0.75rem' : '0',
-    paddingRight: isMobile ? '0.75rem' : '0',
+    paddingLeft: isMobile ? '0.75rem' : '1.5rem',
+    paddingRight: isMobile ? '0.75rem' : '1.5rem',
   }), [isMobile, isSidebarExpanded, isHeaderVisible])
 
   return (
