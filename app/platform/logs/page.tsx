@@ -22,9 +22,17 @@ interface Log {
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<Log[]>([])
-  const [statsWeek, setStatsWeek] = useState<number>(0)
-  const [statsMonth, setStatsMonth] = useState<number>(0)
-  const [statsYear, setStatsYear] = useState<number>(0)
+  const [statsByStatus, setStatsByStatus] = useState<{
+    success: number
+    error: number
+    warning: number
+    info: number
+  }>({
+    success: 0,
+    error: 0,
+    warning: 0,
+    info: 0
+  })
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedEventType, setSelectedEventType] = useState<string>('all')
@@ -84,20 +92,18 @@ export default function LogsPage() {
 
   const fetchStats = async () => {
     try {
-      // Récupérer les stats pour les 3 périodes
-      const [resWeek, resMonth, resYear] = await Promise.all([
-        fetch('/api/admin/logs/stats?days=7'),
-        fetch('/api/admin/logs/stats?days=30'),
-        fetch('/api/admin/logs/stats?days=365')
-      ])
+      // Récupérer les stats pour la semaine (pour afficher les 4 cards par statut)
+      const res = await fetch('/api/admin/logs/stats?days=7')
+      const data = await res.json()
 
-      const dataWeek = await resWeek.json()
-      const dataMonth = await resMonth.json()
-      const dataYear = await resYear.json()
-
-      if (dataWeek.success) setStatsWeek(dataWeek.totalLogs)
-      if (dataMonth.success) setStatsMonth(dataMonth.totalLogs)
-      if (dataYear.success) setStatsYear(dataYear.totalLogs)
+      if (data.success && data.byStatus) {
+        setStatsByStatus({
+          success: data.byStatus.success || 0,
+          error: data.byStatus.error || 0,
+          warning: data.byStatus.warning || 0,
+          info: data.byStatus.info || 0
+        })
+      }
     } catch (error) {
       console.error('Erreur chargement stats:', error)
     }
@@ -200,21 +206,34 @@ export default function LogsPage() {
             </button>
           </div>
 
-          {/* Stats Cards - 3 cards (Semaine, Mois, Année) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4">
-              <div className="text-gray-400 text-sm font-medium">Total Logs (Semaine)</div>
-              <div className="text-3xl font-bold text-white mt-2">{statsWeek.toLocaleString('fr-FR')}</div>
+          {/* Stats Cards - 4 cards par statut */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-green-500/10 backdrop-blur-xl border border-green-500/30 rounded-xl p-4">
+              <div className="text-green-400 text-sm font-medium flex items-center gap-2">
+                ✅ Success
+              </div>
+              <div className="text-3xl font-bold text-green-300 mt-2">{statsByStatus.success.toLocaleString('fr-FR')}</div>
             </div>
 
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4">
-              <div className="text-gray-400 text-sm font-medium">Total Logs (Mois)</div>
-              <div className="text-3xl font-bold text-white mt-2">{statsMonth.toLocaleString('fr-FR')}</div>
+            <div className="bg-red-500/10 backdrop-blur-xl border border-red-500/30 rounded-xl p-4">
+              <div className="text-red-400 text-sm font-medium flex items-center gap-2">
+                ❌ Error
+              </div>
+              <div className="text-3xl font-bold text-red-300 mt-2">{statsByStatus.error.toLocaleString('fr-FR')}</div>
             </div>
 
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4">
-              <div className="text-gray-400 text-sm font-medium">Total Logs (Année)</div>
-              <div className="text-3xl font-bold text-white mt-2">{statsYear.toLocaleString('fr-FR')}</div>
+            <div className="bg-yellow-500/10 backdrop-blur-xl border border-yellow-500/30 rounded-xl p-4">
+              <div className="text-yellow-400 text-sm font-medium flex items-center gap-2">
+                ⚠️ Warning
+              </div>
+              <div className="text-3xl font-bold text-yellow-300 mt-2">{statsByStatus.warning.toLocaleString('fr-FR')}</div>
+            </div>
+
+            <div className="bg-blue-500/10 backdrop-blur-xl border border-blue-500/30 rounded-xl p-4">
+              <div className="text-blue-400 text-sm font-medium flex items-center gap-2">
+                ℹ️ Info
+              </div>
+              <div className="text-3xl font-bold text-blue-300 mt-2">{statsByStatus.info.toLocaleString('fr-FR')}</div>
             </div>
           </div>
 
