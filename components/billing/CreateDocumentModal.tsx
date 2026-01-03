@@ -23,7 +23,16 @@ export function CreateDocumentModal({ onClose, onSuccess, defaultType = 'quote' 
   const [customerEmail, setCustomerEmail] = useState('')
   const [customerAddress, setCustomerAddress] = useState('')
   const [customerSiren, setCustomerSiren] = useState('')
-  const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0])
+  // Fonction helper pour obtenir la date du jour au format ISO (YYYY-MM-DD)
+  const getTodayISO = () => {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const [issueDate, setIssueDate] = useState(getTodayISO())
   const [dueDate, setDueDate] = useState('')
   const [validUntil, setValidUntil] = useState('')
   const [paymentTerms, setPaymentTerms] = useState('Paiement sous 30 jours')
