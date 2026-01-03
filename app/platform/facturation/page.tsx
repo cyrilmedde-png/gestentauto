@@ -630,8 +630,8 @@ function FacturationContent() {
                             <CheckCircle className="w-4 h-4" />
                           </button>
                         )}
-                        {/* Bouton Supprimer (uniquement pour les brouillons) */}
-                        {doc.status === 'draft' && (
+                        {/* Bouton Supprimer (tous sauf payés) */}
+                        {doc.status !== 'paid' && (
                           <button
                             onClick={() => handleDeleteDocument(doc.id, doc.document_number)}
                             className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"

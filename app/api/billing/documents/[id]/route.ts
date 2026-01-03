@@ -194,7 +194,7 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Utilisateur non trouvé' }, { status: 404 })
     }
     
-    // Vérifier que le document existe et est en brouillon
+    // Vérifier que le document existe
     const { data: document } = await supabase
       .from('billing_documents')
       .select('document_number, status')
@@ -206,10 +206,11 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Document non trouvé' }, { status: 404 })
     }
     
-    if (document.status !== 'draft') {
+    // Ne pas permettre de supprimer un document payé (pour raisons comptables)
+    if (document.status === 'paid') {
       return NextResponse.json({ 
         success: false, 
-        error: 'Seuls les documents en brouillon peuvent être supprimés' 
+        error: 'Impossible de supprimer un document payé pour des raisons comptables' 
       }, { status: 400 })
     }
     
