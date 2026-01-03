@@ -302,6 +302,7 @@ export function CreateDocumentModal({ onClose, onSuccess, defaultType = 'quote' 
         </div>
 
         {/* Content */}
+        <form onSubmit={(e) => e.preventDefault()} noValidate>
         <div className="p-6 space-y-6">
           {/* Erreur */}
           {error && (
@@ -609,6 +610,8 @@ export function CreateDocumentModal({ onClose, onSuccess, defaultType = 'quote' 
             )}
           </button>
         </div>
+        </div>
+        </form>
       </div>
     </div>
   )
