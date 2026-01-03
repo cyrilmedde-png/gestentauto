@@ -129,10 +129,14 @@ export default function LogsPage() {
     try {
       const params = new URLSearchParams({
         limit: limit.toString(),
-        offset: (page * limit).toString(),
-        // Par défaut, filtrer uniquement error + warning
-        status: 'error,warning'
+        offset: (page * limit).toString()
       })
+
+      // Sur la page principale (Tous), n'afficher que error et warning
+      // Sur les autres onglets (Abonnements, Facturation, Leads), afficher tous les statuts
+      if (selectedCategory === 'all') {
+        params.append('status', 'error,warning')
+      }
 
       // Filtrer par event_type si sélectionné
       if (selectedEventType !== 'all') {
