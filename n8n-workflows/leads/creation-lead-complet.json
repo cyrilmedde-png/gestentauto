@@ -177,7 +177,7 @@
       "name": "Réponse Succès",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1350, 200]
+      "position": [1530, 200]
     },
     {
       "parameters": {
@@ -236,6 +236,11 @@
       "main": [
         [
           {
+            "node": "Logger l'Action",
+            "type": "main",
+            "index": 0
+          },
+          {
             "node": "Envoyer Email Bienvenue",
             "type": "main",
             "index": 0
@@ -247,6 +252,17 @@
           },
           {
             "node": "Attendre 2s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Logger l'Action": {
+      "main": [
+        [
+          {
+            "node": "Notifier Slack (Optionnel)",
             "type": "main",
             "index": 0
           }
