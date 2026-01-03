@@ -12,7 +12,10 @@
       "name": "Webhook - Déclenchement",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [250, 300],
+      "position": [
+        250,
+        300
+      ],
       "webhookId": "envoyer-facture"
     },
     {
@@ -38,7 +41,10 @@
       "name": "Validation Données",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [450, 300]
+      "position": [
+        450,
+        300
+      ]
     },
     {
       "parameters": {
@@ -60,7 +66,10 @@
       "name": "Récupérer Document",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [650, 200],
+      "position": [
+        650,
+        200
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "1",
@@ -84,7 +93,10 @@
       "name": "Envoyer Email Facture",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2,
-      "position": [850, 200],
+      "position": [
+        850,
+        200
+      ],
       "credentials": {
         "smtp": {
           "id": "2",
@@ -124,7 +136,10 @@
       "name": "Mettre à jour Statut",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [1050, 200],
+      "position": [
+        1050,
+        200
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "1",
@@ -163,7 +178,10 @@
       "name": "Logger l'Action",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [1250, 200]
+      "position": [
+        1250,
+        200
+      ]
     },
     {
       "parameters": {
@@ -174,7 +192,10 @@
       "name": "Réponse Succès",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1450, 200]
+      "position": [
+        1450,
+        200
+      ]
     },
     {
       "parameters": {
@@ -185,7 +206,10 @@
       "name": "Réponse Erreur Validation",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [650, 400]
+      "position": [
+        650,
+        400
+      ]
     }
   ],
   "connections": {
@@ -281,4 +305,3 @@
     }
   ]
 }
-
