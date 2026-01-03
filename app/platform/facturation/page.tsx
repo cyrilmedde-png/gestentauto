@@ -285,6 +285,44 @@ function FacturationContent() {
     }
   }
 
+  const handleDeleteDocument = async (documentId: string, documentNumber: string) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer le document ${documentNumber} ?\n\nCette action est irréversible.`)) {
+      return
+    }
+
+    try {
+      setError(null)
+      setSuccess(null)
+      
+      const response = await fetch(`/api/billing/documents/${documentId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`)
+      }
+
+      const textData = await response.text()
+      const data = textData ? JSON.parse(textData) : { success: false, error: 'Réponse vide' }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Erreur lors de la suppression')
+      }
+
+      setSuccess(`Document ${documentNumber} supprimé avec succès !`)
+      setTimeout(() => setSuccess(null), 5000)
+      
+      // Recharger les données après un court délai
+      setTimeout(() => {
+        loadData()
+      }, 1000)
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la suppression du document')
+      setTimeout(() => setError(null), 5000)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { label: string; className: string; icon: any }> = {
       draft: { label: 'Brouillon', className: 'bg-gray-500/20 text-gray-400', icon: Clock },
@@ -590,6 +628,16 @@ function FacturationContent() {
                             title="Marquer comme payé"
                           >
                             <CheckCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                        {/* Bouton Supprimer (uniquement pour les brouillons) */}
+                        {doc.status === 'draft' && (
+                          <button
+                            onClick={() => handleDeleteDocument(doc.id, doc.document_number)}
+                            className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                         <button
