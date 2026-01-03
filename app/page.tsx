@@ -23,11 +23,7 @@ export default function LandingPage() {
       })
         .then((res) => res.json())
         .then((data) => {
-          if (data.isPlatform) {
-            router.push('/platform/dashboard')
-          } else {
-            router.push('/platform/dashboard')
-          }
+          router.push('/platform/dashboard')
         })
         .catch(() => {
           router.push('/platform/dashboard')
@@ -36,7 +32,8 @@ export default function LandingPage() {
       // Afficher le contenu après un court délai pour l'animation
       setTimeout(() => setShowContent(true), 100)
     }
-  }, [user, loading, router])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loading])
 
   // Si chargement ou utilisateur connecté, afficher un loader
   if (loading || user) {
