@@ -76,7 +76,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      query = query.eq('status', status)
+      // Support pour plusieurs status séparés par virgule (ex: "error,warning")
+      const statusList = status.split(',').map(s => s.trim()).filter(s => s)
+      if (statusList.length === 1) {
+        query = query.eq('status', statusList[0])
+      } else if (statusList.length > 1) {
+        query = query.in('status', statusList)
+      }
     }
 
     if (company_id) {

@@ -20,31 +20,57 @@ interface Log {
   user_agent: string | null
 }
 
-interface Stats {
-  totalLogs: number
-  byStatus: {
-    success: number
-    error: number
-    warning: number
-    info: number
-  }
-  byEventType: Record<string, number>
-  successRate: number
-  errorRate: number
-}
-
 export default function LogsPage() {
   const [logs, setLogs] = useState<Log[]>([])
-  const [stats, setStats] = useState<Stats | null>(null)
+  const [statsWeek, setStatsWeek] = useState<number>(0)
+  const [statsMonth, setStatsMonth] = useState<number>(0)
+  const [statsYear, setStatsYear] = useState<number>(0)
   const [loading, setLoading] = useState(true)
-  const [selectedTab, setSelectedTab] = useState<string>('all')
-  const [selectedStatus, setSelectedStatus] = useState<string>('all')
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [selectedEventType, setSelectedEventType] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedLog, setExpandedLog] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
 
   const limit = 50
+
+  // Définir les catégories et event_types
+  const categories = [
+    { value: 'all', label: 'Tous', icon: '📊' },
+    { value: 'abonnements', label: 'Abonnements', icon: '💳' },
+    { value: 'facturation', label: 'Facturation', icon: '📄' },
+    { value: 'leads', label: 'Leads', icon: '🎯' }
+  ]
+
+  const eventTypes = [
+    { value: 'all', label: 'Tous les événements', icon: '📊', category: 'all' },
+    // Abonnements
+    { value: 'subscription_created', label: 'Créations', icon: '✨', category: 'abonnements' },
+    { value: 'payment_succeeded', label: 'Paiements réussis', icon: '💳', category: 'abonnements' },
+    { value: 'payment_failed', label: 'Échecs paiement', icon: '❌', category: 'abonnements' },
+    { value: 'plan_upgraded', label: 'Upgrades', icon: '⬆️', category: 'abonnements' },
+    { value: 'plan_downgraded', label: 'Downgrades', icon: '⬇️', category: 'abonnements' },
+    { value: 'subscription_canceled', label: 'Annulations', icon: '🚫', category: 'abonnements' },
+    { value: 'reminder_sent', label: 'Rappels', icon: '⏰', category: 'abonnements' },
+    { value: 'account_suspended', label: 'Suspensions', icon: '🔒', category: 'abonnements' },
+    // Facturation
+    { value: 'document_cree', label: 'Documents créés', icon: '📄', category: 'facturation' },
+    { value: 'facture_envoyee', label: 'Factures envoyées', icon: '📧', category: 'facturation' },
+    { value: 'devis_envoye', label: 'Devis envoyés', icon: '📋', category: 'facturation' },
+    { value: 'facture_erreur', label: 'Erreurs facturation', icon: '⚠️', category: 'facturation' },
+    { value: 'paiement_recu', label: 'Paiements reçus', icon: '💰', category: 'facturation' },
+    { value: 'relance_facture', label: 'Relances factures', icon: '🔔', category: 'facturation' },
+    // Leads
+    { value: 'lead_cree', label: 'Leads créés', icon: '🎯', category: 'leads' },
+    { value: 'lead_qualifie', label: 'Leads qualifiés', icon: '✅', category: 'leads' },
+    { value: 'lead_erreur', label: 'Erreurs leads', icon: '❌', category: 'leads' }
+  ]
+
+  // Filtrer les event_types selon la catégorie sélectionnée
+  const filteredEventTypes = selectedCategory === 'all' 
+    ? eventTypes.filter(e => e.value !== 'all')
+    : eventTypes.filter(e => e.category === selectedCategory || e.value === 'all')
 
   // Charger les stats
   useEffect(() => {
@@ -54,15 +80,24 @@ export default function LogsPage() {
   // Charger les logs
   useEffect(() => {
     fetchLogs()
-  }, [selectedTab, selectedStatus, page])
+  }, [selectedCategory, selectedEventType, page])
 
   const fetchStats = async () => {
     try {
-      const res = await fetch('/api/admin/logs/stats?days=7')
-      const data = await res.json()
-      if (data.success) {
-        setStats(data)
-      }
+      // Récupérer les stats pour les 3 périodes
+      const [resWeek, resMonth, resYear] = await Promise.all([
+        fetch('/api/admin/logs/stats?days=7'),
+        fetch('/api/admin/logs/stats?days=30'),
+        fetch('/api/admin/logs/stats?days=365')
+      ])
+
+      const dataWeek = await resWeek.json()
+      const dataMonth = await resMonth.json()
+      const dataYear = await resYear.json()
+
+      if (dataWeek.success) setStatsWeek(dataWeek.totalLogs)
+      if (dataMonth.success) setStatsMonth(dataMonth.totalLogs)
+      if (dataYear.success) setStatsYear(dataYear.totalLogs)
     } catch (error) {
       console.error('Erreur chargement stats:', error)
     }
@@ -73,15 +108,14 @@ export default function LogsPage() {
     try {
       const params = new URLSearchParams({
         limit: limit.toString(),
-        offset: (page * limit).toString()
+        offset: (page * limit).toString(),
+        // Par défaut, filtrer uniquement error + warning
+        status: 'error,warning'
       })
 
-      if (selectedTab !== 'all') {
-        params.append('event_type', selectedTab)
-      }
-
-      if (selectedStatus !== 'all') {
-        params.append('status', selectedStatus)
+      // Filtrer par event_type si sélectionné
+      if (selectedEventType !== 'all') {
+        params.append('event_type', selectedEventType)
       }
 
       const res = await fetch(`/api/admin/logs?${params}`)
@@ -118,30 +152,6 @@ export default function LogsPage() {
     return icons[status as keyof typeof icons] || '•'
   }
 
-  const eventTypes = [
-    { value: 'all', label: 'Tous les événements', icon: '📊', category: 'all' },
-    // Abonnements
-    { value: 'subscription_created', label: 'Créations', icon: '✨', category: 'abonnements' },
-    { value: 'payment_succeeded', label: 'Paiements réussis', icon: '💳', category: 'abonnements' },
-    { value: 'payment_failed', label: 'Échecs paiement', icon: '❌', category: 'abonnements' },
-    { value: 'plan_upgraded', label: 'Upgrades', icon: '⬆️', category: 'abonnements' },
-    { value: 'plan_downgraded', label: 'Downgrades', icon: '⬇️', category: 'abonnements' },
-    { value: 'subscription_canceled', label: 'Annulations', icon: '🚫', category: 'abonnements' },
-    { value: 'reminder_sent', label: 'Rappels', icon: '⏰', category: 'abonnements' },
-    { value: 'account_suspended', label: 'Suspensions', icon: '🔒', category: 'abonnements' },
-    // Facturation
-    { value: 'document_cree', label: 'Documents créés', icon: '📄', category: 'facturation' },
-    { value: 'facture_envoyee', label: 'Factures envoyées', icon: '📧', category: 'facturation' },
-    { value: 'devis_envoye', label: 'Devis envoyés', icon: '📋', category: 'facturation' },
-    { value: 'facture_erreur', label: 'Erreurs facturation', icon: '⚠️', category: 'facturation' },
-    { value: 'paiement_recu', label: 'Paiements reçus', icon: '💰', category: 'facturation' },
-    { value: 'relance_facture', label: 'Relances factures', icon: '🔔', category: 'facturation' },
-    // Leads
-    { value: 'lead_cree', label: 'Leads créés', icon: '🎯', category: 'leads' },
-    { value: 'lead_qualifie', label: 'Leads qualifiés', icon: '✅', category: 'leads' },
-    { value: 'lead_erreur', label: 'Erreurs leads', icon: '❌', category: 'leads' }
-  ]
-
   const filteredLogs = logs.filter(log => {
     if (searchTerm) {
       const search = searchTerm.toLowerCase()
@@ -154,6 +164,13 @@ export default function LogsPage() {
     }
     return true
   })
+
+  // Réinitialiser selectedEventType quand on change de catégorie
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category)
+    setSelectedEventType('all')
+    setPage(0)
+  }
 
   return (
     <ProtectedPlatformRoute>
@@ -183,77 +200,81 @@ export default function LogsPage() {
             </button>
           </div>
 
-          {/* Stats Cards */}
-          {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4">
-                <div className="text-gray-400 text-sm font-medium">Total Logs (7j)</div>
-                <div className="text-3xl font-bold text-white mt-2">{stats.totalLogs}</div>
-              </div>
-
-              <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 border border-green-500/20 rounded-xl p-4">
-                <div className="text-green-400 text-sm font-medium">Succès</div>
-                <div className="text-3xl font-bold text-white mt-2">
-                  {stats.byStatus.success}
-                  <span className="text-sm ml-2 text-green-400">({stats.successRate}%)</span>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-red-500/20 to-red-600/10 border border-red-500/20 rounded-xl p-4">
-                <div className="text-red-400 text-sm font-medium">Erreurs</div>
-                <div className="text-3xl font-bold text-white mt-2">
-                  {stats.byStatus.error}
-                  <span className="text-sm ml-2 text-red-400">({stats.errorRate}%)</span>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border border-yellow-500/20 rounded-xl p-4">
-                <div className="text-yellow-400 text-sm font-medium">Warnings</div>
-                <div className="text-3xl font-bold text-white mt-2">{stats.byStatus.warning}</div>
-              </div>
+          {/* Stats Cards - 3 cards (Semaine, Mois, Année) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4">
+              <div className="text-gray-400 text-sm font-medium">Total Logs (Semaine)</div>
+              <div className="text-3xl font-bold text-white mt-2">{statsWeek.toLocaleString('fr-FR')}</div>
             </div>
-          )}
 
-          {/* Tabs */}
-          <div className="flex flex-wrap gap-2">
-            {eventTypes.map(type => (
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4">
+              <div className="text-gray-400 text-sm font-medium">Total Logs (Mois)</div>
+              <div className="text-3xl font-bold text-white mt-2">{statsMonth.toLocaleString('fr-FR')}</div>
+            </div>
+
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4">
+              <div className="text-gray-400 text-sm font-medium">Total Logs (Année)</div>
+              <div className="text-3xl font-bold text-white mt-2">{statsYear.toLocaleString('fr-FR')}</div>
+            </div>
+          </div>
+
+          {/* Onglets par catégorie */}
+          <div className="flex flex-wrap gap-2 border-b border-white/10 pb-4">
+            {categories.map(category => (
               <button
-                key={type.value}
-                onClick={() => {
-                  setSelectedTab(type.value)
-                  setPage(0)
-                }}
+                key={category.value}
+                onClick={() => handleCategoryChange(category.value)}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  selectedTab === type.value
+                  selectedCategory === category.value
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
                     : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
                 }`}
               >
-                {type.icon} {type.label}
+                {category.icon} {category.label}
               </button>
             ))}
           </div>
 
-          {/* Filtres */}
-          <div className="flex gap-4">
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value)
-                setPage(0)
-              }}
-              className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="success">✅ Succès</option>
-              <option value="error">❌ Erreur</option>
-              <option value="warning">⚠️ Warning</option>
-              <option value="info">ℹ️ Info</option>
-            </select>
+          {/* Sous-filtres event_types selon la catégorie */}
+          {selectedCategory !== 'all' && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => {
+                  setSelectedEventType('all')
+                  setPage(0)
+                }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  selectedEventType === 'all'
+                    ? 'bg-purple-500/30 text-purple-200 border border-purple-500/50'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
+                }`}
+              >
+                Tous les {categories.find(c => c.value === selectedCategory)?.label}
+              </button>
+              {filteredEventTypes.filter(e => e.value !== 'all').map(type => (
+                <button
+                  key={type.value}
+                  onClick={() => {
+                    setSelectedEventType(type.value)
+                    setPage(0)
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    selectedEventType === type.value
+                      ? 'bg-purple-500/30 text-purple-200 border border-purple-500/50'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
+                  }`}
+                >
+                  {type.icon} {type.label}
+                </button>
+              ))}
+            </div>
+          )}
 
+          {/* Filtre recherche */}
+          <div className="flex gap-4">
             <input
               type="text"
-              placeholder="Rechercher (subscription_id, type, message...)"
+              placeholder="Rechercher (event_type, subscription_id, message...)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -272,7 +293,7 @@ export default function LogsPage() {
                 <FileText className="w-12 h-12 text-gray-600 mx-auto mb-3" />
                 <p className="text-gray-400 text-lg font-medium">Aucun log trouvé</p>
                 <p className="text-gray-500 text-sm mt-1">
-                  Essayez de changer les filtres ou générez des logs de test
+                  Aucune erreur ou warning pour cette période
                 </p>
               </div>
             ) : (
