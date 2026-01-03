@@ -240,7 +240,7 @@ export function CreateDocumentModal({ onClose, onSuccess, defaultType = 'quote' 
         {/* Header */}
         <div className="sticky top-0 bg-card border-b border-border p-6 flex items-center justify-between z-10">
           <h2 className="text-2xl font-bold text-foreground">
-            Créer un {documentType === 'quote' ? 'Devis' : 'Facture'}
+            Créer un {documentType === 'quote' ? 'Devis' : documentType === 'invoice' ? 'Facture' : documentType === 'proforma' ? 'Proforma' : 'Avoir'}
           </h2>
           <button
             onClick={onClose}
@@ -272,6 +272,7 @@ export function CreateDocumentModal({ onClose, onSuccess, defaultType = 'quote' 
               <option value="quote">Devis</option>
               <option value="invoice">Facture</option>
               <option value="proforma">Proforma</option>
+              <option value="credit_note">Avoir</option>
             </select>
           </div>
 
