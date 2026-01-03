@@ -89,8 +89,6 @@ export default function LoginPage() {
           // En cas d'erreur, rediriger par défaut vers le dashboard plateforme
           router.push('/platform/dashboard')
         }
-        
-        router.refresh()
       }
     } catch (err) {
       console.error('Erreur inattendue:', err)

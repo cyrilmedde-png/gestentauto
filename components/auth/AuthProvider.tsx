@@ -29,7 +29,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     isLoadingUserRef.current = true
     try {
-      setLoading(true)
+      // Ne pas mettre loading à true si on est déjà en train de charger
+      // pour éviter les re-renders inutiles
+      if (!loading) {
+        setLoading(true)
+      }
       
       // Vérifier si Supabase est configuré
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
