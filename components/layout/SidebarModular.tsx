@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react'
+import { Menu, ChevronDown, ChevronRight, LogOut, type LucideIcon } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { useAuth } from '@/components/auth/AuthProvider'
 import * as Icons from 'lucide-react'
