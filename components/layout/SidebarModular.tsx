@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, ChevronDown, ChevronRight, LogOut, type LucideIcon } from 'lucide-react'
+import { Menu, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { useAuth } from '@/components/auth/AuthProvider'
 import * as Icons from 'lucide-react'
@@ -46,6 +46,28 @@ export function SidebarModular() {
   const [categories, setCategories] = useState<Category[]>([])
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+
+  // Charger l'état des sections depuis localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('sidebar_collapsed_sections')
+      if (saved) {
+        const savedArray = JSON.parse(saved) as string[]
+        setCollapsedSections(new Set(savedArray))
+      }
+    } catch (error) {
+      console.error('Error loading collapsed sections:', error)
+    }
+  }, [])
+
+  // Sauvegarder l'état des sections dans localStorage
+  const saveCollapsedSections = (sections: Set<string>) => {
+    try {
+      localStorage.setItem('sidebar_collapsed_sections', JSON.stringify(Array.from(sections)))
+    } catch (error) {
+      console.error('Error saving collapsed sections:', error)
+    }
+  }
 
   // Détection mobile
   useEffect(() => {
@@ -104,6 +126,7 @@ export function SidebarModular() {
       } else {
         newSet.add(categoryName)
       }
+      saveCollapsedSections(newSet)
       return newSet
     })
   }
@@ -256,25 +279,6 @@ export function SidebarModular() {
             )}
           </nav>
 
-          {/* Footer - Déconnexion */}
-          <div className="p-4 border-t border-border/50">
-            <button
-              onClick={async () => {
-                await signOut()
-                router.push('/auth/login')
-              }}
-              className={`
-                w-full flex items-center gap-3 px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors
-                ${(isExpanded || isMobileOpen) ? '' : 'justify-center'}
-              `}
-              title={(isExpanded || isMobileOpen) ? '' : 'Déconnexion'}
-            >
-              <LogOut className="w-5 h-5 flex-shrink-0" />
-              {(isExpanded || isMobileOpen) && (
-                <span className="text-sm">Déconnexion</span>
-              )}
-            </button>
-          </div>
         </div>
       </aside>
     </>
