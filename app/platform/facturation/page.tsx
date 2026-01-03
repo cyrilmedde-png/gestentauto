@@ -630,16 +630,14 @@ function FacturationContent() {
                             <CheckCircle className="w-4 h-4" />
                           </button>
                         )}
-                        {/* Bouton Supprimer (tous sauf payés) */}
-                        {doc.status !== 'paid' && (
-                          <button
-                            onClick={() => handleDeleteDocument(doc.id, doc.document_number)}
-                            className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                            title="Supprimer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        {/* Bouton Supprimer */}
+                        <button
+                          onClick={() => handleDeleteDocument(doc.id, doc.document_number)}
+                          className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                         <button
                           className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
                           title="Télécharger PDF"

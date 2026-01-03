@@ -206,14 +206,6 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Document non trouvé' }, { status: 404 })
     }
     
-    // Ne pas permettre de supprimer un document payé (pour raisons comptables)
-    if (document.status === 'paid') {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Impossible de supprimer un document payé pour des raisons comptables' 
-      }, { status: 400 })
-    }
-    
     // Supprimer le document (cascade sur les items)
     const { error: deleteError } = await supabaseAdmin
       .from('billing_documents')
