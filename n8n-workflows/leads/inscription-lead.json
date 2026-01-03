@@ -162,6 +162,39 @@
     },
     {
       "parameters": {
+        "url": "https://www.talosprimes.com/api/subscription-logs/log",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "lead_cree"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            },
+            {
+              "name": "message",
+              "value": "={{ 'Lead pré-inscrit: ' + $json.first_name + ' ' + $json.last_name + ' (' + $json.email + ')' }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ lead_id: $json.lead_id, email: $json.email, first_name: $json.first_name, last_name: $json.last_name, phone: $json.phone, company_name: $json.company_name }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-action",
+      "name": "Logger l'Action",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1550, 300]
+    },
+    {
+      "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { \"success\": true, \"message\": \"Lead enregistré et notifications envoyées\" } }}"
       },
@@ -169,7 +202,7 @@
       "name": "Réponse Succès",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1570, 300]
+      "position": [1750, 300]
     },
     {
       "parameters": {
@@ -248,6 +281,17 @@
       ]
     },
     "Notification In-App Admin": {
+      "main": [
+        [
+          {
+            "node": "Logger l'Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Logger l'Action": {
       "main": [
         [
           {
