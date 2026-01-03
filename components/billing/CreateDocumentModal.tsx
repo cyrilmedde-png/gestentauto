@@ -218,21 +218,40 @@ export function CreateDocumentModal({ onClose, onSuccess, defaultType = 'quote' 
         body: JSON.stringify(documentData)
       })
 
+      // Lire la réponse comme texte d'abord
+      const responseText = await response.text()
+      
       if (!response.ok) {
-        const text = await response.text()
-        const errorData = text ? JSON.parse(text) : {}
-        throw new Error(errorData.error || 'Erreur lors de la création via N8N')
+        let errorMessage = `Erreur HTTP ${response.status}`
+        try {
+          const errorData = responseText ? JSON.parse(responseText) : {}
+          errorMessage = errorData.error || errorData.message || errorMessage
+        } catch (e) {
+          errorMessage = responseText || errorMessage
+        }
+        throw new Error(errorMessage)
       }
 
-      const data = await response.json()
+      // Parser le JSON seulement si la réponse n'est pas vide
+      if (!responseText || responseText.trim() === '') {
+        throw new Error('Réponse vide du serveur N8N')
+      }
+
+      let data
+      try {
+        data = JSON.parse(responseText)
+      } catch (e) {
+        console.error('Réponse non-JSON reçue:', responseText)
+        throw new Error('Réponse invalide du serveur N8N (format non-JSON)')
+      }
 
       if (!data.success) {
-        throw new Error(data.error || 'Erreur lors de la création')
+        throw new Error(data.error || data.message || 'Erreur lors de la création')
       }
 
       const documentId = data.data?.id
       if (!documentId) {
-        throw new Error('Document créé mais ID non retourné')
+        throw new Error('Document créé mais ID non retourné par N8N')
       }
 
       // Si demandé, envoyer via N8N
