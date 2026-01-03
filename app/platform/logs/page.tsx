@@ -22,6 +22,9 @@ interface Log {
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<Log[]>([])
+  const [statsWeek, setStatsWeek] = useState<number>(0)
+  const [statsMonth, setStatsMonth] = useState<number>(0)
+  const [statsYear, setStatsYear] = useState<number>(0)
   const [statsByStatus, setStatsByStatus] = useState<{
     success: number
     error: number
@@ -92,18 +95,30 @@ export default function LogsPage() {
 
   const fetchStats = async () => {
     try {
-      // Récupérer les stats pour la semaine (pour afficher les 4 cards par statut)
-      const res = await fetch('/api/admin/logs/stats?days=7')
-      const data = await res.json()
+      // Récupérer les stats pour les 3 périodes et les stats par statut
+      const [resWeek, resMonth, resYear] = await Promise.all([
+        fetch('/api/admin/logs/stats?days=7'),
+        fetch('/api/admin/logs/stats?days=30'),
+        fetch('/api/admin/logs/stats?days=365')
+      ])
 
-      if (data.success && data.byStatus) {
-        setStatsByStatus({
-          success: data.byStatus.success || 0,
-          error: data.byStatus.error || 0,
-          warning: data.byStatus.warning || 0,
-          info: data.byStatus.info || 0
-        })
+      const dataWeek = await resWeek.json()
+      const dataMonth = await resMonth.json()
+      const dataYear = await resYear.json()
+
+      if (dataWeek.success) {
+        setStatsWeek(dataWeek.totalLogs)
+        if (dataWeek.byStatus) {
+          setStatsByStatus({
+            success: dataWeek.byStatus.success || 0,
+            error: dataWeek.byStatus.error || 0,
+            warning: dataWeek.byStatus.warning || 0,
+            info: dataWeek.byStatus.info || 0
+          })
+        }
       }
+      if (dataMonth.success) setStatsMonth(dataMonth.totalLogs)
+      if (dataYear.success) setStatsYear(dataYear.totalLogs)
     } catch (error) {
       console.error('Erreur chargement stats:', error)
     }
@@ -159,6 +174,17 @@ export default function LogsPage() {
   }
 
   const filteredLogs = logs.filter(log => {
+    // Filtrer par catégorie si on est dans un onglet spécifique et que "Tous les événements" est sélectionné
+    if (selectedCategory !== 'all' && selectedEventType === 'all') {
+      const categoryEventTypes = eventTypes
+        .filter(e => e.category === selectedCategory && e.value !== 'all')
+        .map(e => e.value)
+      if (!categoryEventTypes.includes(log.event_type)) {
+        return false
+      }
+    }
+
+    // Filtre de recherche
     if (searchTerm) {
       const search = searchTerm.toLowerCase()
       return (
@@ -204,6 +230,24 @@ export default function LogsPage() {
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Actualiser
             </button>
+          </div>
+
+          {/* Stats Cards - 3 cards Total Logs */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4">
+              <div className="text-gray-400 text-sm font-medium">Total Logs (Semaine)</div>
+              <div className="text-3xl font-bold text-white mt-2">{statsWeek.toLocaleString('fr-FR')}</div>
+            </div>
+
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4">
+              <div className="text-gray-400 text-sm font-medium">Total Logs (Mois)</div>
+              <div className="text-3xl font-bold text-white mt-2">{statsMonth.toLocaleString('fr-FR')}</div>
+            </div>
+
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4">
+              <div className="text-gray-400 text-sm font-medium">Total Logs (Année)</div>
+              <div className="text-3xl font-bold text-white mt-2">{statsYear.toLocaleString('fr-FR')}</div>
+            </div>
           </div>
 
           {/* Stats Cards - 4 cards par statut */}
