@@ -374,7 +374,7 @@
         ]
       ]
     },
-    "Envoyer Email Facture": {
+    "Envoyer Email Devis": {
       "main": [
         [
           {
@@ -411,7 +411,7 @@
       "main": [
         [
           {
-            "node": "Générer HTML Facture",
+            "node": "Générer HTML Devis",
             "type": "main",
             "index": 0
           },
@@ -434,6 +434,17 @@
         ]
       ]
     },
+    "Générer HTML Devis": {
+      "main": [
+        [
+          {
+            "node": "Envoyer Email Devis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
     "Générer HTML Facture": {
       "main": [
         [
