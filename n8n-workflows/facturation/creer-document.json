@@ -181,7 +181,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, message: 'Document créé avec succès', data: $json.data }) }}"
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Document créé avec succès', data: $json.data || $json }) }}"
       },
       "id": "response-success",
       "name": "Réponse Succès",
@@ -237,11 +237,11 @@
         ]
       ]
     },
-    "create-document": {
+    "Créer Document": {
       "main": [
         [
           {
-            "node": "response-success",
+            "node": "Réponse Succès",
             "type": "main",
             "index": 0
           }
