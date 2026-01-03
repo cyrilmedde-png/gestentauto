@@ -84,79 +84,79 @@
             {
               "id": "customer_email",
               "name": "customer_email",
-              "value": "={{ $json.data.customer_email }",
+              "value": "={{ $json.data.customer_email }}}",
               "type": "string"
             },
             {
               "id": "customer_name",
               "name": "customer_name",
-              "value": "={{ $json.data.customer_name }",
+              "value": "={{ $json.data.customer_name }}}",
               "type": "string"
             },
             {
               "id": "document_id",
               "name": "document_id",
-              "value": "={{ $json.data.id }",
+              "value": "={{ $json.data.id }}}",
               "type": "string"
             },
             {
               "id": "document_number",
               "name": "document_number",
-              "value": "={{ $json.data.document_number }",
+              "value": "={{ $json.data.document_number }}}",
               "type": "string"
             },
             {
               "id": "due_date",
               "name": "due_date",
-              "value": "={{ $json.data.due_date }",
+              "value": "={{ $json.data.due_date }}}",
               "type": "string"
             },
             {
               "id": "issue_date",
               "name": "issue_date",
-              "value": "={{ $json.data.issue_date }",
+              "value": "={{ $json.data.issue_date }}}",
               "type": "string"
             },
             {
               "id": "total_amount",
               "name": "total_amount",
-              "value": "={{ $json.data.total_amount }",
+              "value": "={{ $json.data.total_amount }}}",
               "type": "string"
             },
             {
               "id": "subtotal",
               "name": "subtotal",
-              "value": "={{ $json.data.subtotal }",
+              "value": "={{ $json.data.subtotal }}}",
               "type": "string"
             },
             {
               "id": "tax_rate",
               "name": "tax_rate",
-              "value": "={{ $json.data.tax_rate }",
+              "value": "={{ $json.data.tax_rate }}}",
               "type": "string"
             },
             {
               "id": "tax_amount",
               "name": "tax_amount",
-              "value": "={{ $json.data.tax_amount }",
+              "value": "={{ $json.data.tax_amount }}}",
               "type": "string"
             },
             {
               "id": "discount_amount",
               "name": "discount_amount",
-              "value": "={{ $json.data.discount_amount }",
+              "value": "={{ $json.data.discount_amount }}}",
               "type": "string"
             },
             {
               "id": "payment_terms",
               "name": "payment_terms",
-              "value": "={{ $json.data.payment_terms }",
+              "value": "={{ $json.data.payment_terms }}}",
               "type": "string"
             },
             {
               "id": "reference",
               "name": "reference",
-              "value": "={{ $json.data.reference }",
+              "value": "={{ $json.data.reference }}}",
               "type": "string"
             },
             {
@@ -207,16 +207,8 @@
     },
     {
       "parameters": {
-        "url": "https://www.talosprimes.com/api/n8n/billing/documents",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "document_id",
-              "value": "={{ $json.document_id }}"
-            }
-          ]
-        },
+        "url": "https://www.talosprimes.com/api/n8n/billing/documents/={{ $json.document_id }}/status",
+        "sendQuery": false,
         "method": "PUT",
         "sendBody": true,
         "bodyParameters": {
