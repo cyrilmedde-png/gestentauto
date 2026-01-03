@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react'
@@ -85,11 +85,7 @@ export function SidebarModular() {
   }, [isExpanded, isMobileOpen, setIsSidebarExpanded])
 
   // Charger les modules groupés par catégorie
-  useEffect(() => {
-    loadModules()
-  }, [])
-
-  const loadModules = async () => {
+  const loadModules = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -110,7 +106,11 @@ export function SidebarModular() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadModules()
+  }, [loadModules])
 
   // Fermer le menu mobile au changement de route
   useEffect(() => {
