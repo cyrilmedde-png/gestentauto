@@ -18,7 +18,8 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  Euro
+  Euro,
+  ArrowRight
 } from 'lucide-react'
 import { CreateDocumentModal } from '@/components/billing/CreateDocumentModal'
 
@@ -243,6 +244,43 @@ function FacturationContent() {
       loadData()
     } catch (err: any) {
       setError(err.message || 'Erreur lors de la mise à jour du statut')
+      setTimeout(() => setError(null), 5000)
+    }
+  }
+
+  const handleConvertQuoteToInvoice = async (documentId: string) => {
+    try {
+      setError(null)
+      setSuccess(null)
+      
+      const response = await fetch(`/api/billing/documents/${documentId}/convert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_type: 'invoice'
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`)
+      }
+
+      const textData = await response.text()
+      const data = textData ? JSON.parse(textData) : { success: false, error: 'Réponse vide' }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Erreur lors de la conversion')
+      }
+
+      setSuccess(`Devis converti en facture ${data.data.document_number} avec succès !`)
+      setTimeout(() => setSuccess(null), 5000)
+      
+      // Recharger les données après un court délai
+      setTimeout(() => {
+        loadData()
+      }, 1000)
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la conversion du devis en facture')
       setTimeout(() => setError(null), 5000)
     }
   }
@@ -514,6 +552,16 @@ function FacturationContent() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {/* Bouton Convertir en facture (uniquement pour les devis) */}
+                        {doc.document_type === 'quote' && doc.status !== 'converted' && (
+                          <button
+                            onClick={() => handleConvertQuoteToInvoice(doc.id)}
+                            className="p-2 text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors"
+                            title="Convertir en facture"
+                          >
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                        )}
                         {/* Bouton Renvoyer par email (toujours visible si email client présent) */}
                         {doc.customer_email && (
                           <button
@@ -535,7 +583,7 @@ function FacturationContent() {
                           </button>
                         )}
                         {/* Bouton Marquer comme payé (sent → paid) */}
-                        {doc.status === 'sent' && (
+                        {doc.status === 'sent' && doc.document_type === 'invoice' && (
                           <button
                             onClick={() => handleUpdateStatus(doc.id, 'paid')}
                             className="p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors"
