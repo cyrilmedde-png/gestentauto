@@ -207,6 +207,41 @@
     },
     {
       "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "document_id",
+              "name": "document_id",
+              "value": "={{ $('Extraire Données Document').item.json.document_id }}",
+              "type": "string"
+            },
+            {
+              "id": "document_number",
+              "name": "document_number",
+              "value": "={{ $('Extraire Données Document').item.json.document_number }}",
+              "type": "string"
+            },
+            {
+              "id": "customer_email",
+              "name": "customer_email",
+              "value": "={{ $('Extraire Données Document').item.json.customer_email }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "preserve-document-data",
+      "name": "Préserver Données Document",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        950,
+        200
+      ]
+    },
+    {
+      "parameters": {
         "url": "https://www.talosprimes.com/api/n8n/billing/documents/={{ $json.document_id }}/status",
         "sendQuery": false,
         "method": "PUT",
@@ -350,7 +385,7 @@
       "main": [
         [
           {
-            "node": "Mettre à jour Statut",
+            "node": "Préserver Données Document",
             "type": "main",
             "index": 0
           }
@@ -384,6 +419,17 @@
         [
           {
             "node": "Envoyer Email Facture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préserver Données Document": {
+      "main": [
+        [
+          {
+            "node": "Mettre à jour Statut",
             "type": "main",
             "index": 0
           }
