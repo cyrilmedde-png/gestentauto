@@ -1,0 +1,280 @@
+{
+  "name": "📝 Créer Document Facturation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "creer-document",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-create",
+      "name": "Webhook - Déclenchement",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "creer-document"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.document_type }}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{ $json.body.customer_name }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "validation-donnees",
+      "name": "Validation Données",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/n8n/billing/documents/create",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "company_id",
+              "value": "={{ $json.body.company_id }}"
+            },
+            {
+              "name": "document_type",
+              "value": "={{ $json.body.document_type }}"
+            },
+            {
+              "name": "customer_name",
+              "value": "={{ $json.body.customer_name }}"
+            },
+            {
+              "name": "customer_email",
+              "value": "={{ $json.body.customer_email || '' }}"
+            },
+            {
+              "name": "customer_address",
+              "value": "={{ $json.body.customer_address || '' }}"
+            },
+            {
+              "name": "customer_siren",
+              "value": "={{ $json.body.customer_siren || '' }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $json.body.status || 'draft' }}"
+            },
+            {
+              "name": "issue_date",
+              "value": "={{ $json.body.issue_date || new Date().toISOString().split('T')[0] }}"
+            },
+            {
+              "name": "due_date",
+              "value": "={{ $json.body.due_date || '' }}"
+            },
+            {
+              "name": "valid_until",
+              "value": "={{ $json.body.valid_until || '' }}"
+            },
+            {
+              "name": "reference",
+              "value": "={{ $json.body.reference || '' }}"
+            },
+            {
+              "name": "subtotal",
+              "value": "={{ $json.body.subtotal || 0 }}"
+            },
+            {
+              "name": "tax_rate",
+              "value": "={{ $json.body.tax_rate || 20 }}"
+            },
+            {
+              "name": "tax_amount",
+              "value": "={{ $json.body.tax_amount || 0 }}"
+            },
+            {
+              "name": "discount_amount",
+              "value": "={{ $json.body.discount_amount || 0 }}"
+            },
+            {
+              "name": "total_amount",
+              "value": "={{ $json.body.total_amount || 0 }}"
+            },
+            {
+              "name": "payment_terms",
+              "value": "={{ $json.body.payment_terms || '' }}"
+            },
+            {
+              "name": "notes",
+              "value": "={{ $json.body.notes || '' }}"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "create-document",
+      "name": "Créer Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        650,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Supabase Service Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.talosprimes.com/api/subscription-logs/log",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "document_cree"
+            },
+            {
+              "name": "level",
+              "value": "info"
+            },
+            {
+              "name": "message",
+              "value": "={{ 'Document ' + ($json.data.document_type === 'quote' ? 'Devis' : 'Facture') + ' ' + $json.data.document_number + ' créé avec succès' }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ document_id: $json.data.id, document_number: $json.data.document_number, document_type: $json.data.document_type, customer_name: $json.data.customer_name }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-action",
+      "name": "Logger l'Action",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        850,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: $json.message, data: $json.data }) }}"
+      },
+      "id": "response-success",
+      "name": "Réponse Succès",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: 'Données invalides. Requis: document_type, customer_name' }) }}"
+      },
+      "id": "response-error-validation",
+      "name": "Réponse Erreur Validation",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        650,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Déclenchement": {
+      "main": [
+        [
+          {
+            "node": "Validation Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Données": {
+      "main": [
+        [
+          {
+            "node": "Créer Document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Réponse Erreur Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Créer Document": {
+      "main": [
+        [
+          {
+            "node": "Logger l'Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Logger l'Action": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "id": "creer-document",
+  "meta": {
+    "instanceId": "talosprime"
+  },
+  "tags": [
+    {
+      "name": "facturation",
+      "createdAt": "2026-01-03T12:00:00.000Z",
+      "updatedAt": "2026-01-03T12:00:00.000Z",
+      "id": "1"
+    }
+  ]
+}
