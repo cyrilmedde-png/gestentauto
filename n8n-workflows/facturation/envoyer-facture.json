@@ -242,7 +242,7 @@
     },
     {
       "parameters": {
-        "url": "https://www.talosprimes.com/api/n8n/billing/documents/={{ $json.document_id }}/status",
+        "url": "https://www.talosprimes.com/api/n8n/billing/documents/={{ $('Extraire Données Document').first().json.document_id }}/status",
         "sendQuery": false,
         "method": "PUT",
         "sendBody": true,
