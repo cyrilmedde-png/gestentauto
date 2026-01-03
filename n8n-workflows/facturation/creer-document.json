@@ -258,6 +258,17 @@
           }
         ]
       ]
+    },
+    "create-document": {
+      "main": [
+        [
+          {
+            "node": "response-success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
