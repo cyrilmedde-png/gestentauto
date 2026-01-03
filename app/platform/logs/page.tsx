@@ -119,15 +119,27 @@ export default function LogsPage() {
   }
 
   const eventTypes = [
-    { value: 'all', label: 'Tous les événements', icon: '📊' },
-    { value: 'subscription_created', label: 'Créations', icon: '✨' },
-    { value: 'payment_succeeded', label: 'Paiements réussis', icon: '💳' },
-    { value: 'payment_failed', label: 'Échecs paiement', icon: '❌' },
-    { value: 'plan_upgraded', label: 'Upgrades', icon: '⬆️' },
-    { value: 'plan_downgraded', label: 'Downgrades', icon: '⬇️' },
-    { value: 'subscription_canceled', label: 'Annulations', icon: '🚫' },
-    { value: 'reminder_sent', label: 'Rappels', icon: '⏰' },
-    { value: 'account_suspended', label: 'Suspensions', icon: '🔒' }
+    { value: 'all', label: 'Tous les événements', icon: '📊', category: 'all' },
+    // Abonnements
+    { value: 'subscription_created', label: 'Créations', icon: '✨', category: 'abonnements' },
+    { value: 'payment_succeeded', label: 'Paiements réussis', icon: '💳', category: 'abonnements' },
+    { value: 'payment_failed', label: 'Échecs paiement', icon: '❌', category: 'abonnements' },
+    { value: 'plan_upgraded', label: 'Upgrades', icon: '⬆️', category: 'abonnements' },
+    { value: 'plan_downgraded', label: 'Downgrades', icon: '⬇️', category: 'abonnements' },
+    { value: 'subscription_canceled', label: 'Annulations', icon: '🚫', category: 'abonnements' },
+    { value: 'reminder_sent', label: 'Rappels', icon: '⏰', category: 'abonnements' },
+    { value: 'account_suspended', label: 'Suspensions', icon: '🔒', category: 'abonnements' },
+    // Facturation
+    { value: 'document_cree', label: 'Documents créés', icon: '📄', category: 'facturation' },
+    { value: 'facture_envoyee', label: 'Factures envoyées', icon: '📧', category: 'facturation' },
+    { value: 'devis_envoye', label: 'Devis envoyés', icon: '📋', category: 'facturation' },
+    { value: 'facture_erreur', label: 'Erreurs facturation', icon: '⚠️', category: 'facturation' },
+    { value: 'paiement_recu', label: 'Paiements reçus', icon: '💰', category: 'facturation' },
+    { value: 'relance_facture', label: 'Relances factures', icon: '🔔', category: 'facturation' },
+    // Leads
+    { value: 'lead_cree', label: 'Leads créés', icon: '🎯', category: 'leads' },
+    { value: 'lead_qualifie', label: 'Leads qualifiés', icon: '✅', category: 'leads' },
+    { value: 'lead_erreur', label: 'Erreurs leads', icon: '❌', category: 'leads' }
   ]
 
   const filteredLogs = logs.filter(log => {
@@ -155,7 +167,7 @@ export default function LogsPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">Logs Système</h1>
-                <p className="text-gray-400 text-sm">Traçabilité complète des événements d'abonnements</p>
+                <p className="text-gray-400 text-sm">Traçabilité complète de tous les événements de l'application</p>
               </div>
             </div>
             <button
