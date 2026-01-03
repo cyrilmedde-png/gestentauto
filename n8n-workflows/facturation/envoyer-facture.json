@@ -211,11 +211,11 @@
             },
             {
               "name": "message",
-              "value": "Facture {{ $json.document_number }} envoyée à {{ $json.customer_email }} - Montant: {{ $json.total_amount }}€"
+              "value": "Facture {{ $json.document_number }} envoyée à {{ $json.customer_email }} - Montant: {{ $json.document_data.total_amount }}€"
             },
             {
               "name": "metadata",
-              "value": "={{ JSON.stringify({ document_id: $json.id, document_number: $json.document_number, customer_email: $json.customer_email, amount: $json.total_amount, due_date: $json.due_date }) }}"
+              "value": "={{ JSON.stringify({ document_id: $json.document_id, document_number: $json.document_number, customer_email: $json.customer_email, amount: $json.document_data.total_amount, due_date: $json.document_data.due_date }) }}"
             }
           ]
         },
