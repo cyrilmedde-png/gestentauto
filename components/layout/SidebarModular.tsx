@@ -181,7 +181,7 @@ export function SidebarModular() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto py-4">
+          <nav className="flex-1 overflow-y-auto py-4 pr-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {loading ? (
               <div className="px-4 text-muted-foreground text-sm">
                 Chargement...
