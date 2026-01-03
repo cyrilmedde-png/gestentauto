@@ -445,17 +445,6 @@
         ]
       ]
     }
-    "Générer HTML Facture": {
-      "main": [
-        [
-          {
-            "node": "Envoyer Email Facture",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
   },
   "active": false,
   "settings": {
