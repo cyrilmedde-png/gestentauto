@@ -95,7 +95,7 @@ export async function middleware(request: NextRequest) {
       !userData?.password_change_required &&
       request.nextUrl.pathname === '/auth/change-password-required'
     ) {
-      return NextResponse.redirect(new URL('/platform', request.url))
+      return NextResponse.redirect(new URL('/platform/dashboard', request.url))
     }
 
     // Ne pas permettre l'accès aux pages d'authentification si déjà connecté
@@ -103,7 +103,7 @@ export async function middleware(request: NextRequest) {
       request.nextUrl.pathname.startsWith('/auth/login') ||
       request.nextUrl.pathname.startsWith('/auth/register')
     ) {
-      return NextResponse.redirect(new URL('/platform', request.url))
+      return NextResponse.redirect(new URL('/platform/dashboard', request.url))
     }
   }
 
