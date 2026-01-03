@@ -83,11 +83,11 @@
             },
             {
               "name": "due_date",
-              "value": "={{ $json.body.due_date || '' }}"
+              "value": "={{ $json.body.due_date && $json.body.due_date !== '' ? $json.body.due_date : undefined }}"
             },
             {
               "name": "valid_until",
-              "value": "={{ $json.body.valid_until || '' }}"
+              "value": "={{ $json.body.valid_until && $json.body.valid_until !== '' ? $json.body.valid_until : undefined }}"
             },
             {
               "name": "reference",

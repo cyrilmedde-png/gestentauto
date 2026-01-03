@@ -96,14 +96,13 @@ export async function POST(request: NextRequest) {
       validUntil = calculateValidUntil(issueDate, validityDays)
     }
     
-    // Préparer les données à insérer
-    const newDocument = {
-      ...documentData,
+    // Préparer les données à insérer (enlever les champs vides)
+    const newDocument: any = {
       document_number: documentNumber,
       company_id: documentData.company_id,
+      document_type: documentData.document_type,
+      customer_name: documentData.customer_name,
       issue_date: issueDate,
-      due_date: dueDate,
-      valid_until: validUntil,
       status: documentData.status || 'draft',
       subtotal: documentData.subtotal || 0,
       tax_amount: documentData.tax_amount || 0,
@@ -114,6 +113,16 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
+    
+    // Ajouter seulement les champs optionnels s'ils ont une valeur
+    if (dueDate) newDocument.due_date = dueDate
+    if (validUntil) newDocument.valid_until = validUntil
+    if (documentData.customer_email) newDocument.customer_email = documentData.customer_email
+    if (documentData.customer_address) newDocument.customer_address = documentData.customer_address
+    if (documentData.customer_siren) newDocument.customer_siren = documentData.customer_siren
+    if (documentData.reference) newDocument.reference = documentData.reference
+    if (documentData.payment_terms) newDocument.payment_terms = documentData.payment_terms
+    if (documentData.notes) newDocument.notes = documentData.notes
     
     // Insérer le document
     const { data: document, error: insertError } = await supabaseAdmin
